@@ -1,0 +1,75 @@
+[
+  {
+    "id": "wm06-summary-invalid-after-retry",
+    "query": "这封邮件正文已经完整显示，AI 模型也是已就绪，但摘要在智能中心里一直显示‘内容无效’，重新生成后还是一样。",
+    "expected_document": "wm-06-summary-intelligence-center",
+    "expected_module": "WM-06",
+    "expected_action": "create_case_and_support_todo_after_bounded_retry",
+    "must_include": ["智能中心", "内容无效", "重新生成", "正文完整", "已记录"],
+    "must_not_include": ["一定是正文没同步", "请继续反复重试", "只是模型随机性", "已经修复", "案例编号", "待办编号", "WM-06"],
+    "required_tool_result_fields": ["case.case_id", "case.todo_id", "case.module", "case.status"]
+  },
+  {
+    "id": "wm07-smart-tag-learning-not-immediate",
+    "query": "智能标签把很多邮件分错了。我已经把一封误标邮件移出了标签，为什么其他类似邮件没有立刻全部改过来？",
+    "expected_document": "wm-07-smart-tags-learning",
+    "expected_module": "WM-07",
+    "expected_action": "explain_feedback_learning_boundary_and_offer_rule_edit",
+    "must_include": ["移出", "分类反馈", "不会立刻", "管理智能标签", "自然语言描述", "学习状态"],
+    "must_not_include": ["就是 IMAP 文件夹", "会同步为 IMAP 文件夹", "一次反馈后全部生效", "多标几封一定会好", "邮件会被删除"]
+  },
+  {
+    "id": "wm08-generic-todo-capability-boundary",
+    "query": "我能不能在 WeMail 里新建一个跟邮件无关的个人待办，再自动同步到系统日历？",
+    "expected_document": "wm-08-mail-todos",
+    "expected_module": "WM-08",
+    "expected_action": "state_current_mail_based_entry_and_do_not_promise_calendar_sync",
+    "must_include": ["当前", "基于这封邮件", "手动待办", "不能承诺", "日历同步"],
+    "must_not_include": ["已经支持通用待办", "会自动同步", "相当于完整任务管理器", "已经加入日历"]
+  },
+  {
+    "id": "wm09-assistant-body-search-boundary",
+    "query": "我在邮件列表选择‘正文’能搜到这封邮件，但右侧助手选择‘搜索整个邮箱’后，用同一个正文关键词却找不到，为什么？",
+    "expected_document": "wm-09-mail-search-and-qa",
+    "expected_module": "WM-09",
+    "expected_action": "distinguish_list_body_search_from_assistant_candidate_search_and_give_workaround",
+    "must_include": ["不是同一种搜索", "正文", "标题", "发件人", "时间", "当前邮件"],
+    "must_not_include": ["助手会全文检索所有正文", "一定是正文没同步", "重新登录", "可以跨账户搜索"]
+  },
+  {
+    "id": "wm10-ai-draft-not-sent",
+    "query": "智能回复已经给我生成了一封‘已收到’的回复草稿，这是不是代表邮件已经替我发出去了？",
+    "expected_document": "wm-10-ai-writing-and-replies",
+    "expected_module": "WM-10",
+    "expected_action": "clarify_draft_only_and_require_user_review_and_send",
+    "must_include": ["没有发出", "草稿", "编辑并发送", "收件人", "事实"],
+    "must_not_include": ["已经回复", "已经自动发送", "会自动发送", "无需检查", "系统已确认"]
+  },
+  {
+    "id": "wm11-no-visible-learning-center-entry",
+    "query": "你让我去设置里的‘学习中心’，但我的设置里根本没有这个按钮，工作空间到底从哪里打开？",
+    "expected_document": "wm-11-personal-assistant-workspace",
+    "expected_module": "WM-11",
+    "expected_action": "acknowledge_no_fixed_visible_entry_and_redirect_to_learning_preferences",
+    "must_include": ["当前", "没有固定", "学习中心", "设置", "个性化", "Agent 学到的偏好"],
+    "must_not_include": ["请打开设置 → 学习中心", "主侧边栏的工作空间", "请直接修改本地文件", "/workspace"]
+  },
+  {
+    "id": "wm06-retry-scope-and-count",
+    "query": "智能中心里只有一批从没生成过摘要的邮件，我点重试时应该选哪个范围？是不是一次只能处理 500 封？",
+    "expected_document": "wm-06-summary-intelligence-center",
+    "expected_module": "WM-06",
+    "expected_action": "choose_missing_scope_and_explain_configurable_enqueue_count",
+    "must_include": ["从没跑过（最新优先）", "默认 500", "1–2000", "最新优先", "预览"],
+    "must_not_include": ["选择全部", "硬性只能 500", "连续点击重试", "重新登录"]
+  },
+  {
+    "id": "wm09-citations-collapsed-after-three-mails",
+    "query": "助手回答时只显示了 3 封引用邮件，是不是它实际上只搜索了 3 封？",
+    "expected_document": "wm-09-mail-search-and-qa",
+    "expected_module": "WM-09",
+    "expected_action": "explain_collapsed_citation_display_before_diagnosing_missing_search_results",
+    "must_include": ["不一定", "前三封", "其余", "展开", "引用"],
+    "must_not_include": ["最多只能搜索 3 封", "重新同步邮箱", "一定漏检", "跨账户"]
+  }
+]

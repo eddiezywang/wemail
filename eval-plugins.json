@@ -1,0 +1,5 @@
+{
+  "$schema": "./eval-plugins.schema.json",
+  "frameworkVersion": "2.0.0",
+  "plugins": []
+}

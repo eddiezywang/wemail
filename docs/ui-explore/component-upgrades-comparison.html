@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="paper">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WeMail 组件升级 · Before / After</title>
+<style>
+  /* ── WeMail tokens (paper theme) — verbatim from app/styles/tokens.css ── */
+  :root{
+    --paper:#fafaf9; --paper-2:#ffffff; --paper-3:#efece5; --paper-4:#e7e3d8;
+    --summary:#f5f4f0; --sidebar:#f7f6f3;
+    --ink:#1c1917; --ink-2:#44403c; --ink-3:#625c57; --ink-4:#6f6964;
+    --edge:#e7e5e4; --edge-2:#d6d3d1; --edge-3:#f5f5f4;
+    --coral:#a8462a; --coral-2:#8f371f; --coral-strong:#742916; --coral-bg:#f9e8e0;
+    --amber:#8a611a; --amber-bg:#fdf3d9;
+    --green:#5f7a4a; --green-bg:#e3ecd2;
+    --blue:#4a6b88; --blue-bg:#dbe5ee;
+    --red:#b3392a; --red-bg:#ecc8c0;
+    --term-bg:#1d130a; --term-fg:#f1e4cc; --term-run:#e3b341; --term-ok:#8dc57a;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px;
+    --sh1:0 1px 0 #e7e5e4;
+    --sh2:0 1px 2px rgba(28,25,23,.06);
+    --sh3:0 8px 24px rgba(28,25,23,.08),0 1px 2px rgba(28,25,23,.04);
+    --dur-fast:120ms; --dur-base:180ms; --dur-slow:280ms;
+    --ease:cubic-bezier(.16,1,.3,1);
+    --serif:"Songti SC","STSong","Source Han Serif SC","Noto Serif CJK SC",Georgia,serif;
+    --sans:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono","Cascadia Mono","SF Mono",Consolas,Menlo,monospace;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    font-variant-numeric:tabular-nums;}
+  h1,h2,h3{letter-spacing:-.02em;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:48px 28px 96px}
+
+  /* ── Page header ── */
+  .masthead{border-bottom:1px solid var(--edge);padding-bottom:28px;margin-bottom:40px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--coral);font-weight:650}
+  .masthead h1{font-family:var(--serif);font-size:38px;line-height:1.12;margin-top:10px;font-weight:600}
+  .masthead .sub{color:var(--ink-3);max-width:62ch;margin-top:12px;font-size:14.5px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:22px;align-items:center}
+  .legend .grp{display:inline-flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-3)}
+  .northstar{margin-top:18px;display:inline-flex;gap:8px;align-items:baseline;
+    padding:8px 14px;border:1px solid var(--edge);border-radius:var(--r-xl);
+    background:var(--paper-2);box-shadow:var(--sh1)}
+  .northstar b{font-family:var(--serif);color:var(--ink);font-weight:600;font-size:15px}
+  .northstar span{color:var(--ink-3);font-size:12.5px}
+
+  /* chips */
+  .chip{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 9px;
+    border-radius:999px;font-size:11px;font-weight:650;letter-spacing:.01em;white-space:nowrap}
+  .chip-accept{background:var(--coral);color:#fff}
+  .chip-ref{background:var(--blue-bg);color:var(--blue)}
+  .chip-opt{background:var(--paper-3);color:var(--ink-3)}
+  .chip-curr{background:var(--paper-3);color:var(--ink-3)}
+  .chip-prop{background:var(--coral-bg);color:var(--coral)}
+
+  /* ── Section ── */
+  section.upg{margin-bottom:56px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .sec-num{font-family:var(--mono);font-size:12px;color:var(--ink-4);letter-spacing:.04em}
+  .sec-head h2{font-size:21px;font-weight:650}
+  .sec-head .en{color:var(--ink-3);font-size:14px;font-weight:400}
+
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:860px){.pair{grid-template-columns:1fr}}
+  .pane{border:1px solid var(--edge);border-radius:var(--r-lg);overflow:hidden;background:var(--paper-2);
+    box-shadow:var(--sh2)}
+  .pane-head{display:flex;align-items:center;justify-content:space-between;
+    padding:9px 14px;border-bottom:1px solid var(--edge);background:var(--summary)}
+  .pane-head .lbl{font-size:11px;font-weight:650;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .pane-body{padding:18px;min-height:220px;
+    background:repeating-linear-gradient(0deg,transparent,transparent 23px,var(--edge-3) 23px,var(--edge-3) 24px);
+    /* faint ruled canvas so the component reads against the pane */}
+  .pane.after .pane-body{background:var(--paper)}
+  .delta{margin-top:14px;padding:14px 16px;border:1px solid var(--edge);border-radius:var(--r-md);
+    background:var(--paper-2)}
+  .delta h4{margin:0 0 8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4)}
+  .delta ul{margin:0;padding-left:18px}
+  .delta li{margin:3px 0;color:var(--ink-2);font-size:13.5px}
+  .delta li b{color:var(--ink)}
+  .delta .why{color:var(--ink-3);font-size:12.5px;margin-top:8px}
+
+  /* ── Shared atoms ── */
+  .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-md);
+    font-size:13px;font-weight:500;border:1px solid var(--edge);background:var(--paper-2);color:var(--ink);
+    cursor:pointer;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
+  .btn:hover{background:var(--paper-3)}
+  .btn.primary{background:var(--coral-2);color:#fff;border-color:var(--coral-2)}
+  .btn.primary:hover{background:var(--coral-strong)}
+  .btn.good{background:var(--green);color:#fff;border-color:var(--green)}
+  .btn.danger{color:var(--red);border-color:var(--red)}
+  .btn.danger:hover{background:var(--red-bg)}
+  .btn.ghost{background:transparent;border-color:transparent}
+  .btn.ghost:hover{background:var(--paper-3)}
+  .btn.sm{height:26px;padding:0 9px;font-size:12px}
+  .icon{width:14px;height:14px;flex:0 0 auto}
+  .icon16{width:16px;height:16px;flex:0 0 auto}
+  .icn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--ink-3)}
+  .dot{width:7px;height:7px;border-radius:999px;background:var(--ink-4);flex:0 0 auto}
+  .dot.run{background:var(--coral);box-shadow:0 0 0 4px rgba(168,70,42,.11);animation:pulse 1.2s ease-in-out infinite}
+  .dot.ok{background:var(--green)}
+  .dot.fail{background:var(--red)}
+  .dot.amber{background:var(--amber)}
+  @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+  .caret{width:11px;height:11px;color:var(--ink-3);transition:transform var(--dur-base) var(--ease)}
+  .mono{font-family:var(--mono)}
+  .muted{color:var(--ink-3)}
+  .rule{height:1px;background:var(--edge);border:0;margin:0}
+
+  /* ════════════ SECTION 1 · AGENT PANEL ════════════ */
+  /* — before: current agent-activity accordion + stacked tool rows — */
+  .agent-act{border:1px solid var(--edge);border-radius:11px;background:color-mix(in srgb,var(--paper-2) 94%,var(--paper-3));}
+  .aa-trig{display:flex;align-items:center;gap:8px;min-height:43px;padding:8px 11px;cursor:pointer}
+  .aa-trig:hover{background:color-mix(in srgb,var(--coral-bg) 30%,transparent)}
+  .aa-ic{width:24px;height:24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+    color:var(--coral);background:color-mix(in srgb,var(--coral-bg) 76%,var(--paper))}
+  .aa-titles{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .aa-t{font-size:12px;font-weight:650;color:var(--ink);display:inline-flex;gap:6px;align-items:center}
+  .aa-m{font-size:10.5px;color:var(--ink-3);line-height:1.3}
+  .aa-chev{margin-left:auto;color:var(--ink-4)}
+  .aa-tl{margin:0 11px 11px 46px;padding:9px 11px;border-left:1px solid color-mix(in srgb,var(--coral) 28%,var(--edge));
+    border-radius:0 9px 9px 0;background:color-mix(in srgb,var(--paper) 72%,transparent);display:flex;flex-direction:column;gap:7px}
+  .tool-row{position:relative;display:flex;align-items:center;gap:6px;min-height:30px;padding:4px 0;cursor:pointer;border-radius:var(--r-md)}
+  .tool-row:hover{background:var(--paper-3)}
+  .tool-row .raildot{position:absolute;left:-15px;top:13px;width:6px;height:6px;border-radius:999px;background:var(--ink-4);box-shadow:0 0 0 3px var(--paper)}
+  .tool-row .raildot.ok{background:var(--green)}
+  .tool-row .raildot.run{background:var(--coral)}
+  .tool-row .raildot.amber{background:var(--amber)}
+  .tool-ico{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center}
+  .tool-ico.green{color:var(--green)} .tool-ico.amber{color:var(--amber)} .tool-ico.red{color:var(--red)} .tool-ico.ink{color:var(--ink-3)}
+  .tool-name{font-size:12px;font-weight:500;color:var(--ink-2)}
+  .tool-sum{font-size:11px;color:var(--ink-3)}
+  .tool-row .caret{margin-left:auto;margin-right:4px}
+
+  /* — after: tool chips + thinking tabs — */
+  .chip-summary{display:inline-flex;align-items:center;gap:7px;height:27px;padding:0 11px 0 9px;border-radius:999px;
+    border:1px solid color-mix(in srgb,var(--coral) 30%,var(--edge));background:var(--paper-2);cursor:pointer;
+    font-size:12px;color:var(--ink-2);box-shadow:var(--sh1)}
+  summary::-webkit-details-marker{display:none}
+  summary{cursor:pointer}
+  .chip-summary:hover{background:var(--coral-bg)}
+  .toolchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .tchip{display:inline-flex;align-items:center;gap:6px;height:25px;padding:0 9px 0 7px;border-radius:999px;
+    border:1px solid var(--edge);background:var(--paper-2);font-size:11.5px;color:var(--ink-2);cursor:pointer;
+    transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+  .tchip:hover{border-color:var(--edge-2);background:var(--paper-3)}
+  .tchip .s{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center}
+  .tchip.ok .s{color:var(--green)} .tchip.run .s{color:var(--coral)} .tchip.fail .s{color:var(--red)}
+  .tchip.run{border-color:color-mix(in srgb,var(--coral) 35%,var(--edge));background:var(--coral-bg)}
+  .tchip.fail{border-color:color-mix(in srgb,var(--red) 35%,var(--edge));background:var(--red-bg);color:var(--red)}
+  .think-tabs{display:flex;gap:2px;margin-top:16px;border-bottom:1px solid var(--edge)}
+  .tt{padding:6px 11px;font-size:11.5px;color:var(--ink-3);border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;font-weight:500}
+  .tt.on{color:var(--ink);border-bottom-color:var(--coral);font-weight:650}
+  .think-body{font-size:12px;color:var(--ink-2);padding:11px 2px;line-height:1.6}
+  .think-body code{font-family:var(--mono);font-size:11px;background:var(--paper-3);padding:1px 5px;border-radius:4px;color:var(--ink-2)}
+  .think-step{display:flex;gap:9px;padding:5px 0}
+  .think-step .n{font-family:var(--mono);font-size:11px;color:var(--ink-4);width:18px;flex:0 0 auto}
+
+  /* ════════════ SECTION 2 · SMART DRAFT ════════════ */
+  .aicard{border:1px solid var(--edge);border-radius:var(--r-lg);background:var(--paper-2);box-shadow:var(--sh1)}
+  .aicard-h{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--edge)}
+  .aicard-h .tag{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3)}
+  .aicard-h .reason{font-size:11px;color:var(--ink-3)}
+  .aicard-b{padding:12px 14px}
+  .draft-ta{width:100%;min-height:96px;resize:vertical;border:1px solid var(--edge);border-radius:var(--r-md);
+    background:var(--paper-2);padding:9px 10px;font-family:var(--mono);font-size:12.5px;color:var(--ink);line-height:1.55}
+  .aicard-f{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-top:1px solid var(--edge);background:var(--summary)}
+
+  /* confidence meter */
+  .conf{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .conf .label{font-size:11px;color:var(--ink-3);font-weight:650;letter-spacing:.04em}
+  .meter{flex:1;height:6px;border-radius:999px;background:var(--paper-3);overflow:hidden;min-width:80px}
+  .meter > i{display:block;height:100%;border-radius:999px;
+    background:linear-gradient(90deg,var(--amber),var(--coral))}
+  .conf .pct{font-size:11.5px;color:var(--ink-2);font-weight:650;font-variant-numeric:tabular-nums}
+  .draft-prose{font-size:13.5px;line-height:1.62;color:var(--ink);padding:4px 2px}
+  .alts{margin-top:10px;border-top:1px dashed var(--edge);padding-top:9px}
+  .alts .lab{font-size:11px;color:var(--ink-4);font-weight:650;letter-spacing:.04em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .alt-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-md);cursor:pointer}
+  .alt-row:hover{background:var(--paper-3)}
+  .alt-row.sel{background:var(--coral-bg)}
+  .alt-row .nm{font-size:12px;color:var(--ink-2);flex:1}
+  .alt-row.sel .nm{color:var(--ink);font-weight:500}
+  .alt-row .meta{font-size:11px;color:var(--ink-4)}
+
+  /* ════════════ SECTION 3 · SELECTION ACTIONS ════════════ */
+  .compose-surface{border:1px solid var(--edge);border-radius:var(--r-md);padding:16px 18px;background:var(--paper-2);
+    font-size:14.5px;line-height:1.7;color:var(--ink);min-height:150px}
+  .compose-surface mark{background:var(--amber-bg);color:var(--ink);border-radius:3px;padding:0 2px;box-decoration-break:clone}
+  .bubble{position:relative;display:inline-flex;align-items:center;gap:2px;border:1px solid var(--edge);
+    border-radius:var(--r-lg);background:var(--paper-2);padding:5px 6px;box-shadow:var(--sh3);margin:0 auto 26px}
+  .bubble::after{content:"";position:absolute;left:50%;bottom:-6px;width:10px;height:10px;background:var(--paper-2);
+    border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);transform:translateX(-50%) rotate(45deg)}
+  .tb-btn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-md);
+    color:var(--ink-2);cursor:pointer;font-size:12px;font-weight:600}
+  .tb-btn:hover{background:var(--paper-3);color:var(--ink)}
+  .tb-btn.ai{color:var(--coral)}
+  .tb-div{width:1px;height:16px;background:var(--edge);margin:0 4px}
+  .bubble-wrap{display:flex;flex-direction:column;align-items:center}
+
+  /* selection actions rail */
+  .rail{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--edge);border-radius:var(--r-lg);
+    background:var(--paper-2);padding:5px;box-shadow:var(--sh3)}
+  .rail .lead{display:inline-flex;align-items:center;gap:5px;padding:0 8px 0 6px;color:var(--coral);font-size:11.5px;font-weight:650}
+  .act{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:var(--r-md);
+    font-size:12px;color:var(--ink-2);cursor:pointer}
+  .act:hover{background:var(--coral-bg);color:var(--coral-2)}
+  .rail .sep{width:1px;height:16px;background:var(--edge);margin:0 3px}
+  .fmt{display:inline-flex;gap:1px;padding-left:2px}
+  .fmt .tb-btn{width:26px;height:26px}
+
+  /* ════════════ SECTION 4 · STATUS / TASK ROWS ════════════ */
+  .pills{display:flex;flex-wrap:wrap;gap:6px}
+  .pill{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 9px;border-radius:999px;font-size:11.5px}
+  .pill.pending{background:var(--paper-3);color:var(--ink-3)}
+  .pill.run{background:var(--amber-bg);color:var(--amber)}
+  .pill.ok{background:var(--green-bg);color:var(--green)}
+  .pill.fail{background:var(--red-bg);color:var(--red)}
+  .pill .sp{width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.7}
+
+  .tasklist{border:1px solid var(--edge);border-radius:var(--r-lg);overflow:hidden;background:var(--paper-2)}
+  .trow{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--edge)}
+  .trow:last-child{border-bottom:0}
+  .trow .ico{width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--paper-3)}
+  .trow.run .ico{background:var(--coral-bg);color:var(--coral)}
+  .trow.ok .ico{background:var(--green-bg);color:var(--green)}
+  .trow.fail .ico{background:var(--red-bg);color:var(--red)}
+  .trow .nm{font-size:12.5px;color:var(--ink);font-weight:500;flex:1;min-width:0}
+  .trow .ct{font-size:11px;color:var(--ink-4);font-family:var(--mono)}
+  .trow .st{font-size:11px;font-weight:650;display:inline-flex;align-items:center;gap:5px}
+  .trow.run .st{color:var(--amber)} .trow.ok .st{color:var(--green)} .trow.fail .st{color:var(--red)}
+  .bar{width:64px;height:4px;border-radius:999px;background:var(--paper-3);overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--coral);border-radius:999px}
+
+  /* loading state */
+  .loader{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid color-mix(in srgb,var(--coral) 26%,var(--edge));
+    border-radius:var(--r-md);background:color-mix(in srgb,var(--coral-bg) 40%,var(--paper))}
+  .pxgrid{display:grid;grid-template-columns:repeat(4,5px);gap:2px}
+  .pxgrid i{width:5px;height:5px;background:var(--coral);border-radius:1px;opacity:.25;animation:px 1.4s var(--ease) infinite}
+  .pxgrid i:nth-child(1){animation-delay:0s}.pxgrid i:nth-child(2){animation-delay:.08s}
+  .pxgrid i:nth-child(3){animation-delay:.16s}.pxgrid i:nth-child(4){animation-delay:.24s}
+  .pxgrid i:nth-child(5){animation-delay:.32s}.pxgrid i:nth-child(6){animation-delay:.4s}
+  .pxgrid i:nth-child(7){animation-delay:.48s}.pxgrid i:nth-child(8){animation-delay:.56s}
+  @keyframes px{0%,100%{opacity:.2;transform:scaleY(.7)}50%{opacity:1;transform:scaleY(1)}}
+  .loader .lab{font-size:12px;color:var(--ink);font-weight:650}
+  .loader .el{font-size:11px;color:var(--ink-3);font-family:var(--mono);margin-left:auto}
+
+  /* ════════════ SECTION 5 · COMMAND PALETTE ════════════ */
+  .palette{border:1px solid var(--edge);border-radius:var(--r-xl);background:var(--paper-2);box-shadow:var(--sh3);overflow:hidden}
+  .pal-input{display:flex;align-items:center;gap:9px;padding:11px 15px;border-bottom:1px solid var(--edge)}
+  .pal-input input{flex:1;border:0;outline:0;background:transparent;font-size:14px;color:var(--ink);font-family:var(--sans)}
+  .pal-input input::placeholder{color:var(--ink-4)}
+  .pal-group{padding:5px 0}
+  .pal-gh{padding:4px 15px;font-size:10.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4)}
+  .pal-item{display:flex;align-items:center;gap:10px;padding:8px 15px;cursor:pointer;font-size:13px;color:var(--ink-2)}
+  .pal-item .ico{width:18px;height:18px;color:var(--ink-4)}
+  .pal-item.active,.pal-item:hover{background:var(--paper-3);color:var(--ink)}
+  .pal-item .nm{flex:1}
+  .pal-item .nm mark{background:var(--coral-bg);color:var(--coral-2);border-radius:3px;padding:0 1px;font-weight:650}
+  .keys{display:inline-flex;gap:4px}
+  .key{min-width:20px;height:20px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid var(--edge);border-radius:5px;background:var(--paper);font-size:11px;font-weight:500;color:var(--ink-3)}
+  .pal-empty{padding:26px 15px;text-align:center;color:var(--ink-3);font-size:13px}
+
+  /* rich empty (after) */
+  .suggest{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:11px}
+  .sug{display:flex;gap:10px;align-items:flex-start;padding:10px 11px;border:1px solid var(--edge);border-radius:var(--r-md);background:var(--paper-2);cursor:pointer}
+  .sug:hover{border-color:var(--edge-2);background:var(--summary)}
+  .sug .ico{width:24px;height:24px;border-radius:7px;background:var(--coral-bg);color:var(--coral);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .sug .t{font-size:12.5px;color:var(--ink);font-weight:600}
+  .sug .d{font-size:11px;color:var(--ink-3);margin-top:1px}
+  .pal-hint{padding:8px 15px;border-top:1px solid var(--edge);font-size:11px;color:var(--ink-4);display:flex;gap:14px}
+  @media(max-width:520px){.suggest{grid-template-columns:1fr}}
+
+  /* footer */
+  footer{margin-top:72px;padding-top:22px;border-top:1px solid var(--edge);color:var(--ink-3);font-size:12.5px}
+  footer code{font-family:var(--mono);font-size:11.5px;background:var(--paper-3);padding:1px 5px;border-radius:4px;color:var(--ink-2)}
+  .swatch-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .sw{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--ink-3)}
+  .sw i{width:13px;height:13px;border-radius:4px;border:1px solid var(--edge);display:inline-block}
+
+  /* ════════════ ROUND 2 — Prompt Bar / Approval / Context / Filter / Insight ════════════ */
+  .divider-r2{display:flex;align-items:center;gap:14px;margin:64px 0 30px;color:var(--ink-4)}
+  .divider-r2::before,.divider-r2::after{content:"";height:1px;background:var(--edge);flex:1}
+  .divider-r2 b{font-family:var(--serif);font-size:15px;color:var(--ink);font-weight:600}
+
+  /* prompt bar */
+  .pbar{border:1px solid var(--edge-2);border-radius:14px;background:var(--paper-2);padding:7px 9px 8px;box-shadow:var(--sh1)}
+  .pbar.focus{border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
+  .tokenrow{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:6px}
+  .tok{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px 0 7px;border-radius:999px;font-size:11.5px;cursor:pointer;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
+  .tok.src{background:var(--coral-bg);color:var(--coral-2);border:1px solid color-mix(in srgb,var(--coral) 25%,transparent)}
+  .tok.src:hover{background:color-mix(in srgb,var(--coral-bg) 65%,var(--coral))}
+  .tok.add{background:var(--paper-3);color:var(--ink-3);border:1px solid var(--edge)}
+  .tok.add:hover{background:var(--paper-2);color:var(--ink-2);border-color:var(--coral)}
+  .tok b{font-weight:700;font-size:12px}
+  .tok .x{opacity:.55;display:inline-flex}
+  .mp{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;background:var(--paper-3);color:var(--ink-2);font-size:11.5px;cursor:pointer;margin-left:auto}
+  .mp:hover{background:var(--paper-2);color:var(--ink)}
+  .pbar textarea{width:100%;min-height:40px;resize:none;border:0;outline:0;background:transparent;color:var(--ink);font-size:14px;line-height:1.55;font-family:var(--sans)}
+  .pbar textarea::placeholder{color:var(--ink-4)}
+  .pbar-foot{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .hint{font-size:11px;color:var(--ink-4)}
+  .send-coral{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:var(--coral-2);color:#fff;border:0;cursor:pointer}
+  .send-coral:hover{background:var(--coral-strong)}
+  .mic{width:30px;height:30px;border-radius:999px;border:1px solid var(--edge);background:var(--paper-2);color:var(--ink-3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .mic:hover{color:var(--ink)}
+
+  /* approval / question card */
+  .qcard{border:1px solid var(--edge);border-radius:var(--r-lg);background:var(--paper-2);overflow:hidden;box-shadow:var(--sh1)}
+  .qcard.med{border-color:color-mix(in srgb,var(--amber) 50%,var(--edge))}
+  .qcard-h{display:flex;align-items:center;gap:7px;padding:10px 13px;border-bottom:1px solid var(--edge);background:var(--summary)}
+  .badge{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font-size:10.5px;font-weight:650}
+  .badge.med{background:var(--amber-bg);color:var(--amber)}
+  .badge.low{background:var(--paper-3);color:var(--ink-3)}
+  .badge.hi{background:var(--red-bg);color:var(--red)}
+  .qcard-h .who{font-size:11px;color:var(--ink-3);margin-left:auto}
+  .qbody{padding:12px 13px}
+  .q-q{font-size:13.5px;color:var(--ink);font-weight:500;margin-bottom:10px;line-height:1.5}
+  .opts{display:flex;flex-direction:column;gap:5px}
+  .opt{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--edge);border-radius:var(--r-md);cursor:pointer;background:var(--paper-2);transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+  .opt:hover{border-color:var(--edge-2);background:var(--summary)}
+  .opt.sel{border-color:var(--coral);background:var(--coral-bg)}
+  .radio{width:15px;height:15px;border-radius:999px;border:1.5px solid var(--edge-2);flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center}
+  .opt.sel .radio{border-color:var(--coral);background:var(--coral)}
+  .opt.sel .radio::after{content:"";width:6px;height:6px;border-radius:999px;background:#fff}
+  .opt .nm{font-size:12.5px;color:var(--ink);font-weight:500;flex:1}
+  .opt .d{font-size:11px;color:var(--ink-3)}
+  .opt .tag{font-size:10px;color:var(--amber);font-weight:650}
+  .qfoot{display:flex;justify-content:flex-end;gap:7px;padding:10px 13px;border-top:1px solid var(--edge);background:var(--summary)}
+  .params{display:grid;gap:5px;background:var(--paper-3);border-radius:var(--r-md);padding:9px 11px;margin-top:8px}
+  .params .r{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:11.5px}
+  .params .r .k{color:var(--ink-3)}
+  .params .r .v{color:var(--ink-2);min-width:0;word-break:break-all}
+
+  /* context cards */
+  .ans{font-size:13px;color:var(--ink);line-height:1.7;padding:2px 2px 4px}
+  .att-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+  .att{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;background:var(--paper-3);color:var(--ink-2);font-size:11px}
+  .ctx-wrap{border:1px solid var(--edge);border-radius:var(--r-md);overflow:hidden;background:var(--paper-2)}
+  .ctx-h{display:flex;align-items:center;gap:7px;padding:8px 11px;border-bottom:1px solid var(--edge);background:var(--summary);font-size:11.5px;color:var(--ink-3);font-weight:650;list-style:none;cursor:pointer}
+  .ctx-h[open]+*,.ctx-wrap[open] .ctx-h{ }
+  .ctx-h .n{color:var(--coral);font-variant-numeric:tabular-nums}
+  .ctx-h .ch{margin-left:auto}
+  .ccard{padding:10px 11px;border-bottom:1px solid var(--edge)}
+  .ccard:last-child{border-bottom:0}
+  .ccard .src{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);margin-bottom:4px}
+  .ccard .src b{color:var(--ink-2);font-weight:600}
+  .ccard .src .len{margin-left:auto;font-family:var(--mono);font-size:10.5px}
+  .ccard .ex{font-size:12.5px;color:var(--ink-2);line-height:1.55}
+
+  /* filter chips */
+  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--edge);border-radius:var(--r-md);background:var(--paper-2)}
+  .fbtn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:var(--r-md);border:1px solid var(--edge);background:var(--paper-2);color:var(--ink-3);font-size:12px;cursor:pointer}
+  .fbtn:hover{background:var(--paper-3);color:var(--ink-2)}
+  .fbtn .ct{font-size:10.5px;color:var(--ink-4);font-variant-numeric:tabular-nums}
+  .fchip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:var(--r-md);border:1px solid var(--edge);background:var(--paper-2);color:var(--ink-2);font-size:12px;cursor:pointer;transition:all var(--dur-fast) var(--ease)}
+  .fchip:hover{border-color:var(--edge-2)}
+  .fchip.on{background:var(--coral);border-color:var(--coral);color:#fff}
+  .fchip.on .ct{color:rgba(255,255,255,.85)}
+  .fchip .ct{font-size:10.5px;color:var(--ink-4);font-variant-numeric:tabular-nums}
+  .fsep{width:1px;height:18px;background:var(--edge);margin:0 2px}
+
+  /* insight cards */
+  .insight{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  @media(max-width:560px){.insight{grid-template-columns:1fr}}
+  .icard{border:1px solid var(--edge);border-radius:var(--r-md);background:var(--paper-2);padding:12px 13px}
+  .icard .ihead{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink-3);font-weight:650;margin-bottom:6px;letter-spacing:.02em}
+  .icard .delta{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .icard .delta .u{font-size:11px;color:var(--ink-4);font-weight:500;margin-left:4px}
+  .icard .delta.up{color:var(--green)} .icard .delta.down{color:var(--red)}
+  .icard .isub{font-size:11px;color:var(--ink-4);margin-top:2px}
+  .spark{display:flex;align-items:flex-end;gap:3px;height:32px;margin-top:9px}
+  .spark i{flex:1;background:var(--coral);border-radius:2px 2px 0 0;opacity:.82}
+  .iask{font-size:11.5px;color:var(--ink-2);margin-top:9px;padding-top:8px;border-top:1px dashed var(--edge);display:flex;align-items:center;gap:6px}
+  .iask a{color:var(--coral-2);font-weight:600;cursor:pointer}
+  .tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+  .tbl th,.tbl td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--edge)}
+  .tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-4);font-weight:650;background:var(--summary)}
+  .tbl td{color:var(--ink-2)} .tbl tr:last-child td{border-bottom:0}
+
+  /* round 3: thinking notes / streaming text / report card */
+  .aa-note{display:flex;flex-direction:column;gap:1px}
+  .aa-note-l{font-size:9.5px;font-weight:650;color:var(--ink-4);letter-spacing:.05em;text-transform:uppercase}
+  .aa-note-t{font-size:12px;color:var(--ink-3);line-height:1.5}
+  .think-head{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink-3);padding:2px 0;list-style:none}
+  .think-head:hover{color:var(--ink-2)}
+  .think-chev{width:12px;height:12px;color:var(--ink-4);transition:transform var(--dur-base) var(--ease);margin-left:3px}
+  .think[open] .think-chev{transform:rotate(180deg)}
+  .trace{display:flex;flex-direction:column;gap:9px;margin-top:13px}
+  .tr{display:flex;gap:10px;align-items:flex-start;min-width:0}
+  .tr-g{flex:0 0 auto;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;margin-top:2px;color:var(--ink-3)}
+  .tr-g svg{width:13px;height:13px}
+  .tr-g.check{color:var(--green)}
+  .tr-g.run{color:var(--coral)}
+  .tr.reason{padding-left:25px}
+  .tr-t{font-size:12.5px;line-height:1.55;min-width:0;color:var(--ink-2)}
+  .tr.reason .tr-t{color:var(--ink-3)}
+  .tr-t code{font-family:var(--mono);font-size:11.5px;background:var(--paper-3);padding:0 4px;border-radius:4px;color:var(--ink-2)}
+  .tr-t .muted{color:var(--ink-4);font-size:11px;margin-left:6px}
+  .chip-summary.quiet{border-color:var(--edge);background:var(--paper-2);color:var(--ink-3);box-shadow:none}
+  .cite{display:inline-flex;align-items:center;justify-content:center;min-width:14px;height:14px;padding:0 3px;margin:0 1px;border-radius:4px;background:var(--coral-bg);color:var(--coral-2);font-size:9px;font-weight:700;font-family:var(--mono);vertical-align:super;line-height:1;cursor:pointer}
+  .cite:hover{background:var(--coral);color:#fff}
+  .s-caret{display:inline-block;color:var(--ink-3);animation:cblink 1s steps(1) infinite}
+  @keyframes cblink{0%,50%{opacity:1}51%,100%{opacity:0}}
+  .srclegend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--edge)}
+  .srclegend .src{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-3)}
+  .followups{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:11px;padding-top:10px;border-top:1px dashed var(--edge)}
+  .fulabel{font-size:10px;color:var(--ink-4);font-weight:650;letter-spacing:.05em;text-transform:uppercase}
+  .fu{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 11px;border-radius:999px;border:1px solid var(--edge);background:var(--paper-2);color:var(--ink-2);font-size:12px;cursor:pointer}
+  .fu:hover{border-color:var(--coral);color:var(--coral-2);background:var(--coral-bg)}
+  /* report card */
+  .amsg{display:flex;gap:12px;width:100%;text-align:left;padding:14px 16px;border:1px solid var(--edge);border-radius:var(--r-lg);background:var(--paper-2);cursor:pointer}
+  .amsg:hover{background:var(--paper-3)}
+  .amsg .udot{margin-top:7px;width:8px;height:8px;border-radius:999px;background:var(--coral);flex:0 0 auto}
+  .amsg-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .amsg-top{display:flex;justify-content:space-between;gap:10px}
+  .amsg-top strong{font-size:13.5px;color:var(--ink);font-weight:600}
+  .amsg-top time{font-size:11px;color:var(--ink-4);flex-shrink:0}
+  .amsg-prev{font-size:12.5px;color:var(--ink-3)}
+  .amsg-art{font-size:11px;color:var(--ink-3);margin-top:1px}
+  .amsg-metrics{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+  .amsg-metrics span{background:var(--paper-3);border-radius:999px;padding:2px 9px;font-size:11px;color:var(--ink-2)}
+  .rcard{border:1px solid var(--edge);border-radius:var(--r-lg);background:var(--paper-2);overflow:hidden;box-shadow:var(--sh2)}
+  .rcard-top{display:flex;align-items:center;gap:10px;padding:13px 15px}
+  .ricon{width:34px;height:34px;border-radius:9px;background:var(--coral-bg);color:var(--coral);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .rtitle-w{flex:1;min-width:0}
+  .rtitle{font-size:14px;color:var(--ink);font-weight:650}
+  .rmeta{font-size:11px;color:var(--ink-3);margin-top:1px}
+  .rmeta .ver{display:inline-block;background:var(--paper-3);border-radius:4px;padding:0 5px;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);margin-left:2px}
+  .rdot{width:8px;height:8px;border-radius:999px;background:var(--coral);box-shadow:0 0 0 4px var(--coral-bg);flex:0 0 auto}
+  .rthumb{margin:0 15px;border:1px solid var(--edge);border-radius:var(--r-md);background:linear-gradient(180deg,var(--summary),var(--paper-2));padding:12px;display:flex;gap:12px;align-items:flex-end}
+  .rthumb-bars{display:flex;align-items:flex-end;gap:4px;height:46px;flex:0 0 auto}
+  .rthumb-bars i{width:9px;background:var(--coral);border-radius:2px 2px 0 0;opacity:.85}
+  .rthumb-lines{flex:1;display:flex;flex-direction:column;gap:5px}
+  .rthumb-lines i{height:6px;border-radius:3px;background:var(--edge)}
+  .rthumb-lines i:nth-child(1){width:80%}.rthumb-lines i:nth-child(2){width:55%}.rthumb-lines i:nth-child(3){width:68%}
+  .rstats{display:flex;gap:8px;padding:13px 15px}
+  .rstat{flex:1;padding:10px 11px;border:1px solid var(--edge);border-radius:var(--r-md);background:var(--paper-2)}
+  .rs-v{font-size:17px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
+  .rs-l{font-size:10.5px;color:var(--ink-3);margin-top:1px}
+  .rcard-foot{display:flex;gap:7px;padding:0 15px 14px}
+  .rcard-foot .btn{flex:1;justify-content:center}
+
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ─────────── MASTHEAD ─────────── -->
+  <header class="masthead">
+    <div class="kicker">WeMail · 组件升级评估</div>
+    <h1>Before / After · 值得换的组件</h1>
+    <p class="sub">挑了我判断最值得更新的 13 块界面，左右对照「当前态 / 升级态」。Agent 面板已按你的意见拆成 Thinking / Tool Chips / Streaming Text 三块。升级态不是抄外部库——是用 WeMail 自己的 token（Paper Postmark Desk）重做，所以你比的是「值不值得换」，而不是「像不像别家」。看完逐个告诉我留不留。</p>
+    <div class="northstar">
+      <b>The Paper Postmark Desk</b>
+      <span>暖纸 · 墨色字 · 一枚珊瑚邮戳 · AI 是简报不是气泡</span>
+    </div>
+    <div class="legend">
+      <span class="grp"><span class="chip chip-accept">推荐替换</span> 1:1 对应、收益明显，建议落地</span>
+      <span class="grp"><span class="chip chip-ref">建议参考</span> 值得借鉴，可增量做</span>
+      <span class="grp"><span class="chip chip-opt">可选</span> 锦上添花，优先级低</span>
+    </div>
+  </header>
+
+  <!-- ════════════ SECTION 1 · THINKING ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2>Thinking · 推理轨迹</h2>
+      <span class="en">replaces the reasoning half of <code class="mono">agent-activity</code></span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">推理塞在工具 timeline 里</span></div>
+        <div class="pane-body">
+          <div class="agent-act is-streaming">
+            <div class="aa-trig">
+              <span class="aa-ic"><svg class="icon16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span>
+              <span class="aa-titles"><span class="aa-t">思考中 <span class="dot run"></span></span><span class="aa-m">3 步推理 · 约 4 秒</span></span>
+              <svg class="caret aa-chev" style="transform:rotate(180deg)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <div class="aa-tl">
+              <div class="aa-note"><span class="aa-note-l">推理</span><span class="aa-note-t">用户问 Q3 报销合计，得先找 7 月报销邮件再汇总发票。</span></div>
+              <div class="aa-note"><span class="aa-note-l">搜索</span><span class="aa-note-t">筛发件人=本人、主题含「报销」，命中 3 封。</span></div>
+              <div class="aa-note"><span class="aa-note-l">推理</span><span class="aa-note-t">3 封附件发票相加 ¥4,820，差旅占比最高。</span></div>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">推理跟工具调用挤在同一条 timeline 里；不看就不知道 agent 怎么得出 ¥4,820。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">独立 Thinking · 默认折叠</span></div>
+        <div class="pane-body">
+          <details open class="think">
+            <summary class="think-head"><span class="dot ok"></span>已思考 4 秒<svg class="think-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="trace">
+              <div class="tr search"><span class="tr-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="tr-t">筛主题含「报销」的邮件<span class="muted">3 封</span></span></div>
+              <div class="tr reason"><span class="tr-t">需要先汇总发票金额再回复。</span></div>
+              <div class="tr tool"><span class="tr-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17v3h3l5.3-5.3a4 4 0 0 0 5.2-5.2Z"/></svg></span><span class="tr-t"><code>read_mail</code> 读取 3 封附件发票</span></div>
+              <div class="tr reason"><span class="tr-t">合计 <code>¥4,820</code>，差旅占比最高。</span></div>
+              <div class="tr step"><span class="tr-g check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span><span class="tr-t">起草原告邮件，等待你确认</span></div>
+            </div>
+          </details>
+          <p class="muted" style="font-size:11.5px;margin-top:8px">默认折叠成「已思考 4 秒」，展开是<b>一条轨迹</b>——用图标区分类型（检索 🔍 / 工具 🔧 / 完成 ✓），推理是纯文字（缩进、更浅），<b>不用文字标签</b>。贴合 Beautiful UI 原版的克制感。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>独立出来</b>：把推理从工具 timeline 里拆出，单独成 Thinking，不再互相挤。</li>
+        <li><b>一条轨迹，图标区分</b>：检索=🔍、工具=🔧、完成=✓，推理是纯文字（缩进、更浅）；<b>不用文字标签</b>，按时间交织在一条轨迹里，不是四个分 tab。</li>
+        <li><b>默认折叠</b>：完成后收成一行 quiet chip「已思考 3 步 · 4s」，要审计才展开。</li>
+      </ul>
+      <p class="why">为什么：agent 给的结论（¥4,820）用户想看推导。现在推导藏在工具流里；Thinking 让它独立、可折叠、可审计。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 2 · TOOL CHIPS ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2>Tool Chips · 工具调用</h2>
+      <span class="en">replaces <code class="mono">AgentToolCard</code> stacked rows</span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">一工具一行 · 6 次顶半屏</span></div>
+        <div class="pane-body">
+          <div class="aa-tl" style="margin:0">
+            <div class="tool-row"><span class="raildot ok"></span><span class="tool-ico green"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span class="tool-name">搜索邮件</span><span class="tool-sum muted">搜索已完成</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+            <div class="tool-row"><span class="raildot ok"></span><span class="tool-ico green"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><span class="tool-name">读取邮件</span><span class="tool-sum muted">邮件内容已读取</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+            <div class="tool-row"><span class="raildot amber"></span><span class="tool-ico amber"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 4 3 11l7 2 2 7 9-16Z"/></svg></span><span class="tool-name">准备草稿</span><span class="tool-sum muted">草稿已生成，尚未发送</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+            <div class="tool-row"><span class="raildot"></span><span class="tool-ico ink"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17v3h3l5.3-5.3a4 4 0 0 0 5.2-5.2Z"/></svg></span><span class="tool-name">企业工具</span><span class="tool-sum muted">执行已完成</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+            <div class="tool-row"><span class="raildot run"></span><span class="tool-ico" style="color:var(--coral)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17v3h3l5.3-5.3a4 4 0 0 0 5.2-5.2Z"/></svg></span><span class="tool-name">查附件</span><span class="tool-sum muted">正在筛选…</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">每个工具调用占一整行，6 次迭代最多 6 行；竖向占位大、密度低。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">折叠成 1 颗摘要 chip</span></div>
+        <div class="pane-body">
+          <details open>
+            <summary class="chip-summary" style="list-style:none"><span class="dot run"></span>4 次工具调用 · 2 条消息<svg class="caret" style="margin-left:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="toolchips" style="margin-top:10px">
+              <span class="tchip ok"><span class="s"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>搜索邮件</span>
+              <span class="tchip ok"><span class="s"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>读取邮件</span>
+              <span class="tchip ok"><span class="s"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4 3 11l7 2 2 7 9-16Z"/></svg></span>准备草稿</span>
+              <span class="tchip run"><span class="s"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17v3h3l5.3-5.3a4 4 0 0 0 5.2-5.2Z"/></svg></span>查附件…</span>
+            </div>
+          </details>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">默认收成一颗「4 次工具调用」摘要 chip；展开是水平 chip，状态用小圆点（跑=珊瑚脉冲、成=绿、败=红）。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>折叠优先</b>：6 行竖排工具卡 → 1 颗摘要 chip，点开才是水平 chip 列表。</li>
+        <li><b>状态小圆点</b>：颜色之外加图形可辨（无障碍），不用整块底色。</li>
+        <li><b>跟推理分开</b>：工具是「动作」（02），推理是「思考」（01），各管各的。</li>
+      </ul>
+      <p class="why">为什么：agent 高频核心面，垂直空间贵。6 次工具顶半屏；折叠后常驻一行。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 3 · STREAMING TEXT ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2>Streaming Text · 流式回答</h2>
+      <span class="en">upgrades <code class="mono">AgentMarkdown</code> streamed answer</span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">纯文本 + 光标</span></div>
+        <div class="pane-body">
+          <div class="ans">
+            <p>根据你 7 月的报销邮件，本季度发票合计 <b>¥4,820</b>，建议本周内回复张工确认明细。</p>
+            <p>其中差旅 ¥2,200 占比最高。<span class="s-caret">▍</span></p>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">流式正文 + 闪烁光标；没有引用来源、没有跟进建议，¥4,820 无从核实。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">内联来源 + 跟进</span></div>
+        <div class="pane-body">
+          <div class="ans">根据 7 月报销邮件<sup class="cite">1</sup>，本季度发票合计 <b>¥4,820</b><sup class="cite">2</sup>，差旅 ¥2,200<sup class="cite">2</sup> 占比最高。建议本周回复张工确认<sup class="cite">1</sup>。<span class="s-caret">▍</span></div>
+          <div class="srclegend">
+            <span class="src"><sup class="cite">1</sup>7月报销-1 · 张工</span>
+            <span class="src"><sup class="cite">2</sup>7月报销-2 · 李四</span>
+          </div>
+          <div class="followups">
+            <span class="fulabel">跟进</span>
+            <span class="fu">逐项列出 ¥4,820 明细</span>
+            <span class="fu">起草回复张工</span>
+            <span class="fu">对比上季度差旅</span>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">正文内联角标 [1][2] 指向来源（复用 10·Context Cards 的数据）；底部跟进建议一键继续追问。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>内联引用</b>：数字处加角标 [1][2]，悬停/点击看来源邮件，复用 Context Cards 的数据。</li>
+        <li><b>跟进建议</b>：回答末尾给 2-3 个一键追问 chip，降低继续对话的门槛。</li>
+        <li><b>仍是文档面</b>：保留 streamdown 流式正文 + 光标，只加来源层和跟进层。</li>
+      </ul>
+      <p class="why">为什么：agent 回答是最核心产出。现在数字没法核实、聊完就断；加来源 + 跟进，可信度和连续性都上去。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 2 · SMART DRAFT ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2>AI 回复草稿</h2>
+      <span class="en">Recommendation Card — replaces <code class="mono">SmartDraftPanel</code></span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <!-- BEFORE -->
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">纯文本框 + 4 按钮</span></div>
+        <div class="pane-body">
+          <div class="aicard">
+            <div class="aicard-h"><span class="tag">回复草稿 / Smart draft</span><span class="reason">收件人上周问过同一件事</span></div>
+            <div class="aicard-b">
+              <textarea class="draft-ta" readonly>Hi 张工，附件是 Q3 报销发票合计 ¥4,820，请查收。如需原件我可顺丰寄出。</textarea>
+            </div>
+            <div class="aicard-f">
+              <button class="btn sm">接受 / Accept</button>
+              <button class="btn sm good">编辑并发送</button>
+              <button class="btn sm"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v6h-6"/></svg>重新生成</button>
+              <button class="btn sm danger">删除</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">等宽字体文本框 + 四个并列按钮；没有置信度、没有备选、可读性偏「代码」而非「邮件」。</p>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">置信度 + 备选 + Accept/Reject</span></div>
+        <div class="pane-body">
+          <div class="aicard">
+            <div class="aicard-h">
+              <span class="icn" style="color:var(--coral)"><svg class="icon16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.3 4.5 2.5 6.7 7 7-4.5.3-6.7 2.5-7 7-.3-4.5-2.5-6.7-7-7 4.5-.3 6.7-2.5 7-7Z"/></svg></span>
+              <span class="tag">回复建议 / Reply suggestion</span>
+            </div>
+            <div class="aicard-b">
+              <div class="conf">
+                <span class="label">置信度</span>
+                <span class="meter"><i style="width:78%"></i></span>
+                <span class="pct">78%</span>
+                <span class="meta" style="font-size:11px;color:var(--coral);font-weight:600">较高</span>
+              </div>
+              <p class="draft-prose">Hi 张工，附件是 Q3 报销发票合计 ¥4,820，请查收。如需原件我可顺丰寄出。</p>
+              <div class="alts">
+                <div class="lab"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> 其他方案</div>
+                <div class="alt-row sel"><span class="dot ok"></span><span class="nm">当前 · 中性</span><span class="meta">默认</span></div>
+                <div class="alt-row"><span class="dot" style="background:var(--ink-4)"></span><span class="nm">更正式</span><span class="meta">改称呼 + 结尾</span></div>
+                <div class="alt-row"><span class="dot" style="background:var(--ink-4)"></span><span class="nm">更简短</span><span class="meta">一句带过</span></div>
+              </div>
+            </div>
+            <div class="aicard-f">
+              <button class="btn sm primary">采纳 / Accept</button>
+              <button class="btn sm ghost">不用了</button>
+              <button class="btn sm ghost" style="margin-left:auto"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v6h-6"/></svg>换一版</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">正文用阅读体（非等宽）；加置信度计量 + 备选方案；主操作收敛成「采纳 / 不用了」。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>正文可读化</b>：<code class="mono">font-mono</code> 文本框 → 正文阅读体，像邮件不像代码。</li>
+        <li><b>加置信度</b>：一条计量条 + 「较高/中/低」，让用户知道这条建议有多靠谱。</li>
+        <li><b>加备选</b>：更正式 / 更简短 等并列方案，一键切换，不用反复「重新生成」盲抽。</li>
+        <li><b>操作收敛</b>：4 个同级按钮 → 采纳（主）/ 不用了（次），删除藏进更多菜单。</li>
+      </ul>
+      <p class="why">为什么：草稿是 AI 最直接的产出，现在它「看起来像日志」。给它置信度和备选，用户才敢一键采纳。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 3 · SELECTION ACTIONS ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <h2>划词重写</h2>
+      <span class="en">Selection Actions — replaces <code class="mono">BubbleToolbar</code> + <code class="mono">InlineAiPrompt</code></span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <!-- BEFORE -->
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">格式优先 · AI 一个小星</span></div>
+        <div class="pane-body">
+          <div class="bubble-wrap">
+            <div class="bubble">
+              <span class="tb-btn" style="font-weight:700">B</span>
+              <span class="tb-btn" style="font-style:italic">I</span>
+              <span class="tb-btn" style="text-decoration:underline">U</span>
+              <span class="tb-btn" style="text-decoration:line-through">S</span>
+              <span class="tb-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 8-4 4 4 4M16 8l4 4-4 4"/></svg></span>
+              <span class="tb-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg></span>
+              <span class="tb-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h6"/></svg></span>
+              <span class="tb-div"></span>
+              <span class="tb-btn ai" title="使用 AI 改写"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.3 4.5 2.5 6.7 7 7-4.5.3-6.7 2.5-7 7-.3-4.5-2.5-6.7-7-7 4.5-.3 6.7-2.5 7-7Z"/></svg></span>
+            </div>
+            <div class="compose-surface" style="width:100%">
+              <mark>Pistachio holds the top slot all weekend.</mark> Churn it first thing Saturday so the batch has time to firm up before the afternoon rush.
+            </div>
+            <p class="muted" style="font-size:11.5px;margin-top:10px;align-self:flex-start">AI 只是一颗末尾的小星，用户不知道它能「解释 / 缩短 / 改语气」。</p>
+          </div>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">AI 意图优先 · 格式收起</span></div>
+        <div class="pane-body">
+          <div class="bubble-wrap">
+            <div class="rail">
+              <span class="lead"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.3 4.5 2.5 6.7 7 7-4.5.3-6.7 2.5-7 7-.3-4.5-2.5-6.7-7-7 4.5-.3 6.7-2.5 7-7Z"/></svg>AI</span>
+              <span class="act">解释</span>
+              <span class="act">改进</span>
+              <span class="act">缩短</span>
+              <span class="act">语气</span>
+              <span class="act">语法</span>
+              <span class="sep"></span>
+              <span class="fmt">
+                <span class="tb-btn" style="font-weight:700;font-size:11px">B</span>
+                <span class="tb-btn" style="font-style:italic;font-size:11px">I</span>
+              </span>
+            </div>
+            <div class="compose-surface" style="width:100%">
+              <mark>Pistachio holds the top slot all weekend.</mark> Churn it first thing Saturday so the batch has time to firm up before the afternoon rush.
+            </div>
+            <p class="muted" style="font-size:11.5px;margin-top:10px;align-self:flex-start">把「用 AI 做什么」做成有标签的主操作，格式（B/I）退到末尾。一眼知道能干嘛。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>意图标签化</b>：解释 / 改进 / 缩短 / 语气 / 语法 直接做成按钮，不再是一颗「猜猜我能干嘛」的星。</li>
+        <li><b>格式降权</b>：B / I / U / 链接 / 高亮 收进末尾小簇，主轨留给 AI（这才是划词的高频诉求）。</li>
+        <li><b>视觉同源</b>：仍用现有 coral / paper-2 / shadow-3 浮层 token，不引入新色。</li>
+      </ul>
+      <p class="why">为什么：最干净的 1:1 替换。当前 AI 入口太隐蔽，用户感知不到；标签化后「划词 → 改写」成为可见的一步动作。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 4 · STATUS / TASK ROWS ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">06</span>
+      <h2>智能 / 队列状态</h2>
+      <span class="en">Task Rows + timed Loading — replaces <code class="mono">IntelligenceStatus</code> + <code class="mono">QueueStatusBadge</code></span>
+      <span class="chip chip-ref">建议参考</span>
+    </div>
+    <div class="pair">
+      <!-- BEFORE -->
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">4 颗小药丸</span></div>
+        <div class="pane-body">
+          <div class="pills">
+            <span class="pill ok"><span class="sp"></span>摘要: 完成</span>
+            <span class="pill ok"><span class="sp"></span>标签: 完成</span>
+            <span class="pill run"><span class="sp"></span>决策: 处理中</span>
+            <span class="pill pending"><span class="sp"></span>草稿: 等待中</span>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:14px">只有「完成/处理中」，看不到跑了多久、卡在哪、失败原因。等待期是一片空白。</p>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">实时行 + 计时 + Loading</span></div>
+        <div class="pane-body">
+          <div class="loader" style="margin-bottom:12px">
+            <span class="pxgrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="lab">正在分析邮件…</span>
+            <span class="el">3.2s</span>
+          </div>
+          <div class="tasklist">
+            <div class="trow ok">
+              <span class="ico"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+              <span class="nm">摘要</span><span class="ct">1.1s</span><span class="st">完成</span>
+            </div>
+            <div class="trow ok">
+              <span class="ico"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+              <span class="nm">标签 · 3 个</span><span class="ct">0.8s</span><span class="st">完成</span>
+            </div>
+            <div class="trow run">
+              <span class="ico"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17v3h3l5.3-5.3a4 4 0 0 0 5.2-5.2Z"/></svg></span>
+              <span class="nm">回复决策</span>
+              <span class="bar"><i style="width:62%"></i></span>
+              <span class="ct">2.0s</span><span class="st">处理中</span>
+            </div>
+            <div class="trow fail">
+              <span class="ico"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16h.01"/></svg></span>
+              <span class="nm">草稿 · 超时重试 1/3</span><span class="ct">8.4s</span><span class="st">失败</span>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">等待期给像素 Loading + 计时；处理中给进度条 + 耗时；失败给重试次数。信息密度高一档。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>计时</b>：每行带耗时（1.1s / 8.4s），等待焦虑可量化、慢任务可定位。</li>
+        <li><b>进度</b>：处理中行加细进度条，失败行显示「重试 1/3」，复用 QueueRunner 的 lease/retry 数据。</li>
+        <li><b>等待态</b>：首帧空白 → 珊瑚像素 grid + elapsed 计时，呼应 Paper Postmark 的「一枚邮戳」。</li>
+      </ul>
+      <p class="why">为什么：状态是「系统在替你干活」的反馈。现在反馈太薄，用户不知道该不该等。标「建议参考」是因为收益真实但不是高频痛点。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 5 · COMMAND PALETTE ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">07</span>
+      <h2>命令面板</h2>
+      <span class="en">live-filter Search + rich empty — replaces <code class="mono">CommandPalette</code></span>
+      <span class="chip chip-ref">建议参考</span>
+    </div>
+    <div class="pair">
+      <!-- BEFORE -->
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">纯列表 · 空态一句话</span></div>
+        <div class="pane-body">
+          <div class="palette">
+            <div class="pal-input">
+              <svg class="icon16" style="color:var(--ink-3)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input value="zxcv" readonly />
+            </div>
+            <div class="pal-empty">未找到匹配的命令</div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:12px">搜不到时只有一行灰字。有结果时也只是纯文字列表 + 快捷键，没有图标 / 描述 / 高亮命中。</p>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">高亮命中 + 富空态</span></div>
+        <div class="pane-body">
+          <!-- result state with highlight -->
+          <div class="palette" style="margin-bottom:12px">
+            <div class="pal-input">
+              <svg class="icon16" style="color:var(--coral)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input value="邮件" readonly />
+            </div>
+            <div class="pal-group">
+              <div class="pal-gh">邮件</div>
+              <div class="pal-item active">
+                <span class="ico"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+                <span class="nm">搜索<mark>邮件</mark></span>
+                <span class="keys"><span class="key">⌘</span><span class="key">F</span></span>
+              </div>
+              <div class="pal-item">
+                <span class="ico"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 4 3 11l7 2 2 7 9-16Z"/></svg></span>
+                <span class="nm">撰写新<mark>邮件</mark></span>
+                <span class="keys"><span class="key">C</span></span>
+              </div>
+            </div>
+          </div>
+          <!-- empty state with suggestions -->
+          <div class="palette">
+            <div class="pal-input">
+              <svg class="icon16" style="color:var(--ink-3)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input value="zxcv" readonly />
+            </div>
+            <div class="suggest">
+              <div class="sug"><span class="ico"><svg class="icon16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><div><div class="t">搜索邮件</div><div class="d">按发件人 / 主题 / 全文找</div></div></div>
+              <div class="sug"><span class="ico"><svg class="icon16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 4 3 11l7 2 2 7 9-16Z"/></svg></span><div><div class="t">撰写新邮件</div><div class="d">打开浮窗撰写</div></div></div>
+              <div class="sug"><span class="ico"><svg class="icon16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v6H4zM4 14h7v6H4zM15 14h5v6h-5z"/></svg></span><div><div class="t">摘要中心</div><div class="d">看批量摘要与吞吐</div></div></div>
+              <div class="sug"><span class="ico"><svg class="icon16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span><div><div class="t">自动化中心</div><div class="d">管理规则与运行</div></div></div>
+            </div>
+            <div class="pal-hint"><span>没找到？试试 <span class="key">⌘F</span> 全文搜邮件</span><span>esc 关闭</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>命中高亮</b>：结果项里把匹配字标珊瑚，比纯 includes 更快扫到。</li>
+        <li><b>富空态</b>：搜不到 → 精选 4 张建议卡（图标 + 标题 + 描述），引导而不是冷场。</li>
+        <li><b>图标 + 快捷键</b>：每行配 Phosphor 图标，快捷键保留 keycap 样式，提升可扫性。</li>
+      </ul>
+      <p class="why">为什么：⌘K 是效率用户的入口。空态从「死」变「活」，能多带一步动作。标「建议参考」因为当前功能已可用，这是体验加成。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ DIVIDER · ROUND 2 ════════════ -->
+  <div class="divider-r2"><b>第二批 · Prompt Bar 及其余</b><span style="font-size:12px">你点名要看的几块</span></div>
+
+  <!-- ════════════ SECTION 06 · PROMPT BAR ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">08</span>
+      <h2>Prompt Bar · 统一输入栏</h2>
+      <span class="en">unifies <code class="mono">AgentComposer</code> + <code class="mono">AiPromptBar</code></span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">只有范围 pill + 发送</span></div>
+        <div class="pane-body">
+          <div class="pbar">
+            <div class="tokenrow">
+              <span class="tok src"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>当前邮件 · Q3 报销发票跟进 <span class="x"><svg style="width:10px;height:10px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6 6 18"/></svg></span></span>
+            </div>
+            <textarea placeholder="搜索、写作或询问任何内容" rows="1" readonly></textarea>
+            <div class="pbar-foot"><span class="hint">Enter 发送</span><button class="send-coral"><svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">只有一颗「范围」pill;没有 /命令、@多邮件、模型选择、听写。撰写栏(AiPromptBar)倒是有一堆控件,但跟 agent 栏完全两套。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">@sources · /命令 · 模型 · 听写</span></div>
+        <div class="pane-body">
+          <div class="pbar focus">
+            <div class="tokenrow">
+              <span class="tok src"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>当前邮件 <span class="x"><svg style="width:10px;height:10px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6 6 18"/></svg></span></span>
+              <span class="tok src"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>7月发票邮件 <span class="x"><svg style="width:10px;height:10px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6 6 18"/></svg></span></span>
+              <span class="tok add"><b>@</b> 引用</span>
+              <span class="tok add"><b>/</b> 命令</span>
+              <span class="mp"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>GPT-4o <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+            </div>
+            <textarea placeholder="搜索、写作或询问… 输入 / 看命令" rows="2" readonly></textarea>
+            <div class="pbar-foot">
+              <span class="mic"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+              <span class="hint">Enter 发送 · Shift+Enter 换行 · / 命令</span>
+              <button class="send-coral"><svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">@多邮件 / /命令 / 模型选择 / 听写 全部内联成可见 token;AgentComposer 与撰写栏共用同一套交互(零件都已存在:ModelPicker、SlashCommandMenu)。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>@sources 多选</b>:默认挂当前邮件,可继续 @ 加多封/整个邮箱,复用现有 <code class="mono">mailScope</code> 逻辑扩成多 chip。</li>
+        <li><b>/命令 内联</b>:复用 <code class="mono">SlashCommandMenu</code>,在 agent 栏也能斜杠唤起。</li>
+        <li><b>模型选择</b>:复用 <code class="mono">ModelPicker</code>,内联成右侧 pill。</li>
+        <li><b>两栏统一</b>:AgentComposer 与 AiPromptBar 合成一套 Prompt Bar,控件一致、心智统一。</li>
+      </ul>
+      <p class="why">为什么:输入栏是 agent 最高频入口,现在能力全藏着你不知道。Prompt Bar 把「我能让它干嘛」全做成可见 token。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 07 · APPROVAL CARD ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">09</span>
+      <h2>确认 / 提问卡</h2>
+      <span class="en">Approval Card — upgrades <code class="mono">PendingActionCard</code> + <code class="mono">clarification</code></span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">确认/拒绝 + 绿色主按钮</span></div>
+        <div class="pane-body">
+          <div class="qcard med">
+            <div class="qcard-h"><span class="badge med">需要确认</span><span class="who">发送邮件</span></div>
+            <div class="qbody">
+              <div class="q-q">发送邮件给 张工 &lt;zhang@example.com&gt;</div>
+              <div class="params">
+                <div class="r"><span class="k">收件人</span><span class="v">zhang@example.com</span></div>
+                <div class="r"><span class="k">主题</span><span class="v">Q3 报销发票</span></div>
+                <div class="r"><span class="k">内容</span><span class="v">¥4,820 发票明细…</span></div>
+              </div>
+              <p style="font-size:11.5px;color:var(--ink-3);margin:9px 0 0">确认后会发送邮件。</p>
+            </div>
+            <div class="qfoot"><button class="btn sm">拒绝</button><button class="btn sm good">确认</button></div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">二选一按钮;agent 想问问题(语气多正式?)只能塞进输入框,不结构化。主按钮是绿色——偏离了「珊瑚是唯一强调色」的系统。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">结构化选项 · coral 主按钮</span></div>
+        <div class="pane-body">
+          <div class="qcard">
+            <div class="qcard-h">
+              <span class="icn" style="color:var(--coral)"><svg class="icon16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.3 4.5 2.5 6.7 7 7-4.5.3-6.7 2.5-7 7-.3-4.5-2.5-6.7-7-7 4.5-.3 6.7-2.5 7-7Z"/></svg></span>
+              <span class="badge low">需要确认</span><span class="who">Agent 提问</span>
+            </div>
+            <div class="qbody">
+              <div class="q-q">这封回信希望多正式?</div>
+              <div class="opts">
+                <div class="opt"><span class="radio"></span><span class="nm">正式</span><span class="d">加称呼 + 结尾敬语</span><span class="tag">推荐</span></div>
+                <div class="opt sel"><span class="radio"></span><span class="nm">标准</span><span class="d">默认商务语气</span></div>
+                <div class="opt"><span class="radio"></span><span class="nm">简短</span><span class="d">一句带过</span></div>
+              </div>
+            </div>
+            <div class="qfoot"><button class="btn sm ghost">跳过</button><button class="btn sm primary">按此回答</button></div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">提问用结构化选项卡(复用 clarification 数据);确认类主按钮 green→coral,回归 button.tsx 默认。风险分级 low/med/high(amber/red badge)不变。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>结构化提问</b>:agent 的 <code class="mono">clarification</code> / <code class="mono">inputRequest</code> 从「塞进输入框」变成选项卡,用户点选而非盲打。</li>
+        <li><b>主按钮 coral</b>:确认按钮 green → coral,回归设计系统(<code class="mono">button.tsx</code> default 本就是 coral-2);Paper Postmark 只有一枚邮戳。</li>
+        <li><b>风险仍分级</b>:保留 low/med/high 的 amber/red badge 与参数表,确认链路(含 MCP 幂等键)不动。</li>
+      </ul>
+      <p class="why">为什么:WeCLI/MCP 确认是 WeMail 的安全核心。当前是「确认/拒绝」+ 文本提问;Approval Card 让 agent 提问也变成可控选项,顺带修掉偏色的绿色按钮。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 08 · CONTEXT CARDS ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">10</span>
+      <h2>引用来源卡</h2>
+      <span class="en">Context Cards — for agent grounded answers</span>
+      <span class="chip chip-ref">建议参考</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">挂几个邮件标签</span></div>
+        <div class="pane-body">
+          <div class="ans">根据你 7 月的 3 封报销邮件,本季度发票合计 <b>¥4,820</b>,建议本周内回复张工确认明细…</div>
+          <div class="att-tags">
+            <span class="att"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>7月报销-1</span>
+            <span class="att"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>7月报销-2</span>
+            <span class="att"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>7月报销-3</span>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:12px">只挂了 3 个邮件标签;看不到 agent 到底引用了哪段原文、数字怎么来的,无法核实。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">可展开引用片段 + 来源</span></div>
+        <div class="pane-body">
+          <details open class="ctx-wrap">
+            <summary class="ctx-h"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>引用来源 <span class="n">3</span><svg class="caret ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="ccard">
+              <div class="src"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><b>7月报销-1</b> · 张工 <span class="len">290字</span></div>
+              <div class="ex">"附件为本月差旅发票 5 张,合计 ¥1,820,请于月底前审批…"</div>
+            </div>
+            <div class="ccard">
+              <div class="src"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><b>7月报销-2</b> · 李四 <span class="len">1,250字</span></div>
+              <div class="ex">"Q3 项目验收发票:机票 ¥2,200、酒店 ¥800…"</div>
+            </div>
+            <div class="ccard">
+              <div class="src"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><b>7月报销-3</b> · 王五 <span class="len">840字</span></div>
+              <div class="ex">"补发上月漏报的团队建设费用 ¥1,000…"</div>
+            </div>
+          </details>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">默认折叠「引用来源 3」,展开看 agent 引用的原文片段 + 发件人 + 字数;¥4,820 的来源逐条可核。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>从标签到片段</b>:展示 agent 实际引用的原文 chunk + 来源 + 字数,不是只挂个邮件名。</li>
+        <li><b>默认折叠</b>:常驻一行「引用来源 3」,点开看明细,不挤占回答区。</li>
+        <li><b>可核实</b>:数字(¥4,820)能追溯到具体邮件,降低 AI「幻觉」顾虑。</li>
+      </ul>
+      <p class="why">为什么:agent 给结论时用户最想核实依据。现在依据看不见;Context Cards 让依据可查。标「建议参考」因为 agent 已能用,这是信任加成,非功能缺口。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 09 · FILTER CHIPS ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">11</span>
+      <h2>邮件筛选</h2>
+      <span class="en">inline filter chips — replaces <code class="mono">MailFilterPopover</code> surface</span>
+      <span class="chip chip-ref">建议参考</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">藏在弹层 popover</span></div>
+        <div class="pane-body">
+          <div class="toolbar">
+            <button class="fbtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/></svg>筛选 <span class="ct">2</span></button>
+            <span style="flex:1"></span>
+            <span class="hint">已筛 2 条 · 看不到各档多少</span>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:12px">筛选条件(待我查看/需要回复/知会/附件/时间)全藏在 popover 里;不点开就不知道当前筛了什么、每档有多少封。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">可见 chip + 实时计数</span></div>
+        <div class="pane-body">
+          <div class="toolbar">
+            <span class="fchip on">待我查看 <span class="ct">12</span></span>
+            <span class="fchip">需要我回复 <span class="ct">5</span></span>
+            <span class="fchip">仅供知会 <span class="ct">8</span></span>
+            <span class="fchip">含附件 <span class="ct">3</span></span>
+            <span class="fsep"></span>
+            <span class="fchip">一周前 <span class="ct">42</span></span>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:12px">筛选常驻工具栏成 chip,带实时计数;点一下即切,活动项 coral。复用现有 <code class="mono">mailFilters</code> 状态,只是把 UI 从弹层改成 inline。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>从隐藏到可见</b>:筛选条件常驻工具栏,每项带实时计数(unread/toMe/ccMe/hasAttachment/olderThan)。</li>
+        <li><b>一键切换</b>:点 chip 即筛,活动项 coral 高亮,不用打开 popover 再勾选。</li>
+        <li><b>状态复用</b>:底层仍是 <code class="mono">useUIStore.mailFilters</code> + <code class="mono">buildMailFilterParams</code>,只换表达层。</li>
+      </ul>
+      <p class="why">为什么:发现性。当前筛了什么、各档几封要点开才看得到。chip 化后一眼可见、一点即筛。标「建议参考」因为功能已完整,这是交互升级。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 10 · INSIGHT CARDS ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">12</span>
+      <h2>摘要中心洞察</h2>
+      <span class="en">Insight Cards — for <code class="mono">SummaryCenterPage</code></span>
+      <span class="chip chip-ref">建议参考</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">表格 + 吞吐图</span></div>
+        <div class="pane-body">
+          <table class="tbl">
+            <thead><tr><th>日期</th><th>摘要量</th><th>耗时</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td>08-13</td><td>128</td><td>1.2s</td><td style="color:var(--green)">完成</td></tr>
+              <tr><td>08-12</td><td>112</td><td>1.4s</td><td style="color:var(--green)">完成</td></tr>
+              <tr><td>08-11</td><td>96</td><td>1.8s</td><td style="color:var(--green)">完成</td></tr>
+              <tr><td>08-10</td><td>104</td><td>—</td><td style="color:var(--red)">失败 3</td></tr>
+            </tbody>
+          </table>
+          <p class="muted" style="font-size:11.5px;margin-top:12px">摘要中心是任务表 + 吞吐 ECharts;数据全,但偏运维视角,趋势要自己从表里读出来。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">洞察卡 + 迷你图 + 行动</span></div>
+        <div class="pane-body">
+          <div class="insight">
+            <div class="icard">
+              <div class="ihead">本周摘要量</div>
+              <div class="delta up">+18%<span class="u">vs 上周</span></div>
+              <div class="spark"><i style="height:40%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:85%"></i><i style="height:100%"></i></div>
+              <div class="iask">趋势上升 · <a>看明细</a></div>
+            </div>
+            <div class="icard">
+              <div class="ihead">平均耗时</div>
+              <div class="delta up">1.2s<span class="u">-0.3s</span></div>
+              <div class="spark"><i style="height:80%;background:var(--green)"></i><i style="height:72%;background:var(--green)"></i><i style="height:65%;background:var(--green)"></i><i style="height:58%;background:var(--green)"></i><i style="height:50%;background:var(--green)"></i><i style="height:45%;background:var(--green)"></i><i style="height:40%;background:var(--green)"></i></div>
+              <div class="iask">变快了 · <a>看队列</a></div>
+            </div>
+            <div class="icard">
+              <div class="ihead">失败任务</div>
+              <div class="delta down">3<span class="u">需关注</span></div>
+              <div class="iask" style="margin-top:9px"><a>全部重试</a></div>
+            </div>
+            <div class="icard">
+              <div class="ihead">最慢账号</div>
+              <div class="delta">运营部<span class="u">均值 2.4s</span></div>
+              <div class="iask" style="margin-top:9px"><a>看详情</a></div>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:12px">把表里的趋势提炼成分页洞察卡,每张带迷你图 + delta + 一句「要不要处理」;扫一眼就懂。复用现有 ECharts 数据,只是表达层换。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>从表到卡</b>:摘要中心的趋势提炼成卡片,每张带迷你 sparkline + delta(+18% / -0.3s)。</li>
+        <li><b>行动引导</b>:每张卡末尾「要不要处理?」一键跳转明细 / 全部重试。</li>
+        <li><b>数据复用</b>:底层仍是 <code class="mono">SummaryThroughputPanel</code> 的 ECharts 数据,只换表达。</li>
+      </ul>
+      <p class="why">为什么:摘要中心现在偏运维表,普通用户读不出结论。Insight Cards 让「这周多了/慢了/失败了」一眼可见。标「建议参考」因为表本身可用,这是可读性升级。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SECTION 13 · REPORT DELIVERY CARD ════════════ -->
+  <section class="upg">
+    <div class="sec-head">
+      <span class="sec-num">13</span>
+      <h2>报告交付卡</h2>
+      <span class="en">upgrades <code class="mono">ApplicationMessageCenter</code> report row + open-artifact dialog</span>
+      <span class="chip chip-accept">推荐替换</span>
+    </div>
+    <div class="pair">
+      <div class="pane before">
+        <div class="pane-head"><span class="lbl">当前 / Current</span><span class="chip chip-curr">应用消息列表里的一行</span></div>
+        <div class="pane-body">
+          <button class="amsg">
+            <span class="udot"></span>
+            <span class="amsg-b">
+              <span class="amsg-top"><strong>Q3 报销分析报告已生成</strong><time>刚刚</time></span>
+              <span class="amsg-prev">本季度共 12 封报销邮件，发票合计 ¥4,820，发现 3 处异常…</span>
+              <span class="amsg-art">报告快照 · 第 3 版</span>
+              <span class="amsg-metrics"><span>总额 · ¥4,820</span><span>邮件 · 12</span><span>异常 · 3</span></span>
+            </span>
+          </button>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">应用消息列表里普通一行：圆点+标题+预览+「报告快照 · 第 N 版」+指标 chip。要点开弹窗才能「应用内打开 / 浏览器打开」。</p>
+        </div>
+      </div>
+      <div class="pane after">
+        <div class="pane-head"><span class="lbl">升级 / Proposed</span><span class="chip chip-prop">报告交付卡 · 预览 + CTA</span></div>
+        <div class="pane-body">
+          <div class="rcard">
+            <div class="rcard-top">
+              <span class="ricon"><svg class="icon16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4zM4 9h16M9 9v11M14 13h2M14 17h2"/></svg></span>
+              <span class="rtitle-w"><span class="rtitle">Q3 报销分析报告</span><span class="rmeta">智能助手 · 刚刚 <span class="ver">v3</span></span></span>
+              <span class="rdot"></span>
+            </div>
+            <div class="rthumb">
+              <span class="rthumb-bars"><i style="height:45%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:90%"></i><i style="height:65%"></i></span>
+              <span class="rthumb-lines"><i></i><i></i><i></i></span>
+            </div>
+            <div class="rstats">
+              <div class="rstat"><div class="rs-v">¥4,820</div><div class="rs-l">发票总额</div></div>
+              <div class="rstat"><div class="rs-v">12</div><div class="rs-l">报销邮件</div></div>
+              <div class="rstat"><div class="rs-v" style="color:var(--red)">3</div><div class="rs-l">异常项</div></div>
+            </div>
+            <div class="rcard-foot">
+              <button class="btn primary">打开报告</button>
+              <button class="btn">浏览器打开</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin-top:10px">像收到一份成品：报告缩略图 + 三项关键指标 + 版本号 + 显眼的「打开报告」。报告仍是应用内 artifact（iframe 沙盒），不外链 file://。</p>
+        </div>
+      </div>
+    </div>
+    <div class="delta">
+      <h4>改了什么</h4>
+      <ul>
+        <li><b>从列表行到交付卡</b>：报告生成时弹一张「成品卡」——缩略图 + 关键指标 + 版本，不再埋在消息列表里等点开。</li>
+        <li><b>主 CTA 明确</b>：「打开报告」（coral）一键进 <code class="mono">ArtifactViewer</code> 应用内查看，次「浏览器打开」。</li>
+        <li><b>仍是应用内 artifact</b>：不生成 file:// 外链（企微/飞书打不开），符合现有「已保存到应用消息」约定。</li>
+      </ul>
+      <p class="why">为什么：报告是 WeMail 的旗舰产出（分析+设计两层数据流）。现在交付太低调；做成成品卡，让「报告好了」成为有分量的事件。</p>
+    </div>
+  </section>
+
+  <!-- ─────────── FOOTER ─────────── -->
+  <footer>
+    <p>所有「升级态」颜色都来自 WeMail token（<code>app/styles/tokens.css</code>），无外部色值；图标为内联 SVG；动画走 <code>120/180/280ms × cubic-bezier(.16,1,.3,1)</code>，已尊重 <code>prefers-reduced-motion</code>。仅展示 paper 主题；dark / claude 主题随 token 自动切换。</p>
+    <div class="swatch-row">
+      <span class="sw"><i style="background:#fafaf9"></i>Warm Paper</span>
+      <span class="sw"><i style="background:#efece5"></i>Floating Stone</span>
+      <span class="sw"><i style="background:#1c1917"></i>Stone Ink</span>
+      <span class="sw"><i style="background:#e7e5e4"></i>Hairline Edge</span>
+      <span class="sw"><i style="background:#a8462a"></i>Postmark Coral</span>
+      <span class="sw"><i style="background:#5f7a4a"></i>Sage Green</span>
+      <span class="sw"><i style="background:#8a611a"></i>Brass Amber</span>
+      <span class="sw"><i style="background:#b3392a"></i>Seal Red</span>
+    </div>
+    <p style="margin-top:14px">看完告诉我每块 <b>留 / 不留 / 再改</b>，我按你的选择进入下一轮（落到真组件代码）。</p>
+  </footer>
+
+</div>
+</body>
+</html>

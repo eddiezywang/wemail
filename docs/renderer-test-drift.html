@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3 处 renderer 测试与组件实现的差异</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-2: #11172a;
+    --surface: #1a2236;
+    --surface-2: #232c44;
+    --border: #2d3754;
+    --border-soft: #1f2740;
+    --text: #e6ecff;
+    --text-dim: #a0aac6;
+    --text-mute: #6b7796;
+    --accent: #6aa3ff;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --code-bg: #06090f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  body {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 36px 32px 80px;
+  }
+  .hero {
+    text-align: center;
+    padding: 24px 16px 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .hero .eyebrow {
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .hero h1 {
+    font-size: 30px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    letter-spacing: -0.4px;
+  }
+  .hero p { color: var(--text-dim); max-width: 720px; margin: 0 auto; font-size: 15px; }
+  .hero p strong { color: var(--text); font-weight: 600; }
+
+  /* TL;DR */
+  .tldr {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin-bottom: 36px;
+  }
+  .tldr h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .tldr ul { padding-left: 20px; margin: 0; color: var(--text-dim); }
+  .tldr li { margin: 6px 0; }
+  .tldr li strong { color: var(--text); font-weight: 600; }
+
+  /* Issue card */
+  .issue {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .issue header {
+    padding: 22px 26px 14px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .issue .num {
+    display: inline-block;
+    width: 28px; height: 28px;
+    line-height: 28px;
+    text-align: center;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 13px;
+    font-family: ui-monospace, monospace;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  .issue h3 {
+    display: inline;
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+  }
+  .issue header .file {
+    margin-top: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--text-mute);
+  }
+  .issue .summary {
+    padding: 14px 26px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    line-height: 1.65;
+  }
+  .issue .summary strong { color: var(--text); font-weight: 600; }
+
+  /* Side-by-side */
+  .sxs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  @media (max-width: 880px) { .sxs { grid-template-columns: 1fr; } }
+  .sxs .pane {
+    padding: 20px 24px;
+    border-right: 1px solid var(--border-soft);
+  }
+  .sxs .pane:last-child { border-right: none; }
+  @media (max-width: 880px) {
+    .sxs .pane { border-right: none; border-bottom: 1px solid var(--border-soft); }
+  }
+  .sxs .pane h4 {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .sxs .pane.test h4   { color: var(--yellow); }
+  .sxs .pane.actual h4 { color: var(--green); }
+  .sxs .pane .sub {
+    font-size: 12.5px;
+    color: var(--text-mute);
+    margin-bottom: 10px;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 0 0 12px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  pre code {
+    font-family: "SF Mono", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    color: #c9d1d9;
+  }
+  .k  { color: #ff7b72; }
+  .s  { color: #a5d6ff; }
+  .c  { color: #6e7790; font-style: italic; }
+  .t  { color: #ffa657; }
+  .f  { color: #d2a8ff; }
+  .n  { color: #79c0ff; }
+  .v  { color: #ffa198; }
+  .hl { background: rgba(248,113,113,0.18); border-left: 3px solid var(--red); padding-left: 6px; display: inline-block; }
+  .hl-good { background: rgba(74,222,128,0.16); border-left: 3px solid var(--green); padding-left: 6px; display: inline-block; }
+
+  /* Verdict */
+  .verdict {
+    margin: 0 26px 22px;
+    padding: 14px 18px;
+    background: var(--bg-2);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent);
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .verdict strong { color: var(--text); font-weight: 600; }
+  .verdict .label {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 2px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-right: 8px;
+  }
+
+  /* Final decision */
+  .decision {
+    background: linear-gradient(180deg, var(--bg-2) 0%, var(--surface) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-top: 40px;
+  }
+  .decision h2 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .decision .h-sub {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 22px;
+    letter-spacing: -0.3px;
+  }
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 880px) { .opts { grid-template-columns: 1fr; } }
+  .opt {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .opt.recommended {
+    border: 2px solid var(--accent);
+    background: linear-gradient(180deg, rgba(106,163,255,0.08) 0%, var(--surface-2) 100%);
+  }
+  .opt.recommended::before {
+    content: "推荐";
+    position: absolute;
+    top: -10px; left: 16px;
+    background: var(--accent);
+    color: white;
+    padding: 2px 11px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+  }
+  .opt h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .opt p {
+    margin: 0 0 10px;
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .opt .when {
+    font-size: 12.5px;
+    color: var(--text-mute);
+    border-top: 1px dashed var(--border-soft);
+    padding-top: 10px;
+    margin-top: 10px;
+  }
+  .opt .when strong { color: var(--text); }
+
+  .footer {
+    margin-top: 48px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    color: var(--text-mute);
+    font-size: 12.5px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow">renderer test drift</div>
+  <h1>3 处测试期望 vs 组件实现的差异</h1>
+  <p>
+    Reviewer 报告 8 个 renderer 测试失败 — 全部都是同<strong>3 个根因</strong>：UI 重构（<code>1cb01d6 stone-floating overhaul</code>）改了组件行为，但<strong>测试期望没跟着改</strong>。本分支 0 行差异，main 上一样会失败。
+  </p>
+</div>
+
+<div class="tldr">
+  <h2>三句话讲清楚</h2>
+  <ul>
+    <li><strong>差异 1（IntelligenceStatus）</strong>：组件认为"没有 payload 又不在 loading"= 已跳过；测试还在期望"等待中"。</li>
+    <li><strong>差异 2（EmailSummaryCard）</strong>：组件把"失败状态"的渲染权交给了 AICard 容器，AICard 在 failed 时<strong>故意丢弃 children</strong>；测试还在断言子元素 testid 存在。</li>
+    <li><strong>差异 3（EmailAttachmentList）</strong>：组件用 <code>disposition</code> 字段判断附件是否 inline；测试夹具还在用<strong>旧的 contentId</strong> 表达 inline。</li>
+  </ul>
+</div>
+
+<!-- ─────────── ISSUE 1 ─────────── -->
+<section class="issue">
+  <header>
+    <span class="num">1</span><h3>"没有 payload" 是 pending 还是 skipped？</h3>
+    <div class="file">app/components/wemail/IntelligenceStatus.{tsx,test.tsx}</div>
+  </header>
+  <div class="summary">
+    新设计区分"<strong>等待异步加载</strong>"和"<strong>没东西可处理</strong>"两种空状态。loading=true 时显示"等待中"；loading=false（默认）就是"已跳过"。测试夹具 <code>payload={null}</code> 不带 loading，所以组件返回 <code>skipped</code>，但测试还在期望 <code>pending</code>。
+  </div>
+
+  <div class="sxs">
+    <div class="pane test">
+      <h4>测试期望</h4>
+      <div class="sub">IntelligenceStatus.test.tsx · line 57-61</div>
+<pre><code><span class="f">it</span>(<span class="s">"shows pending status when payload is null"</span>, () =&gt; {
+  <span class="f">render</span>(&lt;<span class="t">IntelligenceStatus</span> <span class="n">payload</span>={<span class="t">null</span>} /&gt;);
+  <span class="k">const</span> <span class="n">pill</span> = <span class="n">screen</span>.<span class="f">getByTestId</span>(<span class="s">"wemail-status-summary"</span>);
+  <span class="f">expect</span>(<span class="n">pill</span>.<span class="n">dataset</span>.<span class="n">status</span>).<span class="f">toBe</span>(<span class="hl"><span class="s">"pending"</span></span>);
+});</code></pre>
+    </div>
+    <div class="pane actual">
+      <h4>组件实际行为</h4>
+      <div class="sub">IntelligenceStatus.tsx · line 49-51</div>
+<pre><code><span class="k">function</span> <span class="f">deriveStatus</span>(<span class="n">payload</span>, <span class="n">loading</span>, <span class="n">error</span>, <span class="n">kind</span>) {
+  <span class="k">if</span> (<span class="n">error</span>)    <span class="k">return</span> <span class="s">"failed"</span>;
+  <span class="k">if</span> (!<span class="n">payload</span>) <span class="k">return</span> <span class="hl-good"><span class="n">loading</span> ? <span class="s">"pending"</span> : <span class="s">"skipped"</span></span>;
+  ...
+}
+<span class="c">// payload=null + loading 默认 false → "skipped"</span></code></pre>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <span class="label">判定</span>
+    <strong>组件是新规范，测试是旧期望。</strong>有一条相邻的测试 <code>"shows pending when loading is true"</code> 显式传了 <code>loading</code> 还是过的，证明语义是有意分裂的。修法：把这一条断言改成 <code>"skipped"</code>。
+  </div>
+</section>
+
+<!-- ─────────── ISSUE 2 ─────────── -->
+<section class="issue">
+  <header>
+    <span class="num">2</span><h3>失败状态的内容容器谁来渲染？</h3>
+    <div class="file">app/components/wemail/EmailSummaryCard.{tsx,test.tsx} + AICard.tsx</div>
+  </header>
+  <div class="summary">
+    UI 改造把"failed 状态显示什么"<strong>从子组件提到了通用 AICard 容器里</strong>。AICard 看到 state="failed" 就自己渲染 <code>&lt;p data-testid="ai-card-failed"&gt;</code>，并且 <strong>showBody=false → children 不渲染</strong>。所以 EmailSummaryCard 内部的 <code>&lt;div data-testid="wemail-summary-content"&gt;</code> 永远不会出现在 DOM 里。
+  </div>
+
+  <div class="sxs">
+    <div class="pane test">
+      <h4>测试期望</h4>
+      <div class="sub">EmailSummaryCard.test.tsx · line 91-94</div>
+<pre><code><span class="f">it</span>(<span class="s">"defaults to expanded for failed status"</span>, () =&gt; {
+  <span class="f">render</span>(&lt;<span class="t">EmailSummaryCard</span> <span class="n">status</span>=<span class="s">"failed"</span> /&gt;);
+  <span class="f">expect</span>(<span class="hl"><span class="n">screen</span>.<span class="f">getByTestId</span>(<span class="s">"wemail-summary-content"</span>)</span>)
+    .<span class="f">toBeInTheDocument</span>();
+});</code></pre>
+    </div>
+    <div class="pane actual">
+      <h4>组件实际行为</h4>
+      <div class="sub">AICard.tsx · line 77, 102-113</div>
+<pre><code><span class="k">const</span> <span class="n">showBody</span> = <span class="n">state</span> !== <span class="s">"failed"</span>;
+<span class="k">return</span> &lt;<span class="t">section</span> <span class="n">data-state</span>={<span class="n">state</span>}&gt;
+  &lt;<span class="t">header</span>&gt;...&lt;/<span class="t">header</span>&gt;
+  {<span class="hl-good"><span class="n">state</span> === <span class="s">"failed"</span> ? &lt;<span class="t">p</span> <span class="n">data-testid</span>=<span class="s">"ai-card-failed"</span>&gt;...&lt;/<span class="t">p</span>&gt; : <span class="t">null</span></span>}
+  {<span class="hl-good"><span class="n">showBody</span> &amp;&amp; <span class="n">children</span> ? &lt;<span class="t">div</span> <span class="n">data-testid</span>=<span class="s">"ai-card-body"</span>&gt;{<span class="n">children</span>}&lt;/<span class="t">div</span>&gt; : <span class="t">null</span></span>}
+  <span class="c">// failed 时 children 永远不渲染 → wemail-summary-content 不存在</span>
+&lt;/<span class="t">section</span>&gt;</code></pre>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <span class="label">判定</span>
+    <strong>组件做了正确的关注点分离，测试在用旧的 DOM 假设。</strong>AICard 集中处理 failed copy 是 stone-floating UI 的设计要点（统一观感、避免每张卡片自己写"失败提示"）。修法：把 <code>getByTestId("wemail-summary-content")</code> 改成 <code>getByTestId("ai-card-failed")</code>，断言"AICard 渲染了失败提示"。
+  </div>
+</section>
+
+<!-- ─────────── ISSUE 3 ─────────── -->
+<section class="issue">
+  <header>
+    <span class="num">3</span><h3>什么算"inline 附件"？</h3>
+    <div class="file">app/components/EmailAttachmentList.{tsx,test.tsx} + lib/utils.ts</div>
+  </header>
+  <div class="summary">
+    旧约定靠 <code>contentId</code> 字段（HTML 邮件正文里的 <code>cid:logo-inline</code>）认 inline；新约定改用 IMAP 标准的 <code>disposition</code> 字段（"inline" / "attachment"）。<strong>过滤函数已经只看 <code>disposition</code></strong>，但测试夹具还在靠 <code>contentId: "logo-inline"</code> 表示 inline，没设 <code>disposition</code> → 过滤函数读到 <code>undefined !== "inline"</code> → <span style="color:var(--green)">true</span> → 这个附件被当作普通附件渲染出来。
+  </div>
+
+  <div class="sxs">
+    <div class="pane test">
+      <h4>测试夹具 + 期望</h4>
+      <div class="sub">EmailAttachmentList.test.tsx · line 27-33, 61-70</div>
+<pre><code><span class="k">const</span> <span class="n">inlineImageAttachment</span>: <span class="t">Attachment</span> = {
+  <span class="n">id</span>: <span class="s">"att-3"</span>,
+  <span class="n">filename</span>: <span class="s">"logo.png"</span>,
+  <span class="n">mimetype</span>: <span class="s">"image/png"</span>,
+  <span class="n">size</span>: <span class="v">1024</span>,
+  <span class="hl"><span class="n">contentId</span>: <span class="s">"logo-inline"</span></span>,  <span class="c">// 旧 inline 标记</span>
+  <span class="c">// disposition 字段缺失</span>
+};
+
+<span class="f">it</span>(<span class="s">"filters out inline attachments"</span>, () =&gt; {
+  <span class="f">render</span>(&lt;<span class="t">EmailAttachmentList</span> <span class="n">attachments</span>={[<span class="n">inlineImageAttachment</span>]} /&gt;);
+  <span class="f">expect</span>(<span class="n">screen</span>.<span class="f">queryByText</span>(<span class="s">"logo.png"</span>)).<span class="f">toBeNull</span>();
+});</code></pre>
+    </div>
+    <div class="pane actual">
+      <h4>组件实际过滤逻辑</h4>
+      <div class="sub">app/lib/utils.ts · line 234-236</div>
+<pre><code><span class="k">export function</span> <span class="f">getNonInlineAttachments</span>(<span class="n">attachments</span>?: <span class="t">Attachment</span>[]) {
+  <span class="k">return</span> <span class="n">attachments</span>?.<span class="f">filter</span>(
+    (<span class="n">a</span>) =&gt; <span class="hl-good"><span class="n">a</span>.<span class="n">disposition</span> !== <span class="s">"inline"</span></span>
+  ) ?? [];
+}
+
+<span class="c">// 测试夹具的 disposition === undefined</span>
+<span class="c">// → undefined !== "inline" === true</span>
+<span class="c">// → 附件被保留 → "logo.png" 渲染出来 → 测试 fail</span></code></pre>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <span class="label">判定</span>
+    <strong>过滤逻辑选了一个简单可靠的字段做单一信号，测试夹具忘了同步。</strong>修法两选一：<br>
+    (a) 给 <code>inlineImageAttachment</code> 加 <code>disposition: "inline"</code>（保留语义）<br>
+    (b) 把 <code>getNonInlineAttachments</code> 改成 <code>contentId 非空 || disposition === "inline"</code> 都算 inline（兼容旧数据）<br>
+    选 (a) 更简单 — 这是测试夹具陈旧；如果生产数据里有 contentId-inline 但没 disposition 的真实邮件，再选 (b)。
+  </div>
+</section>
+
+<!-- ─────────── DECISION ─────────── -->
+<div class="decision">
+  <h2>我现在该怎么做</h2>
+  <div class="h-sub">三种处理路径</div>
+
+  <div class="opts">
+    <div class="opt recommended">
+      <h4>A. 更新 3 个测试，让 8 个失败全过</h4>
+      <p>对每一处差异选刚才"判定"段写的修法（差异 1: 改断言；差异 2: 换 testid；差异 3: 给夹具加 <code>disposition</code>）。每处改 1-3 行测试代码，零组件改动。</p>
+      <div class="when"><strong>选它如果</strong>：你认同三处都是"测试旧、组件新"的判定（我已逐项给出依据）。耗时约 10 分钟，附带在 merge commit 后多加一个独立 commit。</div>
+    </div>
+    <div class="opt">
+      <h4>B. 在本 PR 里跳过这 8 条测试 + 留 issue 链接</h4>
+      <p>给 3 个 <code>describe</code> 或 <code>it</code> 标 <code>.skip</code> 加一行注释 <code>// TODO(#NNN): align with stone-floating UI overhaul</code>。技术债显式，reviewer 一般会接受。</p>
+      <div class="when"><strong>选它如果</strong>：怀疑判定可能错（比如担心是组件该改回去），不想代笔下结论；或不想让本 PR 跨 UI 主题。</div>
+    </div>
+    <div class="opt">
+      <h4>C. 不动测试，单独提 issue / PR 让 UI owner 判</h4>
+      <p>本 PR 只标"renderer 失败属 main 既存 bug，与本分支无关"，把诊断结论（这份 HTML）贴 issue。reviewer 仍可能据此卡 merge。</p>
+      <div class="when"><strong>选它如果</strong>：你团队对"非自己引入的破窗"政策严格、要求每次都让原 owner 处理；或这 3 处需要 PM/设计师确认才能下结论。</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  生成于 2026-05-10 · 涉及文件 <code>app/components/EmailAttachmentList.{tsx,test.tsx}</code>、<code>app/components/wemail/{EmailSummaryCard,IntelligenceStatus,AICard}.{tsx,test.tsx}</code>
+</div>
+
+</body>
+</html>

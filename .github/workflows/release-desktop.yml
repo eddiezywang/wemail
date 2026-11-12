@@ -1,0 +1,116 @@
+name: Desktop Release
+
+permissions:
+  contents: read
+  checks: read
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  verify-green-commit:
+    name: require verification-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const response = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              per_page: 100,
+            });
+            const gate = response.data.check_runs.find((run) =>
+              run.name === "verification-gate" &&
+              run.status === "completed" &&
+              run.conclusion === "success"
+            );
+            if (!gate) core.setFailed(`No successful verification-gate found for ${context.sha}`);
+
+  windows-x64:
+    needs: verify-green-commit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npm run package:release:windows
+        env:
+          WEMAIL_UPDATE_BASE_URL: ${{ vars.WEMAIL_UPDATE_BASE_URL }}
+          WEMAIL_WINDOWS_PUBLISHER: ${{ vars.WEMAIL_WINDOWS_PUBLISHER }}
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: update-feed-windows-x64
+          path: dist/update-feed/windows/x64
+          if-no-files-found: error
+
+  mac-x64:
+    needs: verify-green-commit
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - name: Prepare Apple notarization key
+        shell: bash
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          printf '%s' "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+      - run: npm run package:release:mac:x64
+        env:
+          WEMAIL_UPDATE_BASE_URL: ${{ vars.WEMAIL_UPDATE_BASE_URL }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: update-feed-mac-x64
+          path: dist/update-feed/mac/x64
+          if-no-files-found: error
+
+  mac-arm64:
+    needs: verify-green-commit
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - name: Prepare Apple notarization key
+        shell: bash
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          printf '%s' "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+      - run: npm run package:release:mac:arm64
+        env:
+          WEMAIL_UPDATE_BASE_URL: ${{ vars.WEMAIL_UPDATE_BASE_URL }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: update-feed-mac-arm64
+          path: dist/update-feed/mac/arm64
+          if-no-files-found: error

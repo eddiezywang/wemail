@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-automation-authoring",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "自动化规则配置",
+  "description": "组合可复用 Skill 完成自动化规则的交互式配置。",
+  "protected": true,
+  "inputKinds": ["mail-reference", "pipeline-draft"],
+  "outputKinds": ["pipeline-draft", "automation-rule-preview"],
+  "dependencies": [
+    {"skillId": "wemail-data-selection", "version": "1.0.0"},
+    {"skillId": "wemail-insight-report", "version": "1.0.0", "optional": true},
+    {"skillId": "wemail-delivery-planning", "version": "1.0.0", "optional": true}
+  ],
+  "toolAllowlist": [],
+  "requestedPermissions": [],
+  "reviewPolicy": "required",
+  "contentHash": "pending"
+}

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeMail 主题预览 · Codex 黑白灰</title>
+<style>
+  /* ── 页面外壳（与主题无关的中性底） ───────────────── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: #d7d7da;
+    min-height: 100vh;
+    padding: 28px 24px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-head { max-width: 1240px; margin: 0 auto 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .page-head h1 { font-size: 17px; font-weight: 600; color: #1a1a1c; letter-spacing: -0.01em; }
+  .page-head .sub { font-size: 12.5px; color: #6b6b70; }
+  .switch { display: inline-flex; background: #ffffff; border: 1px solid #c9c9cd; border-radius: 999px; padding: 3px; gap: 2px; }
+  .switch button {
+    border: 0; background: transparent; cursor: pointer; font: inherit;
+    font-size: 12.5px; font-weight: 500; color: #52525a; padding: 6px 14px; border-radius: 999px;
+    transition: all .15s ease-out;
+  }
+  .switch button[aria-pressed="true"] { background: #18181b; color: #fff; }
+  .win-label { max-width: 1240px; margin: 18px auto 8px; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: #55555c; text-transform: uppercase; }
+
+  /* ══ 主题 Token（值 = 仓库 app/styles/tokens.css 与 themes/codex.css 原值） ══ */
+  .mail-window {
+    --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 999px;
+    --text-caption: 11px; --text-meta: 12px; --text-control: 13px; --text-ui: 14px; --text-body: 15px;
+    --font-mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
+    max-width: 1240px; margin: 0 auto; height: 620px;
+    border-radius: var(--radius-xl); border: 1px solid var(--edge);
+    box-shadow: var(--shadow-3);
+    display: grid; grid-template-columns: 196px 316px 1fr 252px;
+    overflow: hidden; background: var(--canvas); color: var(--ink);
+    font-size: var(--text-ui);
+  }
+  /* 旧版 · 暖石色（paper，仓库默认） */
+  .theme-paper {
+    --canvas: #fafaf9; --paper2: #ffffff; --paper3: #efece5; --paper4: #e7e3d8;
+    --summary: #f5f4f0;
+    --sidebar: #f4f3ef; --sidebar-hover: #eceae5; --sidebar-active: #f8e9e2;
+    --ink: #1c1917; --ink2: #44403c; --ink3: #625c57; --ink4: #6f6964;
+    --edge: #e7e5e4; --edge2: #d6d3d1; --edge3: #f5f5f4;
+    --accent: #a8462a; --accent2: #8f371f; --accent-bg: #f9e8e0;
+    --green: #5f7a4a; --green-bg: #e3ecd2; --blue: #4a6b88; --blue-bg: #dbe5ee;
+    --red: #b3392a; --red-bg: #ecc8c0; --amber: #8a611a; --amber-bg: #fdf3d9;
+    --term-bg: #1d130a; --term-fg: #f1e4cc; --term-ok: #8dc57a; --term-run: #e3b341;
+    --term-tool: #e9b89f; --term-arg: #a8a090; --term-cmt: #7a6e5c;
+    --shadow-2: 0 1px 2px rgba(28,25,23,.06);
+    --shadow-3: 0 8px 24px rgba(28,25,23,.08), 0 1px 2px rgba(28,25,23,.04);
+  }
+  /* 新版 · Codex 黑白灰（codex，本次新增） */
+  .theme-codex {
+    --canvas: #ffffff; --paper2: #ffffff; --paper3: #f5f5f5; --paper4: #ececec;
+    --summary: #fafafa;
+    --sidebar: #fafafa; --sidebar-hover: #f0f0f0; --sidebar-active: #ececec;
+    --ink: #0d0d0d; --ink2: #444444; --ink3: #616165; --ink4: #8e8e93;
+    --edge: #e9e9e9; --edge2: #d9d9d9; --edge3: #f3f3f3;
+    --accent: #0d0d0d; --accent2: #000000; --accent-bg: #f0f0f0;
+    --green: #1a7f37; --green-bg: #e6ffec; --blue: #0550ae; --blue-bg: #ddf4ff;
+    --red: #cf222e; --red-bg: #ffebe9; --amber: #9a6700; --amber-bg: #fff8c5;
+    --term-bg: #1c1c1e; --term-fg: #ededed; --term-ok: #3fb950; --term-run: #d29922;
+    --term-tool: #d2a8ff; --term-arg: #8b949e; --term-cmt: #6a737d;
+    --shadow-2: 0 1px 2px rgba(0,0,0,.06);
+    --shadow-3: 0 8px 24px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  }
+
+  /* ── 侧栏（浮动 chrome） ── */
+  .sidebar {
+    margin: 10px 0 10px 10px; border-radius: var(--radius-lg);
+    background: var(--sidebar); box-shadow: var(--shadow-2);
+    display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--edge);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 16px 14px 10px; }
+  .brand-mark { width: 22px; height: 22px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+  .nav { padding: 4px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: default; }
+  .nav-item .ico { width: 15px; height: 15px; opacity: .75; }
+  .nav-item .cnt { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--ink3); }
+  .nav-item.active { background: var(--sidebar-active); color: var(--accent); }
+  .nav-item.active .cnt { color: var(--accent); }
+  .nav-item:not(.active):hover { background: var(--sidebar-hover); }
+  .nav-sub { padding: 2px 8px 8px; border-top: 1px solid var(--edge); margin-top: 6px; }
+  .nav-sub .grp { font-size: 10.5px; font-weight: 600; color: var(--ink4); letter-spacing: .05em; padding: 8px 9px 4px; text-transform: uppercase; }
+  .acct { display: flex; align-items: center; gap: 8px; padding: 5px 9px; border-radius: var(--radius-md); font-size: 12px; color: var(--ink3); }
+  .acct:hover { background: var(--sidebar-hover); }
+  .acct .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--green); flex-shrink: 0; }
+  .compose-btn {
+    margin: 10px 12px 14px; padding: 8px 0; border-radius: var(--radius-pill);
+    background: var(--accent); color: #fff; text-align: center;
+    font-size: 13px; font-weight: 600; letter-spacing: .01em;
+  }
+
+  /* ── 邮件列表（贴平画布） ── */
+  .list { border-right: 1px solid var(--edge); display: flex; flex-direction: column; min-width: 0; }
+  .list-head { padding: 14px 14px 8px; }
+  .list-title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .search {
+    display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px;
+    background: var(--paper2); border: 1px solid var(--edge); border-radius: var(--radius-md);
+    color: var(--ink4); font-size: 12.5px;
+  }
+  .pills { display: flex; gap: 6px; padding: 10px 14px 6px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px;
+    border: 1px solid var(--edge); border-radius: var(--radius-pill);
+    background: var(--paper2); font-size: 11.5px; color: var(--ink2);
+    white-space: nowrap;
+  }
+  .pill.on { background: var(--accent-bg); border-color: var(--edge2); color: var(--accent); font-weight: 600; }
+  .rows { overflow: hidden; }
+  .row { display: block; padding: 10px 14px 9px; border-bottom: 1px solid var(--edge3); cursor: default; position: relative; }
+  .row.sel { background: var(--paper3); }
+  .row.sel::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+  .row-top { display: flex; align-items: baseline; gap: 8px; }
+  .row-from { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .row.unread .row-from { font-weight: 700; }
+  .row-time { margin-left: auto; font-size: 11px; color: var(--ink4); font-variant-numeric: tabular-nums; }
+  .row-subj { font-size: 12.5px; color: var(--ink2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-snip { font-size: 12px; color: var(--ink4); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .udot { width: 7px; height: 7px; border-radius: 999px; background: var(--accent); flex-shrink: 0; align-self: center; }
+  .tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; vertical-align: 1px; margin-right: 4px; }
+  .tag.g { background: var(--green-bg); color: var(--green); }
+  .tag.b { background: var(--blue-bg); color: var(--blue); }
+  .tag.r { background: var(--red-bg); color: var(--red); }
+  .tag.a { background: var(--amber-bg); color: var(--amber); }
+
+  /* ── 详情（贴平画布） ── */
+  .detail { min-width: 0; overflow: hidden; padding: 18px 22px; }
+  .d-subject { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35; }
+  .d-meta { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--accent-bg); color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .d-who { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .d-to { font-size: 12px; color: var(--ink4); margin-top: 1px; }
+  .d-actions { margin-left: auto; display: flex; gap: 6px; }
+  .d-actions .pill { cursor: default; }
+  .ai-card {
+    margin-top: 16px; background: var(--summary); border: 1px solid var(--edge);
+    border-radius: var(--radius-lg); padding: 12px 14px;
+  }
+  .ai-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--ink3); text-transform: uppercase; }
+  .ai-head .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--accent); }
+  .ai-body { margin-top: 8px; font-size: 13px; line-height: 1.6; color: var(--ink2); }
+  .ai-body b { color: var(--ink); font-weight: 600; }
+  .d-body { margin-top: 16px; font-size: 13.5px; line-height: 1.7; color: var(--ink2); }
+  .d-body p + p { margin-top: 10px; }
+  .quote { margin-top: 12px; padding: 8px 12px; border-left: 3px solid var(--edge2); color: var(--ink4); font-size: 12.5px; background: var(--paper2); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .attach { display: flex; gap: 6px; margin-top: 14px; }
+  .file { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; background: var(--paper2); border: 1px solid var(--edge); border-radius: var(--radius-md); font-size: 11.5px; color: var(--ink2); white-space: nowrap; }
+  .file .sz { color: var(--ink4); font-size: 10.5px; }
+
+  /* ── Agent 面板（浮动 chrome + 终端） ── */
+  .agent {
+    margin: 10px 10px 10px 0; border-radius: var(--radius-lg);
+    background: var(--paper2); border: 1px solid var(--edge); box-shadow: var(--shadow-2);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .ag-head { display: flex; align-items: center; gap: 7px; padding: 12px 14px 10px; font-size: 12.5px; font-weight: 700; }
+  .ag-head .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); }
+  .ag-head .state { margin-left: auto; font-size: 10.5px; font-weight: 500; color: var(--ink4); }
+  .term { margin: 4px 12px 12px; background: var(--term-bg); border-radius: var(--radius-md); padding: 10px 12px; font-family: var(--font-mono); font-size: 11px; line-height: 1.75; overflow: hidden; }
+  .term .ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .t-fg { color: var(--term-fg); } .t-ok { color: var(--term-ok); } .t-run { color: var(--term-run); }
+  .t-tool { color: var(--term-tool); } .t-arg { color: var(--term-arg); } .t-cmt { color: var(--term-cmt); }
+  .ag-tip { padding: 0 14px 14px; margin-top: auto; font-size: 11.5px; line-height: 1.6; color: var(--ink4); }
+  .ag-tip b { color: var(--ink3); font-weight: 600; }
+
+  /* 对比模式说明条 */
+  .note { max-width: 1240px; margin: 26px auto 0; font-size: 12px; color: #5b5b62; line-height: 1.7; }
+  .note code { background: #ececef; border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  @media (max-width: 1100px) { .mail-window { grid-template-columns: 176px 288px 1fr; } .agent { display: none; } }
+</style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>WeMail 主题预览</h1>
+    <span class="sub">同一界面 · 两套 token</span>
+    <div class="switch" id="switch">
+      <button data-mode="both" aria-pressed="true">并排对比</button>
+      <button data-mode="theme-paper" aria-pressed="false">旧版 · 暖石色</button>
+      <button data-mode="theme-codex" aria-pressed="false">新版 · Codex 黑白灰</button>
+    </div>
+  </div>
+
+  <template id="mock">
+    <div class="mail-window">
+      <!-- 侧栏 -->
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">W</div><div class="brand-name">WeMail</div></div>
+        <nav class="nav">
+          <div class="nav-item active"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3" width="13" height="10" rx="1.5"/><path d="M2 4.5 8 9l6-4.5"/></svg>收件箱<span class="cnt">12</span></div>
+          <div class="nav-item"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.8 9.9 5.6l4.2.6-3 3 .7 4.1L8 11.4l-3.8 2 .7-4.1-3-3 4.2-.6z"/></svg>星标<span class="cnt">3</span></div>
+          <div class="nav-item"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 8.5 8 3l5.5 5.5M8 4v9"/></svg>已发送</div>
+          <div class="nav-item"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 2h8v12l-4-2.5L4 14z"/></svg>草稿<span class="cnt">2</span></div>
+          <div class="nav-item"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/></svg>归档</div>
+        </nav>
+        <div class="nav-sub">
+          <div class="grp">账户</div>
+          <div class="acct"><span class="dot"></span>eddie@wemail.cn</div>
+          <div class="acct"><span class="dot"></span>work@example.com</div>
+        </div>
+        <div class="compose-btn">写邮件</div>
+      </aside>
+
+      <!-- 列表 -->
+      <section class="list">
+        <div class="list-head">
+          <div class="list-title">收件箱</div>
+          <div class="search"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>搜索邮件…</div>
+        </div>
+        <div class="pills">
+          <span class="pill on">全部</span><span class="pill">未读</span><span class="pill">重要</span><span class="pill">含附件</span>
+        </div>
+        <div class="rows">
+          <div class="row unread sel"><div class="row-top"><span class="udot"></span><span class="row-from">陈晓婷</span><span class="row-time">09:42</span></div><div class="row-subj"><span class="tag g">已同步</span>风控周报数据核对（第 46 期）</div><div class="row-snip">附件里的口径和线上报表对不上，麻烦看下第 3 页的坏账率……</div></div>
+          <div class="row unread"><div class="row-top"><span class="udot"></span><span class="row-from">GitLab</span><span class="row-time">09:15</span></div><div class="row-subj"><span class="tag b">通知</span>[wemail/core] Merge request !286 was merged</div><div class="row-snip">fix(pop3): handle UID range overflow on large mailboxes</div></div>
+          <div class="row"><div class="row-top"><span class="row-from">王志远</span><span class="row-time">08:50</span></div><div class="row-subj">关于 Q4 邮件网关迁移的排期确认</div><div class="row-snip">窗口期定在周六凌晨，回滚预案我放在了共享盘……</div></div>
+          <div class="row unread"><div class="row-top"><span class="udot"></span><span class="row-from">飞书</span><span class="row-time">昨天</span></div><div class="row-subj"><span class="tag a">待办</span>你有 3 个审批单等待处理</div><div class="row-snip">采购申请、出差报销、域名续费……</div></div>
+          <div class="row"><div class="row-top"><span class="row-from">刘倩</span><span class="row-time">昨天</span></div><div class="row-subj">客户对接纪要与后续动作</div><div class="row-snip">附件是会议纪要，红线部分需要法务确认……</div></div>
+          <div class="row"><div class="row-top"><span class="row-from">Cloudflare</span><span class="row-time">周四</span></div><div class="row-subj"><span class="tag r">安全</span>Your API token will expire in 7 days</div><div class="row-snip">Rotate the token before it expires to avoid downtime…</div></div>
+          <div class="row"><div class="row-top"><span class="row-from">赵明</span><span class="row-time">周四</span></div><div class="row-subj">Re: 邮件模板样式评审</div><div class="row-snip">第三版的卡片圆角再收一点，其他没问题……</div></div>
+        </div>
+      </section>
+
+      <!-- 详情 -->
+      <section class="detail">
+        <div class="d-subject">风控周报数据核对（第 46 期）</div>
+        <div class="d-meta">
+          <div class="avatar">陈</div>
+          <div><div class="d-who">陈晓婷 &lt;chenxt@example.com&gt;</div><div class="d-to">发送至 eddie@wemail.cn · 今天 09:42 · 2 个附件</div></div>
+          <div class="d-actions"><span class="pill">回复</span><span class="pill">转发</span><span class="pill">稍后处理</span></div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-head"><span class="dot"></span>AI 摘要</div>
+          <div class="ai-body">第 46 期周报中 <b>坏账率口径</b>与线上报表存在 <b>0.4pp 偏差</b>，疑因统计窗口含跨月数据；需要数据组确认 cut-off 规则后重新出数，本周五前闭环。</div>
+        </div>
+        <div class="d-body">
+          <p>Eddie，你好：</p>
+          <p>附件里的口径和线上报表对不上，主要差异集中在消费贷板块——周报统计的是<b>发起时间</b>，而线上报表按<b>结清时间</b>落库，跨月单会同时出现在两边的不同周期里。</p>
+          <p>麻烦和数据组确认一下 cut-off 规则，如果维持现状，我在周报里加一行脚注说明口径差异。</p>
+          <div class="quote">刘倩 写道：<br>线上报表走的是 T+1 结清快照，跨月件的归属可能确实会有偏差，先按周报口径出，脚注补说明。</div>
+        </div>
+        <div class="attach">
+          <span class="file">📄 风控周报-第46期.pdf <span class="sz">1.2 MB</span></span>
+          <span class="file">📊 口径差异明细.xlsx <span class="sz">86 KB</span></span>
+        </div>
+      </section>
+
+      <!-- Agent -->
+      <aside class="agent">
+        <div class="ag-head"><span class="dot"></span>AI 助手<span class="state">已连接 · Mail Core</span></div>
+        <div class="term">
+          <div class="ln t-cmt"># 收件箱同步</div>
+          <div class="ln"><span class="t-arg">$</span> <span class="t-fg">wemail fetch --all</span></div>
+          <div class="ln"><span class="t-ok">✓</span> <span class="t-fg">imap://eddie@wemail.cn</span> <span class="t-arg">+4 封</span></div>
+          <div class="ln"><span class="t-ok">✓</span> <span class="t-fg">imap://work@example.com</span> <span class="t-arg">+8 封</span></div>
+          <div class="ln"><span class="t-run">⠋</span> <span class="t-tool">index.rebuild</span> <span class="t-arg">2.4k 条</span></div>
+        </div>
+        <div class="ag-tip">试试：<b>“总结今天的未读”</b>、<b>“起草回复陈晓婷”</b>、<b>“把带附件的财务邮件标记待办”</b></div>
+      </aside>
+    </div>
+  </template>
+
+  <div id="stage"></div>
+
+  <div class="note">
+    <b>看点：</b>旧版侧栏/悬浮层是米黄 <code>#efece5</code>、选中态珊瑚红 <code>#a8462a</code>、终端暖棕底；
+    新版全部换为白/灰阶、强调色收敛为近黑 <code>#0d0d0d</code>、语义色采用 GitHub 级红绿、终端中性炭黑。
+    Token 值直接取自仓库 <code>app/styles/tokens.css</code> 与 <code>app/styles/themes/codex.css</code>（branch <code>feat/codex-monochrome</code>）。
+  </div>
+
+<script>
+  const tpl = document.getElementById("mock");
+  const stage = document.getElementById("stage");
+  const label = (text) => { const d = document.createElement("div"); d.className = "win-label"; d.textContent = text; return d; };
+
+  function render(mode) {
+    stage.innerHTML = "";
+    if (mode === "both") {
+      stage.appendChild(label("旧版 · 暖石色（paper）"));
+      const a = tpl.content.firstElementChild.cloneNode(true); a.classList.add("theme-paper"); stage.appendChild(a);
+      stage.appendChild(label("新版 · Codex 黑白灰（codex）"));
+      const b = tpl.content.firstElementChild.cloneNode(true); b.classList.add("theme-codex"); stage.appendChild(b);
+    } else {
+      const w = tpl.content.firstElementChild.cloneNode(true); w.classList.add(mode); stage.appendChild(w);
+    }
+  }
+  document.getElementById("switch").addEventListener("click", (e) => {
+    const btn = e.target.closest("button"); if (!btn) return;
+    document.querySelectorAll(".switch button").forEach((b) => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+    render(btn.dataset.mode);
+  });
+  render("both");
+</script>
+</body>
+</html>

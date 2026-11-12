@@ -1,0 +1,28 @@
+name: wemail-support-runtime
+version: "0.2.0"
+description: "Role-safe WeMail support knowledge search, cases, support todos, and reviewed knowledge publishing for Hermes/WeCom."
+author: "WeMail"
+kind: backend
+provides_tools:
+  - wemail_support_search
+  - wemail_support_read
+  - wemail_support_analyze_diagnostics
+  - wemail_support_create_case
+  - wemail_support_append_case_evidence
+  - wemail_support_resume_private_handoff
+  - wemail_support_list_cases
+  - wemail_support_update_case
+  - wemail_support_create_todo
+  - wemail_support_list_todos
+  - wemail_support_update_todo
+  - wemail_support_create_draft
+  - wemail_support_list_drafts
+  - wemail_support_get_draft
+  - wemail_support_update_draft
+  - wemail_support_review_draft
+  - wemail_support_publish_draft
+  - wemail_support_rollback_document
+  - wemail_support_list_admins
+  - wemail_support_upsert_admin
+  - wemail_support_remove_admin
+  - wemail_support_status

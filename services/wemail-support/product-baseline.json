@@ -1,0 +1,13 @@
+{
+  "product": "WeMail",
+  "platform": "Windows desktop",
+  "current_release": "1.1.1",
+  "verified_commit": "75a4aa8b9602191233abbc2677e2708413feab53",
+  "verified_at": "2026-08-14",
+  "knowledge_policy": {
+    "default_release": "current_release",
+    "user_unspecified_version": "answer_for_current_release",
+    "development_code_is_released": false,
+    "require_explicit_version_branch": true
+  }
+}

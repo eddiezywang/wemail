@@ -1,0 +1,114 @@
+<figure
+  class="invoice-hero"
+  data-invoice-hero
+  data-animation-state="complete"
+  aria-labelledby="invoice-hero-title"
+  aria-describedby="invoice-hero-description"
+>
+  <div class="invoice-hero__toolbar">
+    <div>
+      <span class="invoice-hero__eyebrow">真实 App 发票流程</span>
+      <h2 id="invoice-hero-title">从邮件分析到确认上传</h2>
+    </div>
+  </div>
+
+  <p id="invoice-hero-description" class="invoice-hero__description">
+    WeMail AI 阅读当前发票邮件，处理附件并创建上传确认；用户确认后，界面显示成功上传 1 个附件。
+  </p>
+
+  <div class="invoice-hero__viewport" data-invoice-hero-viewport aria-hidden="true">
+    <div class="invoice-hero__titlebar">
+      <img src="/favicon.svg" width="24" height="24" alt="" />
+      <strong>WeMail</strong>
+      <span>—　□　×</span>
+    </div>
+
+    <div class="invoice-hero__workspace">
+      <aside class="invoice-hero__nav">
+        <b>✎　写邮件</b>
+        <span>▣　收件箱 <i>2827</i></span>
+        <span>☑　待办</span>
+        <span>♧　应用消息</span>
+        <span>♧　通讯录</span>
+        <span class="is-active">✉　所有邮件</span>
+        <span class="is-child">◇　重要 <i>216</i></span>
+        <span class="is-child">◇　待处理 <i>254</i></span>
+        <span class="is-child">◇　订阅 <i>10</i></span>
+        <span class="is-child">◇　通知 <i>7136</i></span>
+        <span class="invoice-hero__account">F　WeMail 用户</span>
+      </aside>
+
+      <section class="invoice-hero__list">
+        <div class="invoice-hero__search">⌕　搜索邮件…　　共 14450 封</div>
+        <small>最近 7 天</small>
+        <article><b>MailAlert　11:41</b><span>[Warning] IMS2.2:Alert - 周期内…</span></article>
+        <article><b>MailAlert　11:41</b><span>[Warning] IMS2.2:Alert - 周期内…</span></article>
+        <article class="is-selected">
+          <b>山姆会员商店　11:33</b>
+          <span>电子发票开具通知</span>
+          <em>● 发票 · 未上传</em>
+        </article>
+        <article><b>MailAlert　11:33</b><span>[Warning] IMS2.2:Alert - 命中次…</span></article>
+        <article><b>MailAlert　11:23</b><span>[Warning] IMS2.2:Alert - 周期内…</span></article>
+      </section>
+
+      <section class="invoice-hero__reader">
+        <div class="invoice-hero__reader-tools">≪　↶　↷　◇　☆　⋮</div>
+        <header>
+          <h3>电子发票开具通知</h3>
+          <p>会员服务　·　7 月 30 日 11:33</p>
+        </header>
+        <div class="invoice-hero__mail-body">
+          <p><strong>尊敬的会员，您好！</strong></p>
+          <p>您本月的电子发票已经开具，发票详情如下：</p>
+          <p>开票金额：¥ 109.60<br />开票日期：2026-07-30</p>
+          <dl>
+            <div><dt>发票代码</dt><dd>0440…2056</dd></div>
+            <div><dt>发票号码</dt><dd>26427…0566</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="invoice-hero__ai">
+        <header><h3>WeMail AI</h3><span>♢　⟲　↗　×</span></header>
+        <div class="invoice-hero__ai-body">
+          <div class="invoice-hero__prompt" data-invoice-scene="prompt">
+            阅读当前邮件，查找发票附件或发票信息，并创建上传到发票平台的确认操作。
+          </div>
+
+          <div class="invoice-hero__analysis" data-invoice-scene="analysis">
+            <b>已完成分析</b>
+            <p>Planning default PDF upload with confirmation</p>
+            <ol>
+              <li><span>✉</span><div><b>读取邮件</b><small>Loaded stored mail source</small></div></li>
+              <li><span>⌑</span><div><b>处理附件</b><small>Found 1 invoice attachment candidate</small></div></li>
+              <li><span>✓</span><div><b>创建确认操作</b><small>等待用户确认后执行</small></div></li>
+            </ol>
+          </div>
+
+          <div class="invoice-hero__confirmation" data-invoice-scene="confirmation">
+            <small>需要确认</small>
+            <b>上传 1 个 PDF 发票附件到发票平台</b>
+            <p>确认后会上传选中的邮件附件。</p>
+            <div>
+              <span class="invoice-hero__confirmation-action">拒绝</span>
+              <span class="invoice-hero__confirmation-action">确认</span>
+            </div>
+            <span class="invoice-hero__pointer">➤</span>
+          </div>
+
+          <div class="invoice-hero__success" data-invoice-scene="success">
+            <b>✓ 已确认执行：上传 1 个 PDF 发票附件到发票平台</b>
+            <span>上传完成：成功 1 个，失败 0 个。</span>
+          </div>
+        </div>
+        <div class="invoice-hero__composer">搜索、写作或询问任何内容</div>
+      </section>
+    </div>
+  </div>
+</figure>
+
+<script>
+  import { enhanceInvoiceHeroes } from "../../scripts/invoice-hero.mjs";
+  enhanceInvoiceHeroes();
+</script>

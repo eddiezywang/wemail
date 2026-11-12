@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wemail Prompt Eval Plugin Allowlist",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["frameworkVersion", "plugins"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "frameworkVersion": {
+      "type": "string",
+      "description": "Major version must match the running framework (FRAMEWORK_VERSION)."
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["package", "version"],
+        "properties": {
+          "package": {
+            "type": "string",
+            "description": "npm package name; must be installed in node_modules."
+          },
+          "version": {
+            "type": "string",
+            "description": "Exact installed version — registry rejects mismatches."
+          },
+          "allowOverride": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, plugin may register over a built-in spec id."
+          }
+        }
+      }
+    }
+  }
+}

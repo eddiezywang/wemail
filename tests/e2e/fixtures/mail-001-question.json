@@ -1,0 +1,18 @@
+{
+  "id": "acct-e2e/INBOX/1-1",
+  "accountId": "acct-e2e",
+  "folder": "INBOX",
+  "messageId": "<mail-001@example.test>",
+  "from": { "name": "Alice Example", "email": "alice@example.test" },
+  "to": [{ "name": "E2E Tester", "email": "cqqdy@cqdly.us" }],
+  "cc": [],
+  "bcc": [],
+  "subject": "Quick question about the launch",
+  "snippet": "Hi — can you confirm the launch date?",
+  "bodyText": "Hi,\n\nCan you confirm the launch date? I need to update the slide deck.\n\nThanks,\nAlice",
+  "receivedAt": "2026-04-24T09:00:00.000Z",
+  "hasAttachments": false,
+  "attachments": [],
+  "flags": { "seen": false, "flagged": false, "answered": false, "draft": false },
+  "sync": { "uid": 1, "uidValidity": 1, "internalDate": "2026-04-24T09:00:00.000Z" }
+}

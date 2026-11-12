@@ -1,0 +1,17 @@
+# Bun config for WeMail.
+# Bun is used as the package manager + script runner. The actual server
+# test executor stays on `node --test` because better-sqlite3's native
+# binding is compiled for the Node ABI; running it through `bun test`
+# requires a Bun-targeted rebuild that we have not done yet.
+
+[install]
+# Lockfile is the human-readable bun.lock (text), tracked in git.
+saveTextLockfile = true
+
+[install.scopes]
+# No private registries today; placeholder for the future.
+
+[run]
+# When `bun run <script>` invokes a binary that lives in node_modules/.bin,
+# resolve it without re-spawning npm — keeps script execution fast.
+bun = false

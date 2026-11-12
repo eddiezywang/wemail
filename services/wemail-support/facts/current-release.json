@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "release": "1.1.1",
+  "verified_commit": "75a4aa8b9602191233abbc2677e2708413feab53",
+  "verified_at": "2026-08-14",
+  "facts": [
+    {
+      "id": "mcp-body-limit-configurable",
+      "module": "WM-14",
+      "claim": "当前正式版可在 MCP 设置中配置默认正文长度和正文长度上限；公开工具最大允许 1000000，初始正文上限为 20000。",
+      "source_assertions": [
+        {"path": "app/components/settings/sections/McpSection.tsx", "contains": "label: \"正文长度上限\""},
+        {"path": "server/wemail/mcp/McpToolCatalog.test.ts", "contains": "maximum, 1_000_000"},
+        {"path": "server/wemail/database/PlatformSchema.generated.ts", "contains": "DEFAULT 20000 CHECK(max_body_characters BETWEEN 1 AND 1000000)"}
+      ]
+    },
+    {
+      "id": "desktop-themes-only",
+      "module": "WM-17",
+      "claim": "外观支持跟随系统、浅色和深色三种现成主题，当前没有任意自定义配色入口。",
+      "source_assertions": [
+        {"path": "app/components/settings/sections/AppearanceSection.tsx", "contains": ">跟随系统<"},
+        {"path": "app/components/settings/sections/AppearanceSection.tsx", "contains": ">浅色<"},
+        {"path": "app/components/settings/sections/AppearanceSection.tsx", "contains": ">深色<"}
+      ]
+    },
+    {
+      "id": "application-message-behavior",
+      "module": "WM-17",
+      "claim": "应用消息保存自动化和智能助手交付结果；归档应用消息不会删除关联邮件、自动化或产物。",
+      "source_assertions": [
+        {"path": "app/components/applicationMessages/ApplicationMessageCenter.tsx", "contains": "自动化规则、定时任务与 Agent 主动交付的信息都会保留在这里"},
+        {"path": "app/components/applicationMessages/ApplicationMessageCenter.tsx", "contains": "消息关联的邮件、自动化和产物不会被删除"}
+      ]
+    },
+    {
+      "id": "signature-per-account",
+      "module": "WM-17",
+      "claim": "高级设置中的签名按当前邮箱管理，可启用、自定义、恢复默认或关闭。",
+      "source_assertions": [
+        {"path": "app/components/settings/sections/ComposeSection.tsx", "contains": "设置当前邮箱的默认签名"},
+        {"path": "app/components/settings/sections/ComposeSection.tsx", "contains": "发送邮件时不会添加签名或 Sent with Wemail"}
+      ]
+    },
+    {
+      "id": "snooze-and-content-views",
+      "module": "WM-03",
+      "claim": "邮件更多操作包含延后、显示纯文本、显示原始邮件、归档和移到回收站。",
+      "source_assertions": [
+        {"path": "app/components/email-panel/MessageSenderBar.tsx", "contains": "<span>延后</span>"},
+        {"path": "app/components/email-panel/MessageSenderBar.tsx", "contains": "<span>显示纯文本</span>"},
+        {"path": "app/components/email-panel/MessageSenderBar.tsx", "contains": "<span>显示原始邮件</span>"}
+      ]
+    }
+  ]
+}

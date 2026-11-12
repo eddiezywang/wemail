@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail.received-mail-summary-notification",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "protected": true,
+  "metadata": {
+    "fallbackLocale": "zh-CN",
+    "locales": {
+      "zh-CN": {
+        "name": "新邮件摘要通知",
+        "description": "收到新邮件并完成摘要后，将主题、发件人、摘要要点和待办推送到所有已配置的企业微信与飞书 Bot。",
+        "shortDescription": "摘要完成后推送企微与飞书",
+        "category": "通知",
+        "icon": "bell"
+      },
+      "en": {
+        "name": "New Mail Summary Notification",
+        "description": "After a newly received email is summarized, send its key points and action items to every configured WeCom and Feishu bot.",
+        "shortDescription": "Push summaries to connected bots",
+        "category": "Notifications",
+        "icon": "bell"
+      }
+    }
+  },
+  "configurationSchema": {
+    "type": "object",
+    "required": ["accountScope"],
+    "properties": {
+      "accountScope": {
+        "type": "object"
+      }
+    },
+    "additionalProperties": false
+  },
+  "uiSchema": {
+    "version": 1,
+    "fields": [
+      {
+        "path": "accountScope",
+        "control": "account_scope",
+        "label": "邮箱范围",
+        "description": "选择需要监听新邮件的邮箱。",
+        "section": "accounts",
+        "order": 10
+      }
+    ]
+  },
+  "pipelineBlueprint": {
+    "version": 1,
+    "steps": [
+      {
+        "id": "notify-connected-bots",
+        "capabilityId": "delivery.bot.sendConnected",
+        "name": "推送新邮件摘要",
+        "input": {
+          "title": {
+            "type": "path",
+            "from": "trigger",
+            "path": "notificationTitle"
+          },
+          "body": {
+            "type": "path",
+            "from": "trigger",
+            "path": "notificationBody"
+          },
+          "policy": {
+            "type": "literal",
+            "value": "all_available"
+          }
+        },
+        "outputKind": "delivery-receipt",
+        "onError": {
+          "policy": "continue",
+          "retries": 1
+        }
+      }
+    ],
+    "bindings": {
+      "accountScope": {
+        "type": "resolvedAccountScope"
+      }
+    },
+    "delivery": {
+      "version": 1,
+      "destinations": [
+        {
+          "type": "connected_bot",
+          "enabled": true
+        }
+      ],
+      "content": {
+        "includeSummary": true,
+        "includeImage": false,
+        "includeArtifactLink": false
+      },
+      "fallbackPolicy": {
+        "type": "all_available",
+        "priority": [
+          "wecom_bot",
+          "feishu_bot"
+        ],
+        "messageCenterRequired": false
+      }
+    }
+  },
+  "resultSchemaId": "wemail.receivedMailSummaryNotification",
+  "resultSchemaVersion": 1,
+  "rendererId": "wemail.generic",
+  "rendererVersion": "1.0.0",
+  "defaultConfiguration": {
+    "accountScope": {
+      "type": "currentAccount"
+    }
+  },
+  "defaultTrigger": {
+    "type": "mailReceived",
+    "execution": {
+      "type": "immediate"
+    }
+  },
+  "defaultDelivery": {
+    "version": 1,
+    "destinations": [
+      {
+        "type": "connected_bot",
+        "enabled": true
+      }
+    ],
+    "content": {
+      "includeSummary": true,
+      "includeImage": false,
+      "includeArtifactLink": false
+    },
+    "fallbackPolicy": {
+      "type": "all_available",
+      "priority": [
+        "wecom_bot",
+        "feishu_bot"
+      ],
+      "messageCenterRequired": false
+    }
+  },
+  "contentHash": "fe207a366577b4f249cb39b2d05124b6f85c96012b0351f9f69dcc2917c68e4f"
+}

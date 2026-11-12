@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail.mail-digest",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "protected": true,
+  "metadata": {
+    "fallbackLocale": "zh-CN",
+    "locales": {
+      "zh-CN": {
+        "name": "邮件速览",
+        "description": "按确认的时间和邮箱范围整理重要邮件，并投递到消息中心或已连接 Bot。",
+        "shortDescription": "定时整理重要邮件",
+        "category": "效率",
+        "icon": "mail-open"
+      },
+      "en": {
+        "name": "Email Digest",
+        "description": "Summarize important mail in a confirmed time and account scope.",
+        "shortDescription": "Scheduled important-mail digest",
+        "category": "Productivity",
+        "icon": "mail-open"
+      }
+    }
+  },
+  "configurationSchema": {
+    "type": "object",
+    "required": ["localTime", "timezone", "accountScope", "delivery"],
+    "properties": {
+      "localTime": { "type": "string", "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$" },
+      "timezone": { "type": "string" },
+      "accountScope": { "type": "object" },
+      "delivery": { "type": "object" },
+      "maxMessages": { "type": "number", "minimum": 1, "maximum": 1000 }
+    },
+    "additionalProperties": false
+  },
+  "uiSchema": {
+    "version": 1,
+    "fields": [
+      { "path": "accountScope", "control": "account_scope", "label": "邮箱范围", "section": "accounts", "order": 10 },
+      { "path": "localTime", "control": "time", "label": "执行时间", "section": "trigger", "order": 20 },
+      { "path": "timezone", "control": "timezone", "label": "时区", "section": "trigger", "order": 30 },
+      { "path": "delivery", "control": "delivery", "label": "投递方式", "section": "delivery", "order": 40 },
+      { "path": "maxMessages", "control": "number", "label": "最多读取邮件数", "section": "advanced", "order": 50, "advanced": true }
+    ]
+  },
+  "pipelineBlueprint": {
+    "version": 1,
+    "steps": [
+      {
+        "id": "digest",
+        "capabilityId": "analysis.mailDigest",
+        "name": "整理重要邮件",
+        "input": {},
+        "outputKind": "analysis-result",
+        "onError": { "policy": "stop", "retries": 1 }
+      },
+      {
+        "id": "message-center",
+        "capabilityId": "delivery.messageCenter.publish",
+        "name": "发布到消息中心",
+        "input": {
+          "value": { "type": "path", "from": "step", "stepId": "digest", "path": "" }
+        },
+        "outputKind": "delivery-receipt",
+        "onError": { "policy": "continue", "retries": 1 }
+      }
+    ],
+    "bindings": {
+      "trigger.timing.localTime": { "type": "configuration", "path": "localTime" },
+      "trigger.timing.timezone": { "type": "configuration", "path": "timezone" },
+      "accountScope": { "type": "resolvedAccountScope" },
+      "delivery": { "type": "configuration", "path": "delivery" }
+    }
+  },
+  "resultSchemaId": "wemail.mailDigest",
+  "resultSchemaVersion": 1,
+  "rendererId": "wemail.mailDigest",
+  "rendererVersion": "1.0.0",
+  "defaultConfiguration": {
+    "localTime": "08:30",
+    "timezone": "Asia/Shanghai",
+    "accountScope": { "type": "currentAccount" },
+    "delivery": {
+      "destinations": [{ "type": "message_center", "enabled": true }]
+    },
+    "maxMessages": 200
+  },
+  "defaultTrigger": {
+    "type": "scheduled",
+    "schedule": {
+      "type": "daily",
+      "localTime": "08:30",
+      "timezone": "Asia/Shanghai"
+    }
+  },
+  "contentHash": "34c965fa77a56450d6ac80112829ca8e40d405a2af5f97b63ea43a1047870b98"
+}

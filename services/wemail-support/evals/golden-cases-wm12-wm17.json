@@ -1,0 +1,175 @@
+[
+  {
+    "id": "wm12-run-complete-delivery-failed",
+    "query": "我的自动化运行详情显示报告已经生成，但企业微信里没收到通知。是不是整条规则都执行失败了？",
+    "expected_document": "wm-12-automation-guide",
+    "expected_module": "WM-12",
+    "expected_action": "separate_business_processing_from_bot_delivery_then_check_run_and_connection",
+    "must_include": [
+      "不能据此判断整条规则失败",
+      "最近运行",
+      "运行详情",
+      "通知发送失败",
+      "设置 → 连接",
+      "企业微信 Bot"
+    ],
+    "must_not_include": [
+      "报告没有生成",
+      "整条规则一定失败",
+      "直接重复运行",
+      "重新建规则",
+      "把 Bot Secret 发给我"
+    ]
+  },
+  {
+    "id": "wm13-current-email-versus-seven-day-aggregation",
+    "query": "我点了“生成洞察报告”，为什么报告里只有当前这封邮件？我想分析最近 7 天的相似邮件。",
+    "expected_document": "wm-13-insight-reports",
+    "expected_module": "WM-13",
+    "expected_action": "explain_scope_difference_and_choose_seven_day_aggregate_action",
+    "must_include": [
+      "默认只分析当前邮件",
+      "聚合相似邮件并生成洞察报告",
+      "最近 7 天",
+      "先找相似邮件",
+      "聚合"
+    ],
+    "must_not_include": [
+      "模型漏掉了邮件",
+      "自动包含整个邮箱",
+      "重新生成当前邮件就会包含最近 7 天",
+      "报告功能异常"
+    ]
+  },
+  {
+    "id": "wm15-hermes-and-wemail-bot-are-independent",
+    "query": "Hermes 企业微信客服机器人私聊已经能回复了，是不是 WeMail 自动化现在就能直接把报告发到这个机器人所在的群？",
+    "expected_document": "wm-15-external-bot-connections",
+    "expected_module": "WM-15",
+    "expected_action": "distinguish_hermes_channel_from_wemail_product_bot_and_verify_wemail_binding",
+    "must_include": [
+      "不是",
+      "两套独立连接",
+      "设置 → 连接 → 企业微信",
+      "主人配对",
+      "自动化",
+      "群聊"
+    ],
+    "must_not_include": [
+      "Hermes 已连接所以 WeMail 一定可投递",
+      "私聊可用就代表群聊可用",
+      "共用管理员配置",
+      "共用知识库",
+      "把 Bot Secret 发给我"
+    ]
+  },
+  {
+    "id": "wm16-free-trial-switch-to-own-key",
+    "query": "我现在选的是免费额度，还能不能改用我自己的 API Key？保存以后还会继续消耗 WeMail 免费额度吗？",
+    "expected_document": "wm-16-ai-model-free-quota-usage",
+    "expected_module": "WM-16",
+    "expected_action": "explain_custom_model_switch_and_secret_write_only_behavior",
+    "must_include": [
+      "可以",
+      "设置 → AI 模型",
+      "使用自定义模型",
+      "保存并切换",
+      "不再使用免费额度",
+      "不会回显"
+    ],
+    "must_not_include": [
+      "免费套餐不能使用自己的 API Key",
+      "同时消耗两边额度",
+      "把 API Key 发给我",
+      "密钥框为空就是配置丢失",
+      "所有模型都免费"
+    ]
+  },
+  {
+    "id": "wm17-diagnostics-package-privacy-boundary",
+    "query": "导出本地诊断包会不会自动上传？里面会有我的邮件正文或 API Key 吗？是不是 WeMail 的所有数据都只在本机？",
+    "expected_document": "wm-17-settings-notification-privacy-diagnostics",
+    "expected_module": "WM-17",
+    "expected_action": "answer_diagnostic_package_guarantees_without_overclaiming_product_wide_locality",
+    "must_include": [
+      "设置 → 高级设置 → 诊断",
+      "经过脱敏",
+      "不会自动上传",
+      "7 天后自动清理",
+      "不会记录邮件正文",
+      "不会记录 API Key",
+      "不能扩大解释为整个产品完全离线"
+    ],
+    "must_not_include": [
+      "所有数据都绝不会离开本机",
+      "诊断包会自动上传",
+      "诊断包一定包含完整邮件",
+      "把完整诊断包内容贴到群里",
+      "开启调试日志后永久记录"
+    ]
+  },
+  {
+    "id": "wm16-reasoning-effort-unsupported",
+    "query": "我配置的 OpenAI 兼容模型返回 400，说 reasoning_effort 不支持。是不是 API Key 错了？设置里的‘不发送’和‘关闭 none’有什么区别？",
+    "expected_document": "wm-16-ai-model-free-quota-usage",
+    "expected_module": "WM-16",
+    "expected_action": "distinguish_omit_from_none_and_retry_without_reasoning_parameter",
+    "must_include": [
+      "不一定是 API Key",
+      "设置 → AI 模型",
+      "高级设置",
+      "不发送",
+      "不携带",
+      "关闭（none）"
+    ],
+    "must_not_include": [
+      "把 API Key 发给我",
+      "不发送和 none 完全一样",
+      "所有模型都支持 none",
+      "直接更换密钥"
+    ]
+  },
+  {
+    "id": "wm16-worker-concurrency-rate-limit",
+    "query": "首次登录后摘要回填很慢，我能不能把 AI 并发直接调到 16？现在偶尔已经会报 429。",
+    "expected_document": "wm-16-ai-model-free-quota-usage",
+    "expected_module": "WM-16",
+    "expected_action": "avoid_max_concurrency_during_rate_limit_and_use_throughput_evidence",
+    "must_include": [
+      "设置 → 高级设置 → 性能",
+      "1–16",
+      "默认 2",
+      "429",
+      "降低并发",
+      "智能中心"
+    ],
+    "must_not_include": [
+      "直接调到 16",
+      "并发越高一定越快",
+      "右侧助手聊天数",
+      "更换 API Key"
+    ]
+  },
+  {
+    "id": "wm17-desktop-theme-boundary",
+    "query": "你们现在的配色太丑了，有办法自定义配色吗？",
+    "expected_document": "wm-17-settings-notification-privacy-diagnostics",
+    "expected_module": "WM-17",
+    "expected_action": "explain_built_in_desktop_themes_and_offer_feature_request",
+    "must_include": [
+      "Windows 桌面版",
+      "设置 → 高级设置 → 外观",
+      "跟随系统",
+      "浅色",
+      "深色",
+      "暂时不能任意自定义配色"
+    ],
+    "must_not_include": [
+      "网页端还是手机端",
+      "完全不能切换主题",
+      "已经支持任意颜色",
+      "即将上线",
+      "把配置文件发给我"
+    ]
+  }
+]

@@ -1,0 +1,221 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      application: ${{ steps.filter.outputs.application }}
+      website: ${{ steps.filter.outputs.website }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            application:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!openspec/**'
+              - '!website/**'
+            website:
+              - 'website/**'
+
+  typecheck:
+    name: typecheck (${{ matrix.scope }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scope: renderer
+            command: typecheck
+          - scope: server
+            command: typecheck:server
+          - scope: desktop
+            command: typecheck:desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npm run ${{ matrix.command }}
+
+  server-unit:
+    name: server unit (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/4", "2/4", "3/4", "4/4"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:server:unit -- --shard ${{ matrix.shard }}
+
+  renderer:
+    name: vitest ${{ matrix.project }} (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [node, dom]
+        shard: ["1/2", "2/2"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:renderer:${{ matrix.project }} -- --shard=${{ matrix.shard }}
+
+  pr-gate:
+    name: pull-request verification
+    if: always()
+    needs: [typecheck, server-unit, renderer]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all pull-request checks
+        env:
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          SERVER_UNIT_RESULT: ${{ needs.server-unit.result }}
+          RENDERER_RESULT: ${{ needs.renderer.result }}
+        run: |
+          test "$TYPECHECK_RESULT" = success || test "$TYPECHECK_RESULT" = skipped
+          test "$SERVER_UNIT_RESULT" = success || test "$SERVER_UNIT_RESULT" = skipped
+          test "$RENDERER_RESULT" = success || test "$RENDERER_RESULT" = skipped
+
+  public-boundary:
+    name: public boundary / schema / edition identity
+    # No `if` guard: docs- and website-only PRs must run these checks too.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npm run check:public-boundary && npm run check:canonical-mail-schema && npm run test:edition-identity
+
+  website:
+    name: website tests
+    needs: changes
+    if: needs.changes.outputs.website == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+        working-directory: website
+      - run: npm test
+        working-directory: website
+
+  full-server:
+    name: full server (${{ matrix.scope }})
+    if: github.event_name != 'pull_request'
+    needs: pr-gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scope: [integration, acceptance, evaluation]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:server:${{ matrix.scope }}
+
+  browser-e2e:
+    name: browser e2e
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    needs: [changes, pr-gate]
+    # ubuntu-latest rolled to 26.04, which the pinned Playwright build does
+    # not support yet ("Playwright does not support chromium on
+    # ubuntu26.04-x64"). Pin until the Playwright bump lands.
+    runs-on: ubuntu-24.04
+    # run-browser-tests.mjs sets PLAYWRIGHT_BROWSERS_PATH to the repo-local
+    # .playwright-browsers; install into the same cache or Playwright cannot
+    # find the browser (and needs the separate headless-shell package).
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium chromium-headless-shell
+      - run: npm run test:browser
+
+  electron-e2e:
+    name: electron e2e
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    needs: [changes, pr-gate]
+    # Same ubuntu-24.04 pin as browser-e2e (Playwright platform support).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: bun install --frozen-lockfile
+      - run: npx playwright install --with-deps
+      - run: npm run build:desktop
+        # The app window is 1280x860; xvfb-run's default screen is 640x480x8,
+        # which clips the window and drops Chromium to a paletted visual.
+      - run: xvfb-run -a --server-args="-screen 0 1920x1080x24" npm run test:e2e -- --skip-build
+
+  verification-gate:
+    name: verification-gate
+    if: always()
+    needs: [pr-gate, website, full-server, browser-e2e, electron-e2e, public-boundary]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every applicable verification layer
+        env:
+          PR_RESULT: ${{ needs.pr-gate.result }}
+          FULL_SERVER_RESULT: ${{ needs.full-server.result }}
+          BROWSER_RESULT: ${{ needs.browser-e2e.result }}
+          ELECTRON_RESULT: ${{ needs.electron-e2e.result }}
+          WEBSITE_RESULT: ${{ needs.website.result }}
+          PUBLIC_BOUNDARY_RESULT: ${{ needs.public-boundary.result }}
+        run: |
+          test "$PR_RESULT" = success
+          test "$FULL_SERVER_RESULT" = success || test "$FULL_SERVER_RESULT" = skipped
+          test "$BROWSER_RESULT" = success || test "$BROWSER_RESULT" = skipped
+          test "$ELECTRON_RESULT" = success || test "$ELECTRON_RESULT" = skipped
+          test "$WEBSITE_RESULT" = success || test "$WEBSITE_RESULT" = skipped
+          # Mandatory for every PR (including docs/website-only): no skipped allowance.
+          test "$PUBLIC_BOUNDARY_RESULT" = success

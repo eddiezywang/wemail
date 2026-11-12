@@ -1,0 +1,3 @@
+name: 本地 Claude Code
+description: 将代码任务委派给本机 Claude Code CLI，并管理长任务状态、输出和会话恢复
+icon: code

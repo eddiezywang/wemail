@@ -1,0 +1,4 @@
+interface:
+  display_name: "邮件数据分析"
+  short_description: "从邮件数据中确定性发现多维洞察，并输出可追溯的分析意图"
+  default_prompt: "Use $wemail-data-analysis to normalize the extracted mail data and discover auditable analysis intents."

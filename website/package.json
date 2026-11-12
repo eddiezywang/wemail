@@ -1,0 +1,28 @@
+{
+  "name": "@wemail/website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "check": "astro check",
+    "build:site": "astro build",
+    "export:raw": "node scripts/export-raw-markdown.mjs",
+    "build": "npm run build:site && npm run export:raw",
+    "test": "node --test tests/site-links.test.mjs tests/brand-theme.test.mjs tests/mailbox-docs.test.mjs tests/mcp-port-contract.test.mjs tests/invoice-hero.test.mjs tests/invoice-hero-markup.test.mjs tests/export-raw-markdown.test.mjs tests/server.test.mjs tests/feature-demo.test.mjs tests/packaging.test.mjs",
+    "test:build": "npm run build && node --test tests/build-output.test.mjs",
+    "test:all": "npm run test && npm run check && npm run test:build",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.37.7",
+    "astro": "5.18.2"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.9",
+    "typescript": "5.8.3"
+  }
+}

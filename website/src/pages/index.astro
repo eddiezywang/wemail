@@ -1,0 +1,34 @@
+---
+import FeatureCard from "../components/landing/FeatureCard.astro";
+import Hero from "../components/landing/Hero.astro";
+import SiteHeader from "../components/landing/SiteHeader.astro";
+import LandingLayout from "../layouts/LandingLayout.astro";
+---
+
+<LandingLayout title="WeMail 官方文档" description="WeMail 本地优先智能邮件客户端官方文档">
+  <SiteHeader />
+  <main>
+    <Hero />
+    <section class="section">
+      <div class="section__heading">
+        <span>探索能力</span>
+        <h2>按你的工作方式进入 WeMail</h2>
+      </div>
+      <div class="feature-grid">
+        <FeatureCard eyebrow="AI" title="摘要、草稿与智能标签" description="理解单封邮件和完整会话，把重要信息变成可以继续处理的结果。" href="/features/ai/" />
+        <FeatureCard eyebrow="Invoice" title="发票邮件工作流" description="集中查看发票附件及其上传、失败或关联状态。" href="/features/invoices/" />
+        <FeatureCard eyebrow="MCP" title="让本地 AI 工具调用邮箱" description="通过可撤销 Token、有界结果和确认策略控制能力边界。" href="/features/mcp/" />
+      </div>
+    </section>
+    <section class="section">
+      <div class="security-callout">
+        <div>
+          <h2>本地优先，边界清晰</h2>
+          <p>邮箱凭据、MCP Token 和真实邮件内容不应出现在文档、日志、截图或测试示例中。</p>
+        </div>
+        <a class="button button--secondary" href="/security/privacy/">查看安全模型</a>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">WeMail 官方文档 · Apache-2.0</footer>
+</LandingLayout>

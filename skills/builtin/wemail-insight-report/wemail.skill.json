@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-insight-report",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "洞察报告",
+  "description": "分析结构化邮件数据并生成、保存和投递可追溯的 HTML 洞察报告。",
+  "protected": true,
+  "inputKinds": ["data-selection", "dataset", "analysis-recipe", "analysis-result"],
+  "outputKinds": ["analysis-recipe", "artifact-recipe", "artifact-reference"],
+  "dependencies": [{"skillId": "wemail-data-analysis", "version": "1.0.0"}],
+  "toolAllowlist": ["publish_design_artifact"],
+  "requestedPermissions": [],
+  "reviewPolicy": "recommended",
+  "contentHash": "pending"
+}

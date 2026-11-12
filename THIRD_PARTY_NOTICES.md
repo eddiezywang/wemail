@@ -1,0 +1,118 @@
+# Third-Party Notices
+
+This project, **WeMail**, is based on **Agentic Inbox** developed by
+**Cloudflare, Inc.** (<https://github.com/cloudflare/agentic-inbox>),
+licensed under the Apache License, Version 2.0.
+
+Files originating from the upstream project retain their original
+copyright headers:
+
+> Copyright (c) 2026 Cloudflare, Inc.
+> Licensed under the Apache 2.0 license found in the LICENSE file or at:
+> <https://opensource.org/licenses/Apache-2.0>
+
+Modifications and additional code in this repository are licensed under
+the Apache License, Version 2.0 unless stated otherwise.
+
+## Major dependencies
+
+WeMail is built on many open-source packages. The table below lists the most
+significant direct dependencies in `package.json` and their declared licenses.
+
+| Area | Packages | License |
+| --- | --- | --- |
+| Runtime | electron, electron-updater | MIT |
+| UI framework | react, react-dom, react-router, zustand, @tanstack/react-query | MIT |
+| Local API | hono, @hono/node-server | MIT |
+| Mail transport and parsing | imapflow (MIT), nodemailer (MIT-0), postal-mime (MIT-0), pdf-parse (Apache-2.0), node-html-parser (MIT), node-html-markdown (MIT) | MIT / MIT-0 / Apache-2.0 |
+| Database | better-sqlite3, drizzle-orm | MIT / Apache-2.0 |
+| Agent runtime | @earendil-works/pi-agent-core, @earendil-works/pi-ai, @earendil-works/pi-coding-agent | MIT |
+| Rich text | @tiptap/* (ProseMirror) | MIT |
+| Styling | tailwindcss, @tailwindcss/vite | MIT |
+| Imaging | sharp | Apache-2.0 (see obligations below) |
+| Testing | @playwright/test (Apache-2.0), @vitest/ui, jsdom, @testing-library/* (MIT); vitest is transitive via @vitest/ui | MIT / Apache-2.0 |
+| Secrets / crypto | Electron safeStorage (platform API) | — |
+
+`mailparser` and the `@mariozechner/pi-*` agent packages are not dependencies of
+this build. Mail parsing uses `postal-mime`, and the agent runtime uses the
+`@earendil-works/pi-*` packages; AI provider SDKs (`@anthropic-ai/sdk`,
+`@google/genai`, `openai`) are transitive dependencies of `pi-ai`, not direct
+ones. See `THIRD_PARTY_LICENSES.md` for the resolved tree.
+
+## Per-dependency license inventory
+
+`THIRD_PARTY_LICENSES.md` is a generated, reproducible inventory of the
+packages resolved by `bun.lock`. Generate or refresh it offline with:
+
+```
+node scripts/generate-third-party-licenses.mjs
+```
+
+The generator reads `bun.lock` for resolved name/version pairs and the
+`license` / `licenses` fields of installed package manifests. By default it
+lists all direct dependencies plus every package whose declared license is not
+a plain MIT / Apache-2.0 / ISC / BSD-family license, is a compound or dual
+license, or has no license metadata. `node scripts/generate-third-party-licenses.mjs --all`
+emits the complete resolved inventory, and `--check` verifies the committed
+file is current. `bun pm ls` / `npm ls` alone list the tree, not license
+metadata, and are not a substitute for this inventory.
+
+The inventory records declared metadata, not a legal determination. Packages
+marked `UNKNOWN` have no usable `license` field in the installed manifest (or
+are resolved by the lockfile but not installed in that checkout, such as
+platform-specific optional binaries); these require manual verification
+against the package's shipped LICENSE file and upstream source. Regenerate the
+inventory on the actual release-packaging platform so the shipped binary set
+is covered.
+
+### Obligations tied to the distributed form
+
+Being listed in the inventory does not by itself establish that every license
+obligation is satisfied. The following must be settled against the actual
+distributed artifact (source vs. binary, static vs. dynamic linking, and which
+platform packages ship), and the corresponding license texts and notices
+included in the distribution:
+
+- **sharp / libvips (LGPL)**: `sharp` itself declares Apache-2.0, but the
+  prebuilt native binary packages such as `@img/sharp-win32-x64` declare
+  `Apache-2.0 AND LGPL-3.0-or-later` because of the bundled libvips. Shipping
+  those binaries requires satisfying the LGPL-3.0-or-later terms for the
+  libvips portion (source availability or relinking information, notices and
+  license text), not only the Apache-2.0 part.
+- **lightningcss (MPL-2.0)**: MPL-2.0 is file-level copyleft. If the shipped
+  build carries MPL-covered source files, their source must be made available
+  and notices retained; confirm which form (source or generated output) the
+  distribution actually contains.
+- **DOMPurify ((MPL-2.0 OR Apache-2.0))**: this is a dual license. Choose one
+  of the two for the distributed copy, record that choice, and follow that
+  license's notice and source-availability terms.
+
+## Fonts
+
+| Field | Value |
+| --- | --- |
+| Font | JetBrains Mono, weights 400 / 500 / 600 / 700 |
+| Source | Upstream project <https://github.com/JetBrains/JetBrainsMono>; copyright line verified from the bundled files' embedded name records |
+| License | SIL Open Font License, Version 1.1 (OFL-1.1) |
+| Bundled files | `electron/assets/fonts/jetbrains-mono/jb-400.woff2`, `jb-500.woff2`, `jb-600.woff2`, `jb-700.woff2` |
+| Copyright notice and full license text | `electron/assets/fonts/jetbrains-mono/OFL.txt` |
+| Used by | `electron/assets/notification-window.html` (`@font-face`) and `app/styles/tokens.css` (`--font-mono-meta`) |
+
+The four WOFF2 files are bundled copies of JetBrains Mono and are used by the
+desktop notification window and the renderer's monospace token. They are not
+removed, so the OFL-1.1 requirement that the copyright notice and license
+accompany each copy is met by shipping `OFL.txt` in the same directory.
+
+`package.json` `build.extraResources` maps the whole `electron/assets`
+directory to `resources/assets` in the packaged app. That is a directory copy
+with no extension filter, so all four WOFF2 files and `OFL.txt` are included
+in the distribution together. No separate assets rule is needed.
+
+"JetBrains Mono" and JetBrains are trademarks of JetBrains s.r.o. This project
+is not affiliated with or endorsed by JetBrains.
+
+## Trademarks
+
+"Cloudflare" and the upstream project name are trademarks of Cloudflare,
+Inc. This project is an independent derivative work and is not endorsed
+by or affiliated with Cloudflare.
