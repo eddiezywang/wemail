@@ -66,8 +66,13 @@ export interface TestServerOptions {
   /**
    * Supply a responder for every LLM call. Return a string of JSON — it
    * is served verbatim as `choices[0].message.content`.
+   *
+   * For streaming requests (`stream: true`, e.g. the PI agent's native
+   * tool-calling loop) the mock switches to SSE. Return
+   * `{ __stream: [chunk, ...] }` to script the OpenAI chunk sequence
+   * verbatim; a plain string is wrapped into a single content delta.
    */
-  llmResponder?: (body: unknown) => string;
+  llmResponder?: (body: unknown) => string | { __stream: unknown[] };
   /** Model ids returned by the mock OpenAI-compatible `/v1/models` endpoint. */
   llmModels?: string[];
   /** Reuse an existing data directory (e.g. for logout-preserves-db spec). */
@@ -151,7 +156,50 @@ async function startMockLlm(
         } catch {
           // ignore — responder may still want to run
         }
-        const content = responder ? responder(parsed) : "{}";
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          (parsed as { stream?: unknown }).stream === true
+        ) {
+          // SSE mode: the official OpenAI SDK drives the PI agent's native
+          // loop here, so chunks must follow the chat.completion.chunk shape.
+          const scripted = responder ? responder(parsed) : "{}";
+          res.writeHead(200, {
+            "content-type": "text/event-stream",
+            "cache-control": "no-cache",
+            connection: "keep-alive",
+          });
+          if (
+            typeof scripted === "object" &&
+            scripted !== null &&
+            "__stream" in scripted
+          ) {
+            for (const chunk of scripted.__stream) {
+              res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            }
+          } else {
+            res.write(
+              `data: ${JSON.stringify({
+                id: "mock-cmpl",
+                object: "chat.completion.chunk",
+                created: 0,
+                model: "mock-model",
+                choices: [
+                  {
+                    index: 0,
+                    delta: { role: "assistant", content: String(scripted) },
+                    finish_reason: null,
+                  },
+                ],
+              })}\n\n`,
+            );
+          }
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        const scripted = responder ? responder(parsed) : "{}";
+        const content = typeof scripted === "string" ? scripted : JSON.stringify(scripted);
         const payload = {
           id: "mock-cmpl",
           object: "chat.completion",
