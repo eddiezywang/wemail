@@ -28,7 +28,8 @@
   --color-ink: #0d0d0d;
   --color-ink-2: #444444;
   --color-ink-3: #616165;
-  --color-ink-4: #8e8e93;
+  /* zinc-500-class neutral: keeps small meta text ≥ 4.5:1 on white */
+  --color-ink-4: #71717a;
 
   /* Lines — 1px hairlines */
   --color-edge: #e9e9e9;
@@ -68,4 +69,27 @@
   --shadow-1: 0 1px 0 #e9e9e9;
   --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* shadcn aliases — re-declared like dark.css because the Tailwind
+     @theme aliases compile to static :root hexes that would otherwise
+     win the cascade and keep coral focus rings under codex. */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-border: var(--color-edge);
+  --color-input: var(--color-edge);
+  --color-ring: var(--color-focus);
+  --color-muted: var(--color-paper-3);
+  --color-muted-foreground: var(--color-ink-3);
+  --color-accent: var(--color-coral);
+  --color-accent-foreground: #ffffff;
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-paper);
+  --color-secondary: var(--color-paper-2);
+  --color-secondary-foreground: var(--color-ink-2);
+  --color-destructive: var(--color-red);
+  --color-destructive-foreground: #ffffff;
+  --color-popover: var(--color-paper-2);
+  --color-popover-foreground: var(--color-ink);
+  --color-card: var(--color-paper-2);
+  --color-card-foreground: var(--color-ink);
 }

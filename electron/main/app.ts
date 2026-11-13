@@ -1386,7 +1386,9 @@ async function createMainWindow() {
     frame: false,
     titleBarStyle: isMac ? "hiddenInset" : "hidden",
     trafficLightPosition: isMac ? { x: 12, y: 10 } : undefined,
-    backgroundColor: "#faf8f4",
+    /* Neutral pre-paint shell color; codex canvas is white. Dark-theme
+       users get the same brief light flash as before. */
+    backgroundColor: "#ffffff",
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,

@@ -122,7 +122,7 @@ export class CustomNotificationWindow {
       alwaysOnTop: true,
       focusable: false,
       hasShadow: true,
-      backgroundColor: "#fdfbf6",
+      backgroundColor: "#ffffff",
       webPreferences: {
         preload: path.join(__dirname, "../preload/notification-window.js"),
         contextIsolation: true,
