@@ -246,8 +246,9 @@ publication without changing visibility.
   features are unavailable while the repository is private; enabling and
   verifying them is an owner action required before any future flip.
 - Items that cannot be performed by an agent and remain owner actions:
-  confirm revocation of the historical model-service key with the
-  provider; verify the private advisory channel from a non-maintainer
+  ~~confirm revocation of the historical model-service key with the
+  provider~~ **confirmed revoked by the owner (2026-11-13)**; verify the
+  private advisory channel from a non-maintainer
   perspective; re-check the final artifact on the exact release SHA;
   decide whether to ask GitHub to purge any cached old objects.
 - Visibility was NOT changed. No public flip is authorized by this round.
