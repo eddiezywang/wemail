@@ -18,8 +18,8 @@ export function AppearanceSection() {
 			<Tabs value={theme} onValueChange={(value) => setTheme(value as Theme)}>
 				<TabsList data-testid="theme-selector">
 					<TabsTrigger value="system">跟随系统</TabsTrigger>
-					<TabsTrigger value="paper">浅色</TabsTrigger>
-					<TabsTrigger value="codex">黑白</TabsTrigger>
+					<TabsTrigger value="paper">暖石</TabsTrigger>
+					<TabsTrigger value="codex">黑白灰</TabsTrigger>
 					<TabsTrigger value="dark">深色</TabsTrigger>
 				</TabsList>
 			</Tabs>
