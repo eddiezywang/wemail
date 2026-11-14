@@ -68,7 +68,7 @@ WeMail 把邮箱变成一个**本地运行的智能工作台**:通过 IMAP/SMTP 
 ## 效果展示
 
 <p align="center">
-  <img src="demo_app_public.png" alt="WeMail 工作台" width="860">
+  <img src="website/public/og.png" alt="WeMail — AI 原生邮件客户端" width="860">
 </p>
 
 <!-- TODO: 补充 Agent 对话、智能标签晋升、洞察报告的动图 -->
@@ -134,37 +134,9 @@ npm run dev:desktop        # 启动应用
 
 三层结构、单进程树,全部运行在本机:
 
-```mermaid
-flowchart TD
-    subgraph Renderer["渲染层 app/ — React Router 7"]
-        UI[邮件视图 / 智能卡片 / Agent 面板 / 设置]
-    end
-    subgraph Shell["Electron 壳 electron/"]
-        Main[主进程:窗口 / 托盘 / 更新器]
-        MC[mail-core 工作进程<br/>IMAP/SMTP 同步]
-        DB[db-service 工作进程<br/>SQLite 读写车道]
-        BC[bot-core 工作进程<br/>企微/飞书 长连接]
-    end
-    subgraph LocalAPI["本地 API server/ — Hono"]
-        Routes["/api/* 路由:账户 / 邮件 / 智能 / Agent / 设置"]
-        Comp["组合根 AppComposition<br/>手写 DI,按账户生命周期装配"]
-        IQ["智能管线:编排器 + 任务队列 + 处理器"]
-        Agent["Pi Agent 运行时 + 工具集"]
-    end
-    Store[("SQLite<br/>用户数据目录")]
-
-    UI -- "HTTP (127.0.0.1)" --> Routes
-    Main --> Comp
-    Routes --> Comp
-    Comp --> IQ
-    Comp --> Agent
-    MC <--> Store
-    DB <--> Store
-    IQ -- "邮件元数据/正文" --> Store
-    MC -- "IMAP / SMTP" --> MailSrv[(企业邮箱服务器)]
-    IQ -- "仅元数据+必要正文, BYOK" --> LLM[(你的 LLM 端点)]
-    BC -- "回调 / 流式" --> IM[(企微 / 飞书开放平台)]
-```
+<p align="center">
+  <img src="docs/architecture.zh.png" alt="WeMail 系统架构" width="860">
+</p>
 
 - **渲染层**不直接触达任何外部服务,一切经本地 API;`shared/` 承载跨进程类型契约。
 - **服务层**与主进程一起由 tsc 编译,无独立后端部署。

@@ -48,7 +48,7 @@ configure it.
 ## Screenshot
 
 <p align="center">
-  <img src="demo_app_public.png" alt="WeMail workbench" width="860">
+  <img src="website/public/og.png" alt="WeMail — AI-native email client" width="860">
 </p>
 
 ## Getting started
@@ -80,11 +80,9 @@ leaves the machine.
 
 Three layers, one process tree:
 
-```
-Electron shell (electron/)          window, tray, updater, utility-process workers
-   └─ Local API (server/, Hono)     accounts, mail, intelligence, agent, settings
-        └─ Renderer (app/, React)   React Router 7 + TanStack Query + Tailwind 4
-```
+<p align="center">
+  <img src="docs/architecture.en.png" alt="WeMail system architecture" width="860">
+</p>
 
 - `electron/` — main process, mail-core & DB service workers, bot-core, updater
 - `server/` — composition root (`AppComposition.ts`), IMAP/SMTP, intelligence pipeline
