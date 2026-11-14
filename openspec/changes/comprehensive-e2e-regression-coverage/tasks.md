@@ -48,15 +48,34 @@
 
 ## 6. Future coverage (tracked, not yet implemented)
 
-- [ ] Workbench interaction pack: read/unread, star, archive, delete,
-      folder switch, filters, bulk actions
-- [ ] Compose interaction pack: draft save/edit/delete, rich-text editor,
-      directory recipient autocomplete, signature injection
+- [x] Workbench interaction pack: read/unread, star, delete, unknown-id
+      isolation (spec 18, canonical IPC)
+- [x] Folder switch + filters/pagination live walk (live UI batch 1)
+- [ ] Bulk multi-select actions
+- [x] Compose interaction pack: draft save/edit/delete + scheduled send
+      queue/cancel + directory contacts smoke (spec 19)
+- [ ] Rich-text editor interactions, signature injection (UI-level)
 - [ ] Agent pending-action confirm→execute chain (authorized send)
 - [ ] Notification click-through navigation + artifact viewer
-- [ ] Scheduled send (setSnooze / listScheduled / cancel)
+- [x] Scheduled send queue + cancel (spec 19, canonical IPC)
 - [ ] Automation template upgrade + rollback paths
-- [ ] Settings sections per-section smoke (19 sections)
+- [x] Settings primary sections walk (live UI batch 3, 8 sections)
+- [ ] Settings per-section deep assertions (legacy sections merged into
+      account/advanced in current build)
 - [ ] Native bridge pack (openExternal safety, update flow, diagnostics
       package export, certificate trust)
 - [ ] Multi-account fixtures
+
+## 8. Round 4 additions
+
+- [x] Spec 20: automation template upgrade preview/confirm guards +
+      rollback confirmation/version-conflict contracts (public error
+      projection asserts the conflict class — raw codes are redacted)
+- [x] package.json: declare `pinyin-pro` + `sm-crypto` runtime dependencies
+      (imported by dist server code but previously undeclared; npm installs
+      pruned them and broke boot)
+- [x] Live UI batch 5: notification center markers + todo route
+      (`tests/live/ui/05-notifications-todos.mjs`)
+- [ ] Agent pending-action confirm→execute chain — requires agent
+      conversation test infrastructure (mock LLM emitting valid tool-call
+      sequences); deferred with justification

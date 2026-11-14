@@ -192,3 +192,20 @@ failures via retry.
       clicked in sequence
 - **THEN** at most 2 transient section misses are tolerated and the dialog
       closes via its own 关闭 button
+
+### Requirement: Automation template upgrade and rollback guards
+
+The suite SHALL cover the template version surface for installed v2
+automations: `template-version` endpoint answers, upgrade preview and
+tampered-hash confirm guards return structured 4xx (never 500), rollback
+without the exact confirmation string (`回退到版本 N`) returns
+`exact-rollback-confirmation-required`, rollback with a conflicting
+expected version returns a structured 409 conflict, and the public error
+projection redacts raw codes (assert the conflict class, not raw text).
+
+#### Scenario: Rollback confirmation guards
+
+- **WHEN** rollback is attempted with a wrong confirmation string, then
+      with a conflicting expected version, on a freshly installed template
+- **THEN** both attempts return 409 with the conflict-class public error,
+      and upgrade preview/confirm guards return structured 4xx

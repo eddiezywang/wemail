@@ -36,6 +36,7 @@ the end, which breaks subsequent desktop dev launches on this machine. When
 | `17-remaining-surfaces.spec.ts` | Skills/configuration/directory/insight/attachments/invoice/remote-image/qa smoke + validation |
 | `18-workbench-mutations.spec.ts` | Workbench mutations: star/seen flags, delete, unknown-id isolation (snapshot + list verification) |
 | `19-compose-draft-pack.spec.ts` | Draft save/list/get/edit/delete, scheduled send queue + cancel, directory contacts smoke |
+| `20-template-upgrade-rollback.spec.ts` | Template upgrade preview/confirm guards + rollback confirmation/version-conflict 409 contracts |
 
 ## Fake infrastructure
 
