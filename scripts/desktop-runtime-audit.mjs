@@ -230,6 +230,14 @@ export function collectRuntimeDependencyReferences(entries) {
     const privateModulesDirectory = editionModulesPrivateModulesDirectory(file);
     for (const specifier of extractModuleSpecifiers(source)) {
       if (specifier.startsWith(".") || specifier.startsWith("/")) {
+        if (specifier.endsWith(".node")) {
+          // Platform-optional native binary (e.g. @napi-rs/canvas's
+          // "./skia.<triple>.node" loaders reference every platform's binary
+          // from one JS file, but only the host triple is ever installed).
+          // Binaries are selected at runtime, so they are not part of the
+          // auditable JS closure; the packaged smoke exercises the host one.
+          continue;
+        }
         const resolved = resolveLocalModule(file, specifier);
         if (!resolved) throw new Error(`Cannot resolve local runtime import "${specifier}" from ${file}`);
         pending.push(resolved);
