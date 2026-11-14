@@ -66,7 +66,7 @@ class FakeImap extends EventEmitter implements ImapLikeClient {
   deleted: Array<{ range: string | number[]; options?: Record<string, unknown> }> = [];
   lockReleases = 0;
   constructor(
-    private readonly messages: RawFetchLike[],
+    protected readonly messages: RawFetchLike[],
     private readonly failUntilAttempt = 0,
     public uidValidityValue = 17,
   ) {

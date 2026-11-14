@@ -228,6 +228,27 @@ function resolveElectronNativeBinding(): string | undefined {
     );
     if (fs.existsSync(candidate)) return candidate;
   }
+  // Packaged builds ship the Electron-ABI binding at build/Release: the
+  // production dependency stage is installed with --ignore-scripts, so the
+  // bin/<triple> prebuild layout never exists there, and the packager copies
+  // the verified Electron binding into build/Release (see
+  // package-desktop-win-dir.mjs). Deliberately NOT probed for process.cwd():
+  // in a dev checkout build/Release holds the Node-ABI binary, which would
+  // crash Electron on load.
+  if (resourcesPath) {
+    for (const root of ["app", "app.asar.unpacked"]) {
+      const candidate = path.join(
+        resourcesPath,
+        root,
+        "node_modules",
+        "better-sqlite3",
+        "build",
+        "Release",
+        "better_sqlite3.node",
+      );
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
   throw new Error(
     `better-sqlite3 Electron 原生绑定缺失：需要 ABI ${modules} ` +
       `(${process.platform}-${process.arch}-${modules})，但 ${roots
