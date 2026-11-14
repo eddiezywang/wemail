@@ -34,6 +34,8 @@ the end, which breaks subsequent desktop dev launches on this machine. When
 | `15-read-api-boundary.spec.ts` | Read API: search/todos/smart-tags/channels/messages validation, unknown ids, clamped pagination |
 | `16-automation-template-lifecycle.spec.ts` | Template lifecycle: validate → preview → hash-guard → install → run → dry-test → delete contracts |
 | `17-remaining-surfaces.spec.ts` | Skills/configuration/directory/insight/attachments/invoice/remote-image/qa smoke + validation |
+| `18-workbench-mutations.spec.ts` | Workbench mutations: star/seen flags, delete, unknown-id isolation (snapshot + list verification) |
+| `19-compose-draft-pack.spec.ts` | Draft save/list/get/edit/delete, scheduled send queue + cancel, directory contacts smoke |
 
 ## Fake infrastructure
 
