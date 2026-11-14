@@ -20,7 +20,7 @@ function commandError(options: {
   });
 }
 
-test("classifies the Webank IMAP password-invalid response", () => {
+test("classifies a corporate IMAP password-invalid response", () => {
   assert.equal(
     isMailCredentialInvalidError(
       commandError({

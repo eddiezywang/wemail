@@ -1309,9 +1309,9 @@ test("ImapSmtpMailProvider.sendDraft records a rejected CC as partial delivery",
       sendMail: async () => ({
         messageId: "<partial@example.com>",
         accepted: ["bob@example.com"],
-        rejected: ["fangfangliu@webank.com"],
+        rejected: ["fangfangliu@corp.example"],
         rejectedErrors: [{
-          recipient: "fangfangliu@webank.com",
+          recipient: "fangfangliu@corp.example",
           response: "550 mailbox unavailable",
           responseCode: 550,
         }],
@@ -1323,7 +1323,7 @@ test("ImapSmtpMailProvider.sendDraft records a rejected CC as partial delivery",
   const result = await provider.sendDraft({
     accountId: "acct-1",
     to: [{ email: "bob@example.com" }],
-    cc: [{ email: "fangfangliu@webank.com" }],
+    cc: [{ email: "fangfangliu@corp.example" }],
     subject: "partial",
     bodyText: "body",
     bodyHtml: "<p>body</p>",
@@ -1332,15 +1332,15 @@ test("ImapSmtpMailProvider.sendDraft records a rejected CC as partial delivery",
   assert.deepEqual(result.delivery, {
     status: "partial",
     accepted: ["bob@example.com"],
-    rejected: ["fangfangliu@webank.com"],
+    rejected: ["fangfangliu@corp.example"],
     rejectedDetails: [{
-      recipient: "fangfangliu@webank.com",
+      recipient: "fangfangliu@corp.example",
       response: "550 mailbox unavailable",
       responseCode: 550,
     }],
   });
   assert.match(logs.at(-1) ?? "", /status=partial/);
-  assert.match(logs.at(-1) ?? "", /fangfangliu@webank\.com/);
+  assert.match(logs.at(-1) ?? "", /fangfangliu@corp.example/);
 });
 
 test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", async () => {
@@ -1353,7 +1353,7 @@ test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", as
       sendMail: async () => ({
         messageId: "<rejected@example.com>",
         accepted: [],
-        rejected: ["bob@example.com", "fangfangliu@webank.com"],
+        rejected: ["bob@example.com", "fangfangliu@corp.example"],
       }),
     }),
   });
@@ -1362,7 +1362,7 @@ test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", as
     () => provider.sendDraft({
       accountId: "acct-1",
       to: [{ email: "bob@example.com" }],
-      cc: [{ email: "fangfangliu@webank.com" }],
+      cc: [{ email: "fangfangliu@corp.example" }],
       subject: "rejected",
       bodyText: "body",
       bodyHtml: "<p>body</p>",

@@ -5,6 +5,7 @@ import { DirectoryRepository } from "../directory/DirectoryRepository.js";
 import type { DirectoryWriteParams } from "../../../shared/wemail/directoryDatabase.js";
 import type { DatabaseRetentionBatchParams, DatabaseRetentionBatchResult } from "../../../shared/wemail/retention.js";
 import { BusinessPreferencesPatchSchema, type BusinessPreferences } from "../../../shared/wemail/businessPreferences.js";
+import type { DirectoryPinyinPort } from "../directory/DirectoryRemoteClient.js";
 import { BusinessPreferenceService } from "../settings/BusinessPreferenceService.js";
 import { randomUUID } from "node:crypto";
 import { deepStrictEqual } from "node:assert";
@@ -227,7 +228,12 @@ export class MailDatabaseWriter {
 
   constructor(
     private readonly db: MailDatabase,
-    options: { replyDecisionEnabled?: boolean } = {},
+    options: {
+      replyDecisionEnabled?: boolean;
+      /** P2.4: explicit pinyin port (tests / composition); omitted = build-time
+       *  edition registration, no-op in the open edition. */
+      pinyin?: DirectoryPinyinPort;
+    } = {},
   ) {
     // Same switch semantics as electron/main/app.ts: reply-decision is a
     // master flag (WEMAIL_REPLY_DECISION_ENABLED=1). The drain side
@@ -239,7 +245,7 @@ export class MailDatabaseWriter {
       options.replyDecisionEnabled ??
       process.env.WEMAIL_REPLY_DECISION_ENABLED === "1";
     this.queries = new MailDatabaseQueryRepository(db);
-    this.directory = new DirectoryRepository(db);
+    this.directory = new DirectoryRepository(db, undefined, options.pinyin);
     const topicCandidates = new TopicCandidateRepository(db);
     const suggestions = {
       topics: topicCandidates,
