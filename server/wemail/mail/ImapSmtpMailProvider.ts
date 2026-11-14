@@ -812,12 +812,28 @@ export class ImapSmtpMailProvider implements MailProvider {
             this.selectedFolder = state.folder;
             this.selectedUidValidity = uidValidity;
             if (state.folder === this.folder) this.uidValidity = uidValidity;
-            if (!Number.isSafeInteger(box.uidNext) || box.uidNext! < 1) {
+            // Coremail servers omit UIDNEXT in both SELECT and STATUS
+            // responses (RFC 3501 non-conformance). Fall back to deriving the
+            // effective next-UID from the highest existing UID: SEARCH UID *
+            // matches only the message(s) with the largest UID, so it is a
+            // single cheap round-trip even on large mailboxes.
+            let effectiveUidNext = typeof box.uidNext === "number" ? box.uidNext : 0;
+            if (effectiveUidNext < 1) {
+              const highest = await client.search({ uid: "*" }, { uid: true });
+              const maxUid = Array.isArray(highest)
+                ? highest.reduce<number>(
+                    (max, uid) => (Number.isSafeInteger(uid) && uid > max ? uid : max),
+                    0,
+                  )
+                : 0;
+              effectiveUidNext = maxUid + 1;
+            }
+            if (effectiveUidNext < 1) {
               throw new Error("mail-provider-uidnext-unavailable");
             }
             const sameGeneration = state.previous?.uidValidity === uidValidity;
             if (state.upper === null) {
-              state.upper = box.uidNext! - 1;
+              state.upper = effectiveUidNext - 1;
               if (options.repair) {
                 if (sameGeneration && state.previous?.repair?.completed) {
                   state.done = true;

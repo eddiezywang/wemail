@@ -282,6 +282,52 @@ test("ImapSmtpMailProvider.syncMetadataPages reselects its folder before every p
   await iterator.return?.();
 });
 
+test("ImapSmtpMailProvider.syncIncrementalPages derives the upper bound when the server omits UIDNEXT", async () => {
+  const { secrets, accountService } = setupAccount();
+  const fake = new class extends FakeImap {
+    override async mailboxOpen(path: string): Promise<{ uidValidity: number }> {
+      this.openedFolders.push(path);
+      // Coremail-style response: no uidNext at all.
+      return { uidValidity: this.uidValidityValue };
+    }
+    override async search(query: unknown, options: unknown): Promise<number[]> {
+      if ((query as { uid?: unknown })?.uid === "*") {
+        this.searches.push({ query, options });
+        const maxUid = Math.max(0, ...this.messages.map((message) => message.uid));
+        return maxUid > 0 ? [maxUid] : [];
+      }
+      return super.search(query, options);
+    }
+  }([
+    {
+      uid: 7,
+      envelope: {
+        date: "2026-04-02T10:00:00Z",
+        subject: "no uidnext server",
+        messageId: "<no-uidnext@x.com>",
+        from: [{ address: "a@x.com" }],
+        to: [{ address: "me@example.com" }],
+      },
+      internalDate: "2026-04-02T10:00:00Z",
+    },
+  ]);
+  const provider = new ImapSmtpMailProvider({
+    accountService,
+    secrets,
+    imapFactory: () => fake,
+  });
+  const seen: number[] = [];
+  for await (const page of provider.syncIncrementalPages({
+    states: {},
+    since: new Date("2026-05-01T00:00:00Z"),
+  })) {
+    seen.push(...page.messages.map((message) => message.sync.uid));
+  }
+  assert.deepEqual(seen, [7]);
+  assert.ok(fake.searches.some((entry) => (entry.query as { uid?: unknown })?.uid === "*"));
+  await provider.disconnect();
+});
+
 test("ImapSmtpMailProvider.syncSince fetches all matching UIDs in a 30-day window", async () => {
   const { secrets, accountService } = setupAccount();
   const messages: RawFetchLike[] = Array.from({ length: 30 }, (_, index) => {
