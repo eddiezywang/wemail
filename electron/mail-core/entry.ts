@@ -500,6 +500,7 @@ async function reloadAccountRuntime(): Promise<void> {
         error,
         retryDelayMs,
       ),
+      terminalJob: (id, owner, error) => producer.terminalJob(id, owner, error),
       deferJob: (id, owner, reason, delayMs) => producer.deferJob(
         id,
         owner,

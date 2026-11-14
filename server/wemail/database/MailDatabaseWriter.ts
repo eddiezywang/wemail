@@ -2,12 +2,12 @@ import { ChannelInboundRepository, ChannelDeliveryRepository } from "../channels
 import { MailDatabaseChannelLeaseParamsSchema, type MailDatabaseChannelLeaseParams } from "../../../shared/wemail/mailDatabaseProtocol.js";
 import { runDatabaseRetentionBatch } from "../security/DatabaseRetention.js";
 import { DirectoryRepository } from "../directory/DirectoryRepository.js";
-import type { DirectoryPinyinPort } from "../directory/DirectoryRemoteClient.js";
 import type { DirectoryWriteParams } from "../../../shared/wemail/directoryDatabase.js";
 import type { DatabaseRetentionBatchParams, DatabaseRetentionBatchResult } from "../../../shared/wemail/retention.js";
 import { BusinessPreferencesPatchSchema, type BusinessPreferences } from "../../../shared/wemail/businessPreferences.js";
 import { BusinessPreferenceService } from "../settings/BusinessPreferenceService.js";
 import { randomUUID } from "node:crypto";
+import { deepStrictEqual } from "node:assert";
 import { MailFolderSyncStateSchema, type MailFolderSyncState } from "../../../shared/wemail/mailSync.js";
 import { materializeInvoiceSubjectCategory } from "./InvoiceSubjectCategory.js";
 import type { MailCoreMutationResult } from "../../../shared/wemail/mailCoreProtocol.js";
@@ -189,6 +189,7 @@ interface FolderRow {
 
 interface CanonicalMessageRow extends MessageRow {
   thread_id: bigint | null;
+  snippet: string | null;
   normalized_subject: string;
   sender_preview: string;
 }
@@ -206,6 +207,18 @@ interface InitialAiCoverageResult {
   enqueuedCount: number;
 }
 
+function sameJson(left: unknown, right: unknown): boolean {
+  // Key-order-insensitive structural equality: a stringify comparison would
+  // falsely report a checkpoint conflict whenever schema evolution or a
+  // legacy row reorders keys.
+  try {
+    deepStrictEqual(left, right);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class MailDatabaseWriter {
   private readonly queries: MailDatabaseQueryRepository;
   private readonly directory: DirectoryRepository;
@@ -214,12 +227,7 @@ export class MailDatabaseWriter {
 
   constructor(
     private readonly db: MailDatabase,
-    options: {
-      replyDecisionEnabled?: boolean;
-      /** P2.4: explicit pinyin port (tests / composition); omitted = build-time
-       *  edition registration, no-op in the open edition. */
-      pinyin?: DirectoryPinyinPort;
-    } = {},
+    options: { replyDecisionEnabled?: boolean } = {},
   ) {
     // Same switch semantics as electron/main/app.ts: reply-decision is a
     // master flag (WEMAIL_REPLY_DECISION_ENABLED=1). The drain side
@@ -231,7 +239,7 @@ export class MailDatabaseWriter {
       options.replyDecisionEnabled ??
       process.env.WEMAIL_REPLY_DECISION_ENABLED === "1";
     this.queries = new MailDatabaseQueryRepository(db);
-    this.directory = new DirectoryRepository(db, undefined, options.pinyin);
+    this.directory = new DirectoryRepository(db);
     const topicCandidates = new TopicCandidateRepository(db);
     const suggestions = {
       topics: topicCandidates,
@@ -2075,7 +2083,7 @@ export class MailDatabaseWriter {
           const parsed = MailFolderSyncStateSchema.safeParse(JSON.parse(row?.cursor_json ?? "null"));
           if (parsed.success) current = parsed.data;
         } catch { /* Invalid legacy progress is equivalent to no checkpoint. */ }
-        if (JSON.stringify(current) !== JSON.stringify(MailFolderSyncStateSchema.nullable().parse(checkpoint.previous))) {
+        if (!sameJson(current, MailFolderSyncStateSchema.nullable().parse(checkpoint.previous))) {
           throw new Error("metadata-checkpoint-conflict");
         }
         const next = MailFolderSyncStateSchema.parse(checkpoint.next);
@@ -2584,6 +2592,7 @@ export class MailDatabaseWriter {
         is_seen: effectiveSeen ? 1n : 0n,
         is_flagged: effectiveFlagged ? 1n : 0n,
         deleted_at_ms: null,
+        snippet: message.snippet,
         normalized_subject: normalizedSubject,
         sender_preview: sender,
       };
@@ -2608,6 +2617,11 @@ export class MailDatabaseWriter {
         ) VALUES (?, 'missing', ?, 0, 1, 1)
       `).run(id, Math.max(0, message.bodyVersion ?? 0));
     } else {
+      // A metadata (no source) fetch parses an empty snippet. Never let it
+      // blank the snippet a body hydration already stored on the row.
+      const storedSnippet = message.snippet.trim().length > 0 || !canonical.snippet
+        ? message.snippet
+        : canonical.snippet;
       this.db.prepare(`
         UPDATE mail_messages SET
           thread_id = ?, rfc_message_id = COALESCE(?, rfc_message_id),
@@ -2622,7 +2636,7 @@ export class MailDatabaseWriter {
         rfcMessageId,
         normalizedSubject,
         message.subject,
-        message.snippet,
+        storedSnippet,
         sender,
         this.recipientPreview(message),
         sentAtMs,
@@ -2766,7 +2780,7 @@ export class MailDatabaseWriter {
              messages.primary_instance_id, messages.received_at_ms,
              messages.has_attachments, messages.is_seen, messages.is_flagged,
              messages.deleted_at_ms, messages.normalized_subject,
-             messages.sender_preview
+             messages.sender_preview, messages.snippet
       FROM mail_messages messages
       WHERE messages.account_id = ? AND messages.public_id = ?
       LIMIT 1
@@ -2778,7 +2792,7 @@ export class MailDatabaseWriter {
              messages.primary_instance_id, messages.received_at_ms,
              messages.has_attachments, messages.is_seen, messages.is_flagged,
              messages.deleted_at_ms, messages.normalized_subject,
-             messages.sender_preview
+             messages.sender_preview, messages.snippet
       FROM mail_message_instances instances
       JOIN mail_messages messages ON messages.id = instances.message_id
       WHERE instances.folder_id = ? AND instances.uid_validity = ?
@@ -2794,7 +2808,7 @@ export class MailDatabaseWriter {
              messages.primary_instance_id, messages.received_at_ms,
              messages.has_attachments, messages.is_seen, messages.is_flagged,
              messages.deleted_at_ms, messages.normalized_subject,
-             messages.sender_preview
+             messages.sender_preview, messages.snippet
       FROM mail_message_identity_keys keys
       JOIN mail_messages messages ON messages.id = keys.message_id
       WHERE messages.account_id = ? AND keys.key_kind = ? AND keys.key_value = ?

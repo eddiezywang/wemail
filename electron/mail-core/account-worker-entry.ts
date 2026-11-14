@@ -649,6 +649,12 @@ function postMetadataPage(
   providerMs?: number,
 ): Promise<boolean> {
   if (cancelledMetadataJob === command.jobId) return Promise.resolve(false);
+  // INVARIANT: the runtime MUST eventually ack every posted page (metadata-ack,
+  // continue true/false) or terminate this worker — there is deliberately no
+  // timeout here. Every runtime path that skips the ack (worker replaced,
+  // heartbeat/progress timeout, stop) ends in worker.terminate(), so this
+  // promise never leaks on a live thread. If you add a path that abandons a
+  // background job without terminating, add an ack timeout here first.
   return new Promise<boolean>((resolve) => {
     metadataAcknowledgements.set(command.jobId, resolve);
     accountPort.postMessage({

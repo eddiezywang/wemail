@@ -240,6 +240,105 @@ test("account runtime persists a P0 body job through the DB Writer", async () =>
   await runtime.stop();
 });
 
+test("a permanent body failure terminalizes the job without burning remaining attempts", async () => {
+  const message = bodyMessage();
+  let queued: MailJob | null = null;
+  let failCalls = 0;
+  const terminalCalls: Array<{ id: number; owner: string; error: string }> = [];
+  class PermanentBodyWorker extends EventEmitter {
+    constructor(private readonly accountId: string) {
+      super();
+      queueMicrotask(() => this.emit("message", {
+        type: "account-worker.ready",
+        accountId,
+        threadId: 11,
+      } satisfies AccountWorkerEvent));
+    }
+    postMessage(command: AccountWorkerCommand): void {
+      if (command.type !== "account-worker.fetch-body") return;
+      queueMicrotask(() => this.emit("message", {
+        type: "account-worker.body-result",
+        accountId: this.accountId,
+        jobId: command.jobId,
+        emailId: command.emailId,
+        ok: false,
+        errorCode: "mail-body-too-large",
+        retryable: false,
+      } satisfies AccountWorkerEvent));
+    }
+    async terminate(): Promise<number> {
+      return 0;
+    }
+  }
+  const writer = {
+    enqueueJob: async (input: { kind: string; accountId?: string; payload: unknown; priority: number }) => {
+      queued = {
+        id: 21,
+        kind: input.kind,
+        accountId: input.accountId ?? null,
+        payload: input.payload,
+        priority: input.priority,
+        attempts: 0,
+        maxAttempts: 5,
+        availableAt: new Date().toISOString(),
+        leaseOwner: null,
+        leaseUntil: null,
+        idempotencyKey: `body.ensure:${message.id}`,
+      };
+      return queued;
+    },
+    claimJob: async (_owner: string, _leaseMs?: number, filter?: { kinds?: readonly string[]; subjectPublicId?: string }) => {
+      if (!queued || queued.leaseOwner || !filter?.kinds?.includes(queued.kind)) return null;
+      queued = { ...queued, attempts: 1, leaseOwner: "permanent-worker" };
+      return queued;
+    },
+    completeJob: async () => true,
+    failJob: async () => {
+      failCalls += 1;
+      return true;
+    },
+    terminalJob: async (id: number, owner: string, error: string) => {
+      terminalCalls.push({ id, owner, error });
+      return true;
+    },
+    claimOutbox: async () => null,
+    failOutbox: async () => true,
+    claimSend: async () => null,
+    completeSend: async () => ({ value: { outboxId: "unused", messageId: "unused" }, commitVersion: 0, changes: [] }),
+    failSend: async () => true,
+    persistMailBody: async () => {
+      throw new Error("not reached in permanent-failure test");
+    },
+    persistMailMetadata: async () => ({ inserted: [], updatedCount: 0 }),
+    recordMailBodyFailure: async () => ({ attempts: 1, nextRetryAt: new Date().toISOString() }),
+    resolveRemoteOperation: async (
+      input: Parameters<NonNullable<MailCoreAccountRuntimeOptions["dbWriter"]["resolveRemoteOperation"]>>[0],
+    ) => ({
+      ...input,
+      remoteEmailId: input.emailId,
+      messageId: input.fallbackMessageId ?? "message-42",
+      locator: input.fallbackLocator ?? { folder: "INBOX", uid: 1, uidValidity: 1, internalDate: "", state: "ready" as const },
+    }),
+    completeRemoteOperation: async () => true,
+  };
+  const runtime = new MailCoreAccountRuntime({
+    entryPath: "account-worker.js",
+    dataDir: ".wemail",
+    accountId: message.accountId,
+    dbWriter: writer,
+    autoSync: false,
+    createWorker: () => new PermanentBodyWorker(message.accountId),
+  });
+
+  await runtime.start();
+  await runtime.ensureBody(message.id);
+  await waitFor(() => terminalCalls.length === 1);
+
+  assert.equal(failCalls, 0, "permanent failures must not re-claim and re-fetch through failJob retries");
+  assert.deepEqual(terminalCalls, [{ id: 21, owner: "permanent-worker", error: "mail-body-too-large" }]);
+  await runtime.stop();
+});
+
 test("account runtime fuses IMAP work after a definitive credential failure", async () => {
   let queued: MailJob | null = null;
   let claimCount = 0;

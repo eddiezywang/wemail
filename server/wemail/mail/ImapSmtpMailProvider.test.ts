@@ -534,6 +534,65 @@ test("sparse numeric UID windows retain messages whose dates precede the history
   } finally { await provider.disconnect(); }
 });
 
+test("completed realtime passes re-fetch a trailing flag window; repair passes do not", async () => {
+  const { secrets, accountService } = setupAccount();
+  const raw = Array.from({ length: 120 }, (_, index): RawFetchLike => ({
+    uid: index + 1,
+    internalDate: "2026-11-04T00:00:00Z",
+    envelope: {
+      subject: `message ${index}`, messageId: `<${index}@example.test>`,
+      from: [{ address: "a@example.test" }], to: [{ address: "me@example.com" }],
+    },
+    flags: new Set(["\\Seen"]),
+  }));
+  const fake = new FakeImap(raw);
+  const provider = new ImapSmtpMailProvider({
+    accountService, secrets, imapFactory: () => fake, flagRefreshWindowUids: 10,
+  });
+  const firstSeen: number[] = [];
+  for await (const page of provider.syncIncrementalPages({
+    states: { INBOX: { uid: 0, uidValidity: 17, internalDate: "2026-11-01T00:00:00Z" } },
+    since: new Date("2026-05-01T00:00:00Z"),
+  })) {
+    assert.ok(page.messages.length <= 50, "scan pages stay bounded by the scan page size");
+    firstSeen.push(...page.messages.map((message) => message.sync.uid));
+  }
+  assert.deepEqual(firstSeen, raw.map((message) => message.uid));
+  assert.equal(fake.fetches.length, 3, "a completed pass must not re-emit UIDs it already scanned");
+
+  // Live poll with no new mail: the trailing window is the only fetch and
+  // never advances the cursor.
+  const fetchesBeforePoll = fake.fetches.length;
+  let polled = 0;
+  for await (const page of provider.syncIncrementalPages({
+    states: { INBOX: { uid: 120, uidValidity: 17, internalDate: "2026-11-01T00:00:00Z" } },
+    since: new Date("2026-05-01T00:00:00Z"),
+  })) {
+    polled += 1;
+    assert.deepEqual(page.messages.map((message) => message.sync.uid), [111, 112, 113, 114, 115, 116, 117, 118, 119, 120]);
+    assert.equal(page.messages[0]!.flags.seen, true, "flag refresh arrives authoritative");
+    assert.equal(page.checkpoint!.next.uid, 120, "flag refresh must not advance the realtime cursor");
+  }
+  assert.equal(polled, 1);
+  const pollFetches = fake.fetches.slice(fetchesBeforePoll);
+  assert.deepEqual(pollFetches.map((fetch) => fetch.range), [[111, 112, 113, 114, 115, 116, 117, 118, 119, 120]]);
+  assert.equal(pollFetches[0]!.query.flags, true);
+
+  // Repair passes fetch coverage only — no trailing flag window.
+  const fetchesBeforeRepair = fake.fetches.length;
+  let repairSeen = 0;
+  for await (const page of provider.syncIncrementalPages({
+    states: { INBOX: { uid: 120, uidValidity: 17, internalDate: "2026-11-01T00:00:00Z" } },
+    since: new Date("2026-05-01T00:00:00Z"),
+    repair: true,
+  })) {
+    repairSeen += page.messages.length;
+  }
+  assert.equal(repairSeen, 120);
+  assert.equal(fake.fetches.length - fetchesBeforeRepair, 3, "repair pass performs no extra flag-refresh fetch");
+  await provider.disconnect();
+});
+
 test("incremental pages retry an unresolved FETCH gap instead of advancing its checkpoint", async () => {
   const { secrets, accountService } = setupAccount();
   const raw: RawFetchLike = { uid: 2, internalDate: "2026-11-04T00:00:00Z" };
@@ -1250,9 +1309,9 @@ test("ImapSmtpMailProvider.sendDraft records a rejected CC as partial delivery",
       sendMail: async () => ({
         messageId: "<partial@example.com>",
         accepted: ["bob@example.com"],
-        rejected: ["fangfangliu@example.com"],
+        rejected: ["fangfangliu@webank.com"],
         rejectedErrors: [{
-          recipient: "fangfangliu@example.com",
+          recipient: "fangfangliu@webank.com",
           response: "550 mailbox unavailable",
           responseCode: 550,
         }],
@@ -1264,7 +1323,7 @@ test("ImapSmtpMailProvider.sendDraft records a rejected CC as partial delivery",
   const result = await provider.sendDraft({
     accountId: "acct-1",
     to: [{ email: "bob@example.com" }],
-    cc: [{ email: "fangfangliu@example.com" }],
+    cc: [{ email: "fangfangliu@webank.com" }],
     subject: "partial",
     bodyText: "body",
     bodyHtml: "<p>body</p>",
@@ -1273,15 +1332,15 @@ test("ImapSmtpMailProvider.sendDraft records a rejected CC as partial delivery",
   assert.deepEqual(result.delivery, {
     status: "partial",
     accepted: ["bob@example.com"],
-    rejected: ["fangfangliu@example.com"],
+    rejected: ["fangfangliu@webank.com"],
     rejectedDetails: [{
-      recipient: "fangfangliu@example.com",
+      recipient: "fangfangliu@webank.com",
       response: "550 mailbox unavailable",
       responseCode: 550,
     }],
   });
   assert.match(logs.at(-1) ?? "", /status=partial/);
-  assert.match(logs.at(-1) ?? "", /fangfangliu@example\.com/);
+  assert.match(logs.at(-1) ?? "", /fangfangliu@webank\.com/);
 });
 
 test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", async () => {
@@ -1294,7 +1353,7 @@ test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", as
       sendMail: async () => ({
         messageId: "<rejected@example.com>",
         accepted: [],
-        rejected: ["bob@example.com", "fangfangliu@example.com"],
+        rejected: ["bob@example.com", "fangfangliu@webank.com"],
       }),
     }),
   });
@@ -1303,7 +1362,7 @@ test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", as
     () => provider.sendDraft({
       accountId: "acct-1",
       to: [{ email: "bob@example.com" }],
-      cc: [{ email: "fangfangliu@example.com" }],
+      cc: [{ email: "fangfangliu@webank.com" }],
       subject: "rejected",
       bodyText: "body",
       bodyHtml: "<p>body</p>",

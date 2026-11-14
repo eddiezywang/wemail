@@ -77,6 +77,96 @@ test("metadata checkpoint and page are atomic and require the current job owner"
   } finally { db.close(); }
 });
 
+test("checkpoint comparison tolerates key-order differences in committed state", () => {
+  const db = createMailDatabase(":memory:");
+  try {
+    insertCanonicalTestAccount(db, { id: "acct-1" });
+    const writer = new MailDatabaseWriter(db);
+    const queries = new MailDatabaseQueryRepository(db);
+    writer.enqueueJob({ kind: "mail.metadata.sync", accountId: "acct-1", priority: 2, payload: { origin: "manual" } });
+    const leased = writer.claimJob({ owner: "generation-1", filter: { kinds: ["mail.metadata.sync"] } })!;
+    writer.persistMetadata({
+      accountId: "acct-1", origin: "manual", messages: [message(1)],
+      checkpoint: { folder: "INBOX", previous: null, next: { uid: 1, uidValidity: 17, internalDate: timestamp }, mode: "incremental" },
+      lease: { id: leased.id, owner: "generation-1" },
+    });
+    // Same committed state with reordered keys must not be reported as a
+    // checkpoint conflict (which would force a full historical rescan).
+    assert.doesNotThrow(() => writer.persistMetadata({
+      accountId: "acct-1", origin: "manual", messages: [message(2)],
+      checkpoint: {
+        folder: "INBOX",
+        previous: { internalDate: timestamp, uidValidity: 17, uid: 1 },
+        next: { uid: 2, uidValidity: 17, internalDate: timestamp },
+        mode: "incremental",
+      },
+      lease: { id: leased.id, owner: "generation-1" },
+    }));
+    assert.equal(queries.getSyncStates("acct-1").INBOX.uid, 2);
+  } finally { db.close(); }
+});
+
+test("a metadata re-upsert never blanks the stored snippet with an empty parse", () => {
+  const db = createMailDatabase(":memory:");
+  try {
+    insertCanonicalTestAccount(db, { id: "acct-1" });
+    const writer = new MailDatabaseWriter(db);
+    writer.enqueueJob({ kind: "mail.metadata.sync", accountId: "acct-1", priority: 2, payload: { origin: "manual" } });
+    const leased = writer.claimJob({ owner: "generation-1", filter: { kinds: ["mail.metadata.sync"] } })!;
+    const first = writer.persistMetadata({
+      accountId: "acct-1", origin: "manual", messages: [message(1)],
+      checkpoint: { folder: "INBOX", previous: null, next: { uid: 1, uidValidity: 17, internalDate: timestamp }, mode: "incremental" },
+      lease: { id: leased.id, owner: "generation-1" },
+    });
+    const publicId = first.value.insertedIds[0]!;
+    // Simulate a prior body hydration storing a real snippet on the row.
+    db.prepare("UPDATE mail_messages SET snippet = 'hello world' WHERE public_id = ?").run(publicId);
+    const seenMessage: MailMessage = {
+      ...message(1),
+      flags: { seen: true, flagged: false, answered: false, draft: false },
+      sync: { uid: 1, uidValidity: 17, internalDate: timestamp, flagsAuthoritative: true },
+    };
+    writer.persistMetadata({
+      accountId: "acct-1", origin: "manual", messages: [seenMessage],
+      checkpoint: {
+        folder: "INBOX", previous: { uid: 1, uidValidity: 17, internalDate: timestamp },
+        next: { uid: 1, uidValidity: 17, internalDate: timestamp }, mode: "incremental",
+      },
+      lease: { id: leased.id, owner: "generation-1" },
+    });
+    const row = db.prepare(`
+      SELECT messages.snippet, memberships.is_seen, memberships.is_flagged
+      FROM mail_messages messages
+      JOIN mail_folder_memberships memberships ON memberships.message_id = messages.id
+      WHERE messages.public_id = ?
+    `).get(publicId) as { snippet: string; is_seen: bigint; is_flagged: bigint };
+    assert.equal(row.snippet, "hello world", "metadata-only re-upsert must keep the hydrated snippet");
+    assert.equal(row.is_seen, 1n, "authoritative flags still apply");
+    // A real (non-empty) snippet still overwrites.
+    const renamed: MailMessage = {
+      ...seenMessage,
+      snippet: "fresh parse",
+      flags: { seen: true, flagged: true, answered: false, draft: false },
+    };
+    writer.persistMetadata({
+      accountId: "acct-1", origin: "manual", messages: [renamed],
+      checkpoint: {
+        folder: "INBOX", previous: { uid: 1, uidValidity: 17, internalDate: timestamp },
+        next: { uid: 1, uidValidity: 17, internalDate: timestamp }, mode: "incremental",
+      },
+      lease: { id: leased.id, owner: "generation-1" },
+    });
+    const updated = db.prepare(`
+      SELECT messages.snippet, memberships.is_flagged
+      FROM mail_messages messages
+      JOIN mail_folder_memberships memberships ON memberships.message_id = messages.id
+      WHERE messages.public_id = ?
+    `).get(publicId) as { snippet: string; is_flagged: bigint };
+    assert.equal(updated.snippet, "fresh parse");
+    assert.equal(updated.is_flagged, 1n);
+  } finally { db.close(); }
+});
+
 test("6000 sparse messages persist through provider pages and resume after a lost page ACK", async () => {
   const db = createMailDatabase(":memory:");
   const account = {
@@ -95,7 +185,11 @@ test("6000 sparse messages persist through provider pages and resume after a los
   let activeSessions = 0;
   let maxSessions = 0;
   let maxFetch = 0;
-  const createProvider = () => new ImapSmtpMailProvider({ accountService, secrets, imapFactory: () => ({
+  const createProvider = () => new ImapSmtpMailProvider({ accountService, secrets,
+    // This fixture pins scan-page/fetch bounds (≤50) for pipeline/resume
+    // mechanics; trailing flag refresh is covered by its own provider test.
+    flagRefreshWindowUids: 0,
+    imapFactory: () => ({
     async connect() { maxSessions = Math.max(maxSessions, ++activeSessions); },
     async logout() { activeSessions--; },
     async mailboxOpen() { return { uidValidity: 17, uidNext: uids.at(-1)! + 1 }; },

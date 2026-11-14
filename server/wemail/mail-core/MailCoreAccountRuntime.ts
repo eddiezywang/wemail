@@ -28,7 +28,7 @@ import type {
 import type { WorkerHeartbeatMetrics, WorkerRuntimeMetrics } from "./WorkerRuntimeMetrics.js";
 import type { MailboxCredentialEnvelope } from "../../../shared/wemail/mailCoreProtocol.js";
 import type { ResourceGovernor } from "../performance/ResourceGovernor.js";
-import { MAIL_JOB_MAX_ATTEMPTS } from "./MailJobRetryPolicy.js";
+import { MAIL_JOB_MAX_ATTEMPTS, isPermanentBodyError } from "./MailJobRetryPolicy.js";
 import type {
   MailDatabaseClaimedSend,
   MailDatabaseCompleteSendParams,
@@ -91,6 +91,8 @@ export interface MailCoreAccountRuntimeOptions {
       error: string,
       retryDelayMs?: number,
     ) => Promise<boolean>;
+    /** Marks a leased job terminal in one step; used for permanent body errors. */
+    terminalJob?: (id: number, owner: string, error: string) => Promise<boolean>;
     deferJob?: (
       id: number,
       owner: string,
@@ -1249,7 +1251,12 @@ export class MailCoreAccountRuntime {
         const METADATA_PERSIST_BATCH_SIZE = 50;
         const messages = event.checkpoint ? event.messages : [...event.messages].sort((left, right) =>
           left.folder.localeCompare(right.folder) || left.sync.uid - right.sync.uid);
-        if (event.checkpoint && messages.length > METADATA_PERSIST_BATCH_SIZE) {
+        // Checkpoint pages may exceed one batch (scan UIDs + trailing flag
+        // refresh window); the cursor is applied on the last batch only, so
+        // a partially committed page retries idempotently instead of
+        // re-applying (or regressing) the checkpoint. Bound is a sanity
+        // check against runaway worker pages, not an exact page size.
+        if (event.checkpoint && messages.length > 1_000) {
           throw new Error("metadata-checkpoint-page-too-large");
         }
         const batches: MailMessage[][] = [];
@@ -1264,13 +1271,14 @@ export class MailCoreAccountRuntime {
         for (let i = 0; i < batches.length; i++) {
           if (!this.canAcceptMetadata(worker, job)) return;
           const isLast = i === batches.length - 1;
+          const batchCheckpoint = event.checkpoint && isLast ? event.checkpoint : undefined;
           const batchResult = this.options.persistMetadata
             ? await this.options.persistMetadata(
                 event.origin,
                 batches[i],
                 event.replaceCursors,
                 event.origin === "historical" && event.completed && isLast,
-                event.checkpoint,
+                batchCheckpoint,
                 { id: job.id, owner: job.leaseOwner },
               )
             : await this.options.dbWriter.persistMailMetadata({
@@ -1280,7 +1288,7 @@ export class MailCoreAccountRuntime {
                 replaceCursors: event.replaceCursors,
                 initialSyncCompleted:
                   event.origin === "historical" && event.completed && isLast,
-                ...(event.checkpoint ? { checkpoint: event.checkpoint, lease: { id: job.id, owner: job.leaseOwner } } : {}),
+                ...(batchCheckpoint ? { checkpoint: batchCheckpoint, lease: { id: job.id, owner: job.leaseOwner } } : {}),
               });
           inserted.push(...batchResult.inserted);
           updatedCount += batchResult.updatedCount;
@@ -1376,7 +1384,11 @@ export class MailCoreAccountRuntime {
         if (!this.canAcceptMetadata(worker, job)) return;
         if (event.retryable) retryWakeMs = retryDelayMs;
         else this.enterCredentialRequired(event.errorCode);
-        if (event.origin !== "historical") this.recordReceiptFailure(event.errorCode);
+        if (event.origin !== "historical" && event.errorCode !== "account-worker-busy") {
+          // A busy bounce means the job was never attempted — it must not
+          // inflate the receipt's consecutive-failure backoff.
+          this.recordReceiptFailure(event.errorCode);
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -1600,12 +1612,21 @@ export class MailCoreAccountRuntime {
           retryable: event.retryable,
         });
         if (!jobCompleted) {
-          await this.options.dbWriter.failJob(
-            job.id,
-            job.leaseOwner,
-            event.errorCode,
-            retryDelayMs,
-          );
+          if (!event.retryable && isPermanentBodyError(event.errorCode) && this.options.dbWriter.terminalJob) {
+            // Permanent failure: re-fetching can never succeed, so don't burn
+            // the remaining attempts on live IMAP fetches (the old flow
+            // re-claimed and re-fetched until maxAttempts). Periodic revive
+            // already skips permanent codes; foreground ensureBody revive
+            // resets attempts for explicit user demand.
+            await this.options.dbWriter.terminalJob(job.id, job.leaseOwner, event.errorCode);
+          } else {
+            await this.options.dbWriter.failJob(
+              job.id,
+              job.leaseOwner,
+              event.errorCode,
+              retryDelayMs,
+            );
+          }
         }
         if (event.retryable) retryWakeMs = retryDelayMs;
         else if (event.credentialRequired) this.enterCredentialRequired(event.errorCode);
@@ -1969,12 +1990,6 @@ function getMetadataOrigin(item: MailJob): MailCoreSyncOrigin | null {
 
 function retryDelay(attempts: number): number {
   return Math.min(1_000 * 2 ** Math.max(0, attempts - 1), 30_000);
-}
-
-function retryDelayUntil(nextRetryAt: string): number {
-  const parsed = Date.parse(nextRetryAt);
-  if (!Number.isFinite(parsed)) return 1_000;
-  return Math.max(0, parsed - Date.now());
 }
 
 function attachmentPriority(

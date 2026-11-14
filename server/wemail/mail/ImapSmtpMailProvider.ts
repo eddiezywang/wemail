@@ -27,6 +27,7 @@ import type {
 } from "./MailProvider.js";
 import type { MailProviderRole } from "../../../shared/wemail/startup.js";
 import { normalizeMail } from "./normalizeMail.js";
+import { isMailCredentialInvalidError } from "./MailCredentialError.js";
 import type { MailFolderSyncState } from "../../../shared/wemail/mailSync.js";
 
 export interface ImapSmtpMailProviderOptions {
@@ -36,6 +37,8 @@ export interface ImapSmtpMailProviderOptions {
   imapClientInfo?: ImapClientInfo;
   /** Override factory for tests — defaults to constructing a real ImapFlow. */
   imapFactory?: (config: ImapClientConfig) => ImapLikeClient;
+  /** Trailing-UID flag refresh window per completed realtime pass (0 disables). */
+  flagRefreshWindowUids?: number;
   /** Override factory for tests — defaults to nodemailer's transport. */
   smtpFactory?: (config: SmtpClientConfig) => MailTransport;
   logger?: (message: string) => void;
@@ -216,6 +219,12 @@ export interface ImapMailboxLike {
 const DEFAULT_MAX_ATTEMPTS = 3;
 const MAX_SYNC_WINDOW_FETCH_UIDS = 5000;
 const METADATA_FETCH_BATCH_SIZE = 500;
+// Trailing per-folder UID window whose flags are re-fetched on every completed
+// realtime pass. Incremental scans only see UIDs above the cursor, so flag
+// changes made on other clients (read/star) would otherwise never propagate.
+// Bounded: one FETCH per folder per pass, excluded from repair passes.
+const DEFAULT_FLAG_REFRESH_WINDOW_UIDS = 200;
+const FOLDER_LIST_TTL_MS = 5 * 60_000;
 const ATTACHMENT_DOWNLOAD_CHUNK_SIZES = [64 * 1024, 8 * 1024, 4 * 1024, 1024] as const;
 // Cap attachment downloads: the worker_thread buffers the whole attachment via
 // Buffer.concat, so a single huge attachment (>~100MB) OOM'd the 128MB worker.
@@ -340,11 +349,13 @@ export class ImapSmtpMailProvider implements MailProvider {
   private readonly onSyncProgress?: () => void;
   private readonly maxAttempts: number;
   private readonly imapClientInfo: ImapClientInfo;
+  private readonly flagRefreshWindowUids: number;
   private imap: ImapLikeClient | null = null;
   private metadataAbort = new AbortController();
   private uidValidity: number | null = null;
   private selectedFolder: string | null = null;
   private selectedUidValidity: number | null = null;
+  private folderListCache: { paths: string[]; expiresAt: number } | null = null;
   private readonly clientErrorListeners = new WeakMap<
     ImapLikeClient,
     {
@@ -382,6 +393,10 @@ export class ImapSmtpMailProvider implements MailProvider {
     this.maxAttempts = options.maxConnectAttempts ?? DEFAULT_MAX_ATTEMPTS;
     this.imapClientInfo = options.imapClientInfo ?? DEFAULT_IMAP_CLIENT_INFO;
     this.role = options.role ?? "foreground-realtime";
+    this.flagRefreshWindowUids = options.flagRefreshWindowUids ??
+      (Number.isFinite(Number(process.env.WEMAIL_FLAG_REFRESH_WINDOW_UIDS))
+        ? Math.max(0, Number(process.env.WEMAIL_FLAG_REFRESH_WINDOW_UIDS))
+        : DEFAULT_FLAG_REFRESH_WINDOW_UIDS);
   }
 
   async connect(): Promise<void> {
@@ -416,12 +431,9 @@ export class ImapSmtpMailProvider implements MailProvider {
         } catch {
           // best-effort cleanup after a failed connect
         }
-        if (
-          commandError.responseStatus?.toUpperCase() === "NO" &&
-          /login error or password error/i.test(
-            commandError.responseText ?? commandError.message,
-          )
-        ) {
+        if (isMailCredentialInvalidError(commandError)) {
+          // Server explicitly refused the login — retrying with the same
+          // password cannot succeed; surface credential-required instead.
           throw commandError;
         }
         if (attempt < this.maxAttempts) {
@@ -468,6 +480,7 @@ export class ImapSmtpMailProvider implements MailProvider {
     this.uidValidity = null;
     this.selectedFolder = null;
     this.selectedUidValidity = null;
+    this.folderListCache = null;
     const controller = this.metadataAbort;
     this.metadataAbort = new AbortController();
     try { client?.close?.(); } catch { /* Cancellation must settle even if socket cleanup fails. */ }
@@ -480,6 +493,7 @@ export class ImapSmtpMailProvider implements MailProvider {
     this.uidValidity = null;
     this.selectedFolder = null;
     this.selectedUidValidity = null;
+    this.folderListCache = null;
     if (!client) return;
     this.detachClientLifecycleListeners(client);
     try {
@@ -763,6 +777,9 @@ export class ImapSmtpMailProvider implements MailProvider {
       upper: null as number | null,
       after: 0,
       done: false,
+      /** UIDs emitted on pages of this iterator run — keeps the trailing flag
+       * refresh from re-emitting messages this run already scanned. */
+      scanned: new Set<number>(),
     }));
     let nextFolder = 0;
     let recheckInbox = false;
@@ -827,10 +844,10 @@ export class ImapSmtpMailProvider implements MailProvider {
               .filter((uid) => uid > state.after && uid <= rangeEnd)
               .sort((left, right) => left - right);
             const selected = uids.slice(0, 50);
-            const messages = await this.fetchMessagesByUid(client, selected, {
+            const scanMessages = await this.fetchMessagesByUid(client, selected, {
               accountId, folder: state.folder, uidValidity,
             });
-            const returned = new Set(messages.map((message) => message.sync.uid));
+            const returned = new Set(scanMessages.map((message) => message.sync.uid));
             const missing = selected.filter((uid) => !returned.has(uid));
             if (missing.length > 0) {
               const stillPresent = await client.search({ uid: missing.join(",") }, { uid: true });
@@ -838,8 +855,29 @@ export class ImapSmtpMailProvider implements MailProvider {
                 throw new Error("mail-provider-metadata-fetch-incomplete");
               }
             }
+            for (const uid of returned) state.scanned.add(uid);
             state.after = uids.length > selected.length ? selected.at(-1)! : Math.max(state.after, rangeEnd);
             state.done = state.after >= state.upper;
+            // Trailing-UID flag refresh: incremental scans only see UIDs above
+            // the cursor, so read/star changes made on other clients would
+            // never propagate. When the folder's pass completes, re-fetch a
+            // bounded recent window whose flags may have drifted. Repair
+            // passes (coverage) skip it; flags arrive authoritative via the
+            // normal metadata upsert.
+            let messages = scanMessages;
+            if (!options.repair && state.done && this.flagRefreshWindowUids > 0 && state.upper !== null) {
+              const refreshStart = Math.max(1, state.upper - this.flagRefreshWindowUids + 1);
+              const refreshUids = ((await client.search({ uid: `${refreshStart}:${state.upper}` }, { uid: true })) || [])
+                .filter((uid) => uid >= refreshStart && uid <= state.upper! && !state.scanned.has(uid))
+                .sort((left, right) => left - right);
+              if (refreshUids.length > 0) {
+                const refreshed = await this.fetchMessagesByUid(client, refreshUids, {
+                  accountId, folder: state.folder, uidValidity,
+                });
+                for (const uid of refreshUids) state.scanned.add(uid);
+                messages = [...scanMessages, ...refreshed];
+              }
+            }
             const newest = messages.reduce<MailMessage | null>((current, message) =>
               !current || message.sync.uid > current.sync.uid ? message : current, null);
             const base: MailFolderSyncState = sameGeneration ? state.previous! : {
@@ -863,7 +901,10 @@ export class ImapSmtpMailProvider implements MailProvider {
             };
           } finally {
             lock?.release();
-            await this.restoreDefaultMailbox(client);
+            // Only the realtime connection must end pages back on INBOX — IDLE
+            // push-watching selects it. Transfer connections (no IDLE) keep
+            // the last-open mailbox selected, saving two SELECTs per page.
+            if (this.role === "foreground-realtime") await this.restoreDefaultMailbox(client);
           }
         });
         if (!page) continue;
@@ -884,7 +925,7 @@ export class ImapSmtpMailProvider implements MailProvider {
         }
       }
     } finally {
-      await this.restoreDefaultMailbox(client);
+      if (this.role === "foreground-realtime") await this.restoreDefaultMailbox(client);
     }
   }
 
@@ -950,8 +991,12 @@ export class ImapSmtpMailProvider implements MailProvider {
     // past the current highest UID can still return that highest UID. Only
     // UIDVALIDITY invalidates the cursor; stale UIDs are safe to ignore.
     const incrementalUids = (uids || []).filter((uid) => uid > cursor.uid);
+    const cappedIncremental = incrementalUids.slice(-MAX_SYNC_WINDOW_FETCH_UIDS);
+    if (cappedIncremental.length < incrementalUids.length) {
+      this.log(`imap cursor sync capped folder=${folder} matched=${incrementalUids.length} fetched=${cappedIncremental.length}`);
+    }
 
-    const messages = await this.fetchMessagesByUid(client, incrementalUids, {
+    const messages = await this.fetchMessagesByUid(client, cappedIncremental, {
       accountId: account.id,
       folder,
       uidValidity,
@@ -972,8 +1017,12 @@ export class ImapSmtpMailProvider implements MailProvider {
           throw new MailProviderCommandError({ phase: "imap.search", cause: error });
         }
         if (!otherUids || otherUids.length === 0) continue;
+        const cappedOther = otherUids.slice(-MAX_SYNC_WINDOW_FETCH_UIDS);
+        if (cappedOther.length < otherUids.length) {
+          this.log(`imap cursor sync capped folder=${otherFolder} matched=${otherUids.length} fetched=${cappedOther.length}`);
+        }
         messages.push(
-          ...(await this.fetchMessagesByUid(client, otherUids, {
+          ...(await this.fetchMessagesByUid(client, cappedOther, {
             accountId: account.id,
             folder: otherFolder,
             uidValidity: otherUidValidity,
@@ -1206,12 +1255,18 @@ export class ImapSmtpMailProvider implements MailProvider {
   }
 
   private async listSyncFolders(client: ImapLikeClient): Promise<string[]> {
+    // LIST is re-issued by every incremental sync; folder sets change rarely.
+    if (this.folderListCache && this.folderListCache.expiresAt > Date.now()) {
+      return this.folderListCache.paths;
+    }
     try {
       const folders = (await this.listProviderFolders(client))
         .filter((folder) => !shouldSkipSyncFolder(folder))
         .map((folder) => folder.path);
       if (!folders.includes(this.folder)) folders.unshift(this.folder);
-      return Array.from(new Set(folders));
+      const paths = Array.from(new Set(folders));
+      this.folderListCache = { paths, expiresAt: Date.now() + FOLDER_LIST_TTL_MS };
+      return paths;
     } catch (error) {
       this.log(
         `imap list folders failed folder=${this.folder} error=${String((error as Error).message ?? error)}`,
