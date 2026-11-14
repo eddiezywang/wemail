@@ -168,3 +168,27 @@ hermetic suite SHALL never invoke it.
 - **THEN** `enqueueSend` commits an outbox id and message-id header, empty
       recipient attempts are rejected with `send-recipient-required`, and the
       Sent folder APPEND copy is observed in the canonical folder list
+
+### Requirement: Live UI interaction packs (agent-desktop)
+
+The repository SHALL provide `tests/live/ui/` interaction packs driven by
+`agent-desktop` (Windows accessibility tree) against the running,
+logged-in desktop instance, covering sidebar/folder navigation, mail
+detail opening with read-flag restore, settings section walk, and center
+navigation. Each pack SHALL be a standalone runnable script with
+screenshot evidence and SHALL tolerate transient accessibility-snapshot
+failures via retry.
+
+#### Scenario: Folder navigation live
+
+- **WHEN** the pack clicks 收件箱 and 已发送 sidebar links on the running
+      instance
+- **THEN** each view renders its core surface and the run ends with
+      `ALL PASS`
+
+#### Scenario: Settings sections live
+
+- **WHEN** the settings dialog is opened and each primary section is
+      clicked in sequence
+- **THEN** at most 2 transient section misses are tolerated and the dialog
+      closes via its own 关闭 button
