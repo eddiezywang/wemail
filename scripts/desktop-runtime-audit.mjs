@@ -41,7 +41,10 @@ export function extractModuleSpecifiers(source) {
   for (const pattern of patterns) {
     for (const match of source.matchAll(pattern)) matches.push(match[1]);
   }
-  return [...new Set(matches)];
+  // Specifiers containing "${" are capture text from code embedded inside a
+  // string (e.g. pdfjs-dist's `const wrapper = `await import("${url}");`),
+  // not real module paths — a real specifier can never contain interpolation.
+  return [...new Set(matches)].filter((specifier) => !specifier.includes("${"));
 }
 
 export function packageNameFromSpecifier(specifier) {
@@ -189,6 +192,25 @@ function resolvePrivatePackageEntry(manifestPath, manifest) {
   return null;
 }
 
+/** napi-rs per-triple optional package suffix, e.g. "@pkg-win32-x64-msvc". */
+const PLATFORM_VARIANT_SUFFIX =
+  /-(android|darwin|linux|win32|freebsd|openbsd|sunos|aix|ohos|wasi|wasm32)-[a-z0-9]/i;
+
+/** Name of the private package whose source file this is, or null. */
+function enclosingPrivatePackageName(file) {
+  const segments = file.split(/[\\/]+/);
+  for (let index = segments.length - 1; index >= 0; index--) {
+    if (segments[index] === "node_modules") {
+      const first = segments[index + 1];
+      if (!first) return null;
+      return first.startsWith("@") && segments[index + 2]
+        ? `${first}/${segments[index + 2]}`
+        : first;
+    }
+  }
+  return null;
+}
+
 export function collectRuntimeDependencyReferences(entries) {
   const pending = entries.map((entry) => path.resolve(entry));
   const visited = new Set();
@@ -230,11 +252,15 @@ export function collectRuntimeDependencyReferences(entries) {
     const privateModulesDirectory = editionModulesPrivateModulesDirectory(file);
     for (const specifier of extractModuleSpecifiers(source)) {
       if (specifier.startsWith(".") || specifier.startsWith("/")) {
-        if (specifier.endsWith(".node")) {
-          // Platform-optional native binary (e.g. @napi-rs/canvas's
-          // "./skia.<triple>.node" loaders reference every platform's binary
-          // from one JS file, but only the host triple is ever installed).
-          // Binaries are selected at runtime, so they are not part of the
+        if (
+          /\.(node|wasm)$/.test(specifier) ||
+          /[-.]wasi/i.test(specifier) ||
+          /wasm32/i.test(specifier)
+        ) {
+          // Platform-optional native loaders (e.g. @napi-rs/canvas's
+          // js-binding.js requires "./skia.<triple>.node" for every platform
+          // plus a WASI fallback, but only the host triple is ever installed).
+          // Binaries/WASM are selected at runtime, so they are not part of the
           // auditable JS closure; the packaged smoke exercises the host one.
           continue;
         }
@@ -270,7 +296,19 @@ export function collectRuntimeDependencyReferences(entries) {
         // Not shipped with the module: Node keeps walking up from the
         // importing file to the app's node_modules, so this falls through to
         // the standard open declaration check (e.g. the WeCLI route module
-        // imports hono). A miss is never silently accepted or skipped.
+        // imports hono). A miss is never silently accepted or skipped...
+        // except for napi-rs style loaders, where a package requires its own
+        // per-triple optional binary package ("@pkg-win32-x64-msvc") and only
+        // the host triple ever installs. Those are platform-optional the same
+        // way the "./skia.<triple>.node" relative loaders are.
+        const importingPackage = enclosingPrivatePackageName(file);
+        if (
+          importingPackage !== null &&
+          packageName.startsWith(`${importingPackage}-`) &&
+          PLATFORM_VARIANT_SUFFIX.test(packageName)
+        ) {
+          continue;
+        }
       }
       record(packageName, file, specifier);
     }
