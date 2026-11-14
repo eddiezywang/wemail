@@ -36,28 +36,10 @@ test("isolated receipt completes its requested version and renders newly injecte
       for (const request of requests) {
         expect(request.status).toBe("queued");
         expect(request.receiptVersion).toBeGreaterThan(0);
-        let lastReceipt: unknown = null;
-        try {
-          await expect.poll(async () => {
-            lastReceipt = await window.evaluate(async () =>
-              (await window.wemailDesktop!.mailCore!.health()).accountRuntime?.receipt ?? null,
-            );
-            const receipt = lastReceipt as {
-              runtimeId?: string;
-              completedVersion?: number;
-            } | null;
-            return Boolean(
-              receipt &&
-              receipt.runtimeId === request.runtimeId &&
-              (receipt.completedVersion ?? 0) >= request.receiptVersion!,
-            );
-          }, { timeout: 30_000 }).toBe(true);
-        } catch (error) {
-          throw new Error(
-            `receipt did not reach requested version: request=${JSON.stringify(request)} ` +
-            `lastReceipt=${JSON.stringify(lastReceipt)}: ${(error as Error).message}`,
-          );
-        }
+        await expect.poll(() => window.evaluate(async (token) => {
+          const receipt = (await window.wemailDesktop!.mailCore!.health()).accountRuntime?.receipt;
+          return Boolean(receipt && receipt.runtimeId === token.runtimeId && receipt.completedVersion >= token.receiptVersion!);
+        }, request)).toBe(true);
       }
       const row = window.getByTestId("mail-item").filter({ hasText: message.subject });
       await expect(row).toBeVisible();
@@ -88,15 +70,6 @@ test("isolated receipt completes its requested version and renders newly injecte
     const restoredWindow = await app.electronApp.firstWindow();
     await expect(restoredWindow.getByTestId("workbench")).toBeVisible();
     await expect(restoredWindow.getByTestId("mail-item")).toHaveCount(5);
-    // Re-open needs the Mail Core bridge connected before a manual refresh
-    // can pick up the newly injected fixture.
-    await expect
-      .poll(() =>
-        restoredWindow.evaluate(
-          () => window.wemailDesktop?.mailCore?.isConnected() === true,
-        ),
-      )
-      .toBe(true);
     const nextMessage = JSON.parse(fs.readFileSync(path.join(dataDir, "mock-inbox", "5.json"), "utf8")) as MailMessage;
     nextMessage.id = "acct-e2e:INBOX:1:6";
     nextMessage.messageId = "<receipt-6@example.test>";

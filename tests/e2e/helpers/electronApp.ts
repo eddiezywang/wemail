@@ -101,6 +101,15 @@ async function startMockLlm(
 ): Promise<{ url: string; close: () => Promise<void> }> {
   return await new Promise((resolve) => {
     const server = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/v1/models") {
+        // LLM probe / model discovery endpoint.
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({
+          object: "list",
+          data: [{ id: "mock-model", object: "model" }],
+        }));
+        return;
+      }
       if (req.url !== "/v1/chat/completions") {
         res.writeHead(404);
         res.end();
@@ -150,39 +159,17 @@ async function startMockLlm(
 /**
  * Read the `WEMAIL_API_PORT=<n>` line that `electron/main/app.ts` emits
  * on stdout in E2E mode. We listen via Playwright's `process()` handle.
- *
- * The wait intentionally outlives the Playwright per-test timeout: a cold
- * boot forks the DB Service (7 worker lanes) plus Mail Core before the API
- * port is advertised, which is slower on a 2-core CI runner than locally.
- * When the wait gives up, the captured Electron stdout/stderr and the
- * `startup.log` boot phases are dumped into the error so a CI failure says
- * *why* the port never appeared instead of only that it did not.
  */
 async function waitForApiPort(
   electronApp: ElectronApplication,
-  logsDir: string,
-  timeoutMs = 120_000,
 ): Promise<number> {
   const proc = electronApp.process();
   return await new Promise<number>((resolve, reject) => {
-    const recentOutput: string[] = [];
     const timer = setTimeout(() => {
-      const outputTail = recentOutput.join("").trim();
-      const startupLog = readStartupLogTail(logsDir);
-      reject(new Error(
-        "timeout waiting for WEMAIL_API_PORT from electron stdout"
-        + `\n--- electron stdout/stderr (tail) ---\n${
-          outputTail.length > 0 ? outputTail : "(no output captured)"
-        }`
-        + `\n--- <dataDir>/startup.log (tail) ---\n${
-          startupLog.length > 0 ? startupLog : "(startup.log not written)"
-        }`,
-      ));
-    }, timeoutMs);
+      reject(new Error("timeout waiting for WEMAIL_API_PORT from electron stdout"));
+    }, 30_000);
     const onData = (chunk: Buffer | string) => {
       const text = chunk.toString();
-      recentOutput.push(text);
-      if (recentOutput.length > 200) recentOutput.splice(0, recentOutput.length - 200);
       const match = /WEMAIL_API_PORT=(\d+)/.exec(text);
       if (match) {
         clearTimeout(timer);
@@ -191,28 +178,7 @@ async function waitForApiPort(
       }
     };
     proc.stdout?.on("data", onData);
-    // Boot failures surface on stderr (utilityProcess relays, native module
-    // load errors); without this listener a silent stdout never explains why.
-    proc.stderr?.on("data", (chunk: Buffer | string) => {
-      const text = chunk.toString();
-      recentOutput.push(text);
-      if (recentOutput.length > 200) recentOutput.splice(0, recentOutput.length - 200);
-    });
   });
-}
-
-/** Last lines of the main process boot log, for timeout diagnostics. */
-function readStartupLogTail(logsDir: string, maxLines = 60): string {
-  try {
-    // app.ts writes startup.log under the data dir (a sibling of logsDir).
-    const dataDir = path.dirname(logsDir);
-    const file = path.join(dataDir, "startup.log");
-    const content = fs.readFileSync(file, "utf8");
-    const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
-    return lines.slice(-maxLines).join("\n");
-  } catch {
-    return "";
-  }
 }
 
 /**
@@ -241,21 +207,18 @@ export async function launchElectron(
       WEMAIL_LLM_BASE_URL: llm.url,
       WEMAIL_LLM_MODEL: "mock-model",
       WEMAIL_LLM_API_KEY: "test-key",
-      // Forward Chromium/Electron console output to stderr so a boot failure
-      // reaches the harness's captured output instead of vanishing on CI.
-      ELECTRON_ENABLE_LOGGING: "1",
       // Suppress the dev renderer URL. A data URL avoids Chromium's unsafe-port
       // blocking for port 1 and keeps Electron alive while API-only specs run.
       VITE_DEV_SERVER_URL:
         opts.rendererUrl ?? "data:text/html,<html><body>WeMail E2E harness</body></html>",
     },
-    timeout: 60_000,
+    timeout: 30_000,
   });
 
   const runtimeLog = path.join(logsDir, "electron-runtime.log");
   electronApp.process().stdout?.on("data", (chunk) => fs.appendFileSync(runtimeLog, chunk));
   electronApp.process().stderr?.on("data", (chunk) => fs.appendFileSync(runtimeLog, chunk));
-  const port = await waitForApiPort(electronApp, logsDir);
+  const port = await waitForApiPort(electronApp);
   const apiBaseUrl = `http://127.0.0.1:${port}`;
 
   return {
