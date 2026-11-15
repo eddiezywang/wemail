@@ -209,3 +209,11 @@ projection redacts raw codes (assert the conflict class, not raw text).
       with a conflicting expected version, on a freshly installed template
 - **THEN** both attempts return 409 with the conflict-class public error,
       and upgrade preview/confirm guards return structured 4xx
+
+#### Scenario: Folder navigation live (stability hardening)
+
+- **WHEN** the instance runs with `--force-renderer-accessibility` and the
+      pack restores/focuses the window before each step
+- **THEN** snapshots are stable (no intermittent empty trees) and folder
+      switching targets a uniquely-named folder (同名孪生链接 — e.g. 已发送
+      vs Sent — are refused by UIA as ambiguous refs and must be avoided)

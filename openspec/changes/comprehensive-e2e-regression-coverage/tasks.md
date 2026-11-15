@@ -79,3 +79,7 @@
 - [ ] Agent pending-action confirm→execute chain — requires agent
       conversation test infrastructure (mock LLM emitting valid tool-call
       sequences); deferred with justification
+- [x] Stability hardening: `--force-renderer-accessibility` launch flag +
+      `ensureVisible()` (restore/focus) before every step in `steps()`
+- [x] Folder-switch target moved to a uniquely-named folder (中文孪生链接
+      AMBIGUOUS_TARGET documented)
