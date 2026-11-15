@@ -15,6 +15,10 @@ node tests/live/ui/04-centers-navigation.mjs
 前置条件：WeMail 桌面端运行中且已登录；`agent-desktop` 全局安装；
 在交互桌面会话内执行（非服务会话）。
 
+**启动要求**：实例必须带 `--force-renderer-accessibility` 启动（渲染器
+可访问性常开），否则快照会间歇性超时/退化为空树。lib 的 `steps()` 会在
+每步前 `ensureVisible()`（restore + focus），以免疫外部最小化。
+
 ## 覆盖范围
 
 | 脚本 | 覆盖 |
@@ -32,6 +36,10 @@ node tests/live/ui/04-centers-navigation.mjs
   不稳定——02 的"标记未读恢复"为 best-effort，不计入失败。
 - 打开邮件会把真实邮件标记为已读（02 内恢复为 best-effort）。
 - trash/move 需要对应目标文件夹存在，fixture/live 场景按需选择。
+- **中文孪生链接**：「已发送」(编码路径) 与「Sent」(/folder/sent) 是同名
+  孪生链接，UIA 拒绝歧义 ref（AMBIGUOUS_TARGET）——文件夹切换用唯一名
+  （如「告警」）或 value 精确匹配。
+- 打开邮件会把真实邮件标记为已读（02 内恢复为 best-effort）。
 
 ## 稳定性经验
 

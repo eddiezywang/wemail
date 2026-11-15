@@ -89,17 +89,20 @@ export function snapshotMatchAll(matcher, { role } = {}) {
  * Resolve + click with one retry: on stale/ambiguous ref, re-snapshot and
  * re-match, then click the fresh ref.
  */
-export async function clickMatch(matcher, { role, tries = 3 } = {}) {
+export async function clickMatch(matcher, { role, tries = 4 } = {}) {
+  let lastError = "";
   for (let attempt = 0; attempt < tries; attempt++) {
+    ensureVisible();
     const snap = snapshotMatch(matcher, { role, tries: 2 });
-    if (!snap?.ref) continue;
+    if (!snap?.ref) { lastError = "no snapshot match"; continue; }
     const { snapshotId, node, ref } = snap;
     const env = run(["click", ref]);
     if (env.ok) return { clicked: node.name, snapshotId };
+    lastError = `${env.error?.code ?? "CLICK_FAIL"}: ${String(env.error?.message ?? "").slice(0, 140)}`;
     // stale/ambiguous → short pause, fresh snapshot on next attempt
     await sleep(1200);
   }
-  throw new Error(`clickMatch failed for ${typeof matcher === "string" ? matcher : "matcher"}`);
+  throw new Error(`clickMatch failed (${lastError}) for ${typeof matcher === "string" ? matcher : "matcher"}`);
 }
 
 /** Poll until a node matching `matcher` appears in the snapshot tree. */
@@ -113,16 +116,59 @@ export async function waitMatch(matcher, { role, timeoutMs = 15_000 } = {}) {
   throw new Error(`waitMatch timeout (${timeoutMs}ms): ${typeof matcher === "string" ? matcher : "matcher"}`);
 }
 
+/** Text presence check against the snapshot tree (name or raw tree JSON). */
+export function textPresent(text) {
+  const { hits } = snapshotMatchAll(text);
+  if (hits.length > 0) return true;
+  const env = run(["snapshot", "--app", APP, "--compact", "--timeout-ms=30000"]);
+  if (!env.ok) return false;
+  try {
+    const s = JSON.stringify(env.data.tree);
+    return s.includes(text);
+  } catch {
+    return false;
+  }
+}
+
+/** Poll until text appears anywhere in the window (default 15s). */
+export async function waitText(text, { timeoutMs = 15_000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (textPresent(text)) return true;
+    await sleep(800);
+  }
+  throw new Error(`text not present within ${timeoutMs}ms: ${text}`);
+}
+
 /** Screenshot the WeMail window to a PNG file (visual evidence). */
 export function screenshot(filePath) {
   return ok(["screenshot", "--app", APP, filePath]);
 }
 
-/** Sequential steps with labels — the observe→act→verify loop runner. */
+/** Restore + focus the app window (minimized windows break a11y + screenshots). */
+export function ensureVisible() {
+  try { ok(["restore", "--app", APP]); } catch { /* may already be visible */ }
+  try { ok(["focus-window", "--app", APP]); } catch { /* best-effort */ }
+  await_window();
+}
+function await_window() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const env = run(["list-windows", "--app", APP], { timeoutMs: 15_000 });
+    if ((env.data ?? []).length > 0) return;
+    try { ok(["restore", "--app", APP]); } catch { /* retry */ }
+    sleep(800);
+  }
+}
+
+/** Sequential steps with labels — the observe→act→verify loop runner.
+ *  Each step is preceded by ensureVisible so external minimization
+ *  (tray behavior / user action) cannot cascade-fail the batch. */
 export async function steps(steps) {
   let failed = 0;
   for (const [label, fn] of steps) {
     try {
+      ensureVisible();
       await fn();
       console.log(`ok    ${label}`);
     } catch (error) {
