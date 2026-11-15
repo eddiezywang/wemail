@@ -20,8 +20,12 @@ test("remaining surfaces: skills/configuration/directory/insight/attachments", a
     const catalog = await get("/api/skills/wecli/catalog");
     expect(catalog.status).toBeGreaterThanOrEqual(200);
     expect(catalog.status).toBeLessThan(500);
-    const audit = await get("/api/skills/wecli/audit");
-    expect(audit.ok).toBeTruthy();
+    // Open edition pins wecli skill routes as 404 (app.wecli-absent.test.ts);
+    // the audit lane answers only where the wecli module is mounted.
+    if (catalog.status !== 404) {
+      const audit = await get("/api/skills/wecli/audit");
+      expect(audit.ok).toBeTruthy();
+    }
 
     // ── configuration tasks ────────────────────────────────────────
     const tasks = await get("/api/configuration-tasks");

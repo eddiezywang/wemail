@@ -12,7 +12,7 @@ import { launchElectron, loginWithFixture, waitFor } from "./helpers/electronApp
 // explicitly enabled; the packaged/dev app sets this for real users.
 process.env.WEMAIL_CHANNELS_ENABLED = "1";
 
-const CHANNEL_IDS = ["wecli", "feishu", "wecom"] as const;
+const REQUIRED_IDS = ["feishu", "wecom"] as const;
 
 test("channel hub reports WeCLI/Feishu/WeCom integration state", async () => {
   const app = await launchElectron();
@@ -33,8 +33,15 @@ test("channel hub reports WeCLI/Feishu/WeCom integration state", async () => {
     }, { label: "channel status entries", timeoutMs: 20_000 });
 
     const ids = status.entries?.map((entry) => entry.id) ?? [];
-    for (const id of CHANNEL_IDS) {
+    // wecli mounts only in editions that ship the wecli module; the open
+    // edition pins /api/system/wecli/* as 404 (see app.wecli-absent.test.ts).
+    // Absence must be a clean 404, never a broken lane.
+    for (const id of REQUIRED_IDS) {
       expect(ids).toContain(id);
+    }
+    if (!ids.includes("wecli")) {
+      const wecliProbe = await fetch(`${app.apiBaseUrl}/api/system/wecli/status`);
+      expect(wecliProbe.status).toBe(404);
     }
     for (const entry of status.entries ?? []) {
       expect(typeof entry.label).toBe("string");
