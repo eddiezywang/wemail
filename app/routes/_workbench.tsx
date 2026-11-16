@@ -55,6 +55,11 @@ import Header from "~/components/Header";
 import Sidebar from "~/components/Sidebar";
 import { Workbench } from "~/components/layout/Workbench";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
+import { useJobStore } from "~/hooks/useJobStore";
+import { zhCN } from "~/copy/zh-CN";
+import { cn } from "~/lib/cn";
 import { PopNumber } from "~/components/ui/pop-number";
 import {
 	Tooltip,
@@ -313,17 +318,28 @@ function folderDisplayName(folder: string): string {
 }
 
 function MessageListSkeleton() {
+	// Delayed: under 300ms the list opens with no loader at all. Shapes mirror
+	// real rows (compact 48px) so nothing moves when data lands; one 320px
+	// band sweeps the whole list at once (`.skeleton-band`).
+	const visible = useDelayedFlag(true);
+	if (!visible) return null;
 	return (
-		<div className="space-y-1 p-2 motion-safe:animate-pulse" role="status" aria-label="正在加载邮件列表">
-			{Array.from({ length: 8 }).map((_, i) => (
-				<div key={i} className="flex items-center gap-3 px-3 py-3">
-					<div className="w-2 h-2 rounded-full bg-paper-3" />
-					<div className="flex-1 space-y-2">
-						<div className="h-3 w-32 rounded bg-paper-3" />
-						<div className="h-2.5 w-3/4 rounded bg-paper-3" />
+		<div className="relative p-2" role="status" aria-label={zhCN.waits.loadingMailList}>
+			<div className="space-y-1">
+				{Array.from({ length: 8 }).map((_, i) => (
+					<div key={i} className="flex h-12 items-center gap-3 rounded-md px-3">
+						<Skeleton className="h-2 w-2 rounded-full" />
+						<div className="min-w-0 flex-1 space-y-1.5">
+							<div className="flex items-center justify-between gap-3">
+								<Skeleton className="h-3 w-28" />
+								<Skeleton className="h-3 w-14" />
+							</div>
+							<Skeleton className="h-3 w-3/4" />
+						</div>
 					</div>
-				</div>
-			))}
+				))}
+			</div>
+			<div aria-hidden="true" className="skeleton-band" />
 		</div>
 	);
 }
@@ -746,12 +762,30 @@ export function MessageListView({
 	// filter for emails not yet round-tripped.
 	const [starredIds, setStarredIds] = useState<Set<string>>(() => new Set());
 	const starMutationVersionRef = useRef(new Map<string, number>());
+	// S7: per-row optimistic failure — inline reason + Retry on the row,
+	// plus a 360ms shake; cleared when a later attempt succeeds.
+	const [starErrors, setStarErrors] = useState<Map<string, { message: string; onRetry: () => void }>>(() => new Map());
+	const [shakeIds, setShakeIds] = useState<Set<string>>(() => new Set());
+	const markStarFailed = useCallback((id: string, message: string, onRetry: () => void) => {
+		setStarErrors((prev) => new Map(prev).set(id, { message, onRetry }));
+		setShakeIds((prev) => new Set(prev).add(id));
+		window.setTimeout(() => {
+			setShakeIds((prev) => {
+				if (!prev.has(id)) return prev;
+				const copy = new Set(prev);
+				copy.delete(id);
+				return copy;
+			});
+		}, 400);
+	}, []);
 	const updateEmail = useUpdateEmail();
 	const deleteEmail = useDeleteEmail();
 	const moveEmail = useMoveEmail();
 	const [bulkActionPending, setBulkActionPending] = useState(false);
 	const markAllReadLock = useRef(false);
 	const markAllReadController = useRef<AbortController | null>(null);
+	const upsertJob = useJobStore((state) => state.upsertJob);
+	const completeJob = useJobStore((state) => state.completeJob);
 	const [markAllReadStopping, setMarkAllReadStopping] = useState(false);
 	useEffect(() => () => markAllReadController.current?.abort(), [mailboxId, folder, location.pathname, location.search]);
 	const [markAllReadProgress, setMarkAllReadProgress] = useState<string | null>(null);
@@ -766,6 +800,15 @@ export function MessageListView({
 		if (!mailboxId) return;
 		const mutationVersion = (starMutationVersionRef.current.get(id) ?? 0) + 1;
 		starMutationVersionRef.current.set(id, mutationVersion);
+		// A new attempt (user click or row Retry) starts clean: drop the
+		// previous failure strip immediately so the retry never races its
+		// own success callback (S7).
+		setStarErrors((prev) => {
+			if (!prev.has(id)) return prev;
+			const copy = new Map(prev);
+			copy.delete(id);
+			return copy;
+		});
 		setStarredIds((prev) => {
 			const copy = new Set(prev);
 			if (next) copy.add(id);
@@ -779,6 +822,14 @@ export function MessageListView({
 				data: { starred: next },
 			},
 			{
+				onSuccess: () => {
+					setStarErrors((prev) => {
+						if (!prev.has(id)) return prev;
+						const copy = new Map(prev);
+						copy.delete(id);
+						return copy;
+					});
+				},
 				onError: (error) => {
 					if (starMutationVersionRef.current.get(id) !== mutationVersion) return;
 					setStarredIds((prev) => {
@@ -788,10 +839,19 @@ export function MessageListView({
 						return copy;
 					});
 					toast.error(getUserFacingError(error, "星标状态未能保存，请重试。"));
+					markStarFailed(id, getUserFacingError(error, "星标状态未能保存"), () => {
+						toggleStarRef.current(id, next);
+					});
 				},
 			},
 		);
-	}, [mailboxId, updateEmail]);
+	}, [mailboxId, updateEmail, markStarFailed]);
+	// Late-bound self reference so the row's Retry can re-run the toggle
+	// without a dependency cycle between toggleStar and its error handlers.
+	const toggleStarRef = useRef<(id: string, next: boolean) => void>(() => {});
+	useEffect(() => {
+		toggleStarRef.current = toggleStar;
+	}, [toggleStar]);
 
 	const isRefreshing = isSyncing;
 	const baseEmails = query.data?.emails ?? [];
@@ -1003,6 +1063,23 @@ export function MessageListView({
 		});
 		return () => { cancelAnimationFrame(frame); cancelAnimationFrame(secondFrame); };
 	}, [mailboxId, visibleVirtualRows, listViewport, query.dataUpdatedAt]);
+
+	// First paint after the skeleton (S3): rows fade in 200ms, 40ms apart,
+	// capped to the first screenful so scrolling never re-triggers it.
+	const [firstPaintRows, setFirstPaintRows] = useState(0);
+	const wasSkeletonRef = useRef(false);
+	useEffect(() => {
+		if (query.isLoading && emails.length === 0) {
+			wasSkeletonRef.current = true;
+			return;
+		}
+		if (wasSkeletonRef.current && emails.length > 0) {
+			wasSkeletonRef.current = false;
+			setFirstPaintRows(12);
+			const timer = window.setTimeout(() => setFirstPaintRows(0), 900);
+			return () => window.clearTimeout(timer);
+		}
+	}, [query.isLoading, emails.length]);
 
 	const autoReadAttemptedRef = useRef<string | null>(null);
 	useEffect(() => {
@@ -1257,17 +1334,52 @@ export function MessageListView({
 		setMarkAllReadStopping(false);
 		setBulkActionPending(true);
 		setMarkAllReadProgress("正在准备…");
+		// Mirror the bulk run into the persistent job card so it survives
+		// navigating away; the card's close mark cancels the same controller.
+		const jobStartedAt = Date.now();
+		upsertJob({
+			id: "mark-all-read",
+			title: "正在标记全部已读",
+			progress: {},
+			onCancel: () => controller.abort(),
+		});
 		try {
 			await queryClient.cancelQueries({ queryKey: ["emails", mailboxId],
 				predicate: (query) => typeof query.queryKey[2] === "object" && query.queryKey[2] !== null });
 			const result = await markAllMailRead(mailboxId, markAllReadParams, (completed, total) =>
-				{ if (!controller.signal.aborted) setMarkAllReadProgress(`正在标记 ${completed}/${total}`); }, controller.signal);
-			if (result.stopped) toast.info(result.remaining === undefined ? "已终止，尚未修改邮件。"
-				: `已终止：已标为已读 ${result.marked} 封，失败 ${result.failed} 封，未处理 ${result.remaining} 封。`);
-			else if (result.failed) toast.error(`已标为已读 ${result.marked} 封，${result.failed} 封未完成，请重试。`);
-			else toast.success(result.marked ? `已将 ${result.marked} 封邮件标为已读` : "当前范围没有未读邮件");
+				{ if (controller.signal.aborted) return;
+					setMarkAllReadProgress(`正在标记 ${completed}/${total}`);
+					const frac = total > 0 ? completed / total : 0;
+					const elapsedSec = (Date.now() - jobStartedAt) / 1000;
+					const remainingSec = frac > 0.05 && frac < 1 ? Math.max(1, Math.round(elapsedSec / frac - elapsedSec)) : undefined;
+					upsertJob({
+						id: "mark-all-read",
+						title: "正在标记全部已读",
+						progress: {
+							done: completed,
+							total,
+							percent: total > 0 ? Math.round(frac * 100) : undefined,
+							eta: remainingSec === undefined ? undefined : remainingSec < 60 ? `约 ${remainingSec} 秒` : `约 ${Math.ceil(remainingSec / 60)} 分钟`,
+						},
+						onCancel: () => controller.abort(),
+					});
+				}, controller.signal);
+			if (result.stopped) {
+				toast.info(result.remaining === undefined ? "已终止，尚未修改邮件。"
+					: `已终止：已标为已读 ${result.marked} 封，失败 ${result.failed} 封，未处理 ${result.remaining} 封。`);
+				completeJob("mark-all-read", "已终止标记", result.marked > 0 ? `已标为已读 ${result.marked} 封` : undefined);
+			}
+			else if (result.failed) {
+				toast.error(`已标为已读 ${result.marked} 封，${result.failed} 封未完成，请重试。`);
+				completeJob("mark-all-read", "部分邮件未完成", `已标为已读 ${result.marked} 封，失败 ${result.failed} 封`);
+			}
+			else {
+				toast.success(result.marked ? `已将 ${result.marked} 封邮件标为已读` : "当前范围没有未读邮件");
+				completeJob("mark-all-read", result.marked ? `已标为已读 ${result.marked} 封` : "没有未读邮件", "当前范围已全部处理");
+			}
 		} catch (error) {
 			toast.error(getUserFacingError(error, "全部标为已读未完成，请重试。"));
+			completeJob("mark-all-read", "标记未完成", getUserFacingError(error, "请稍后重试。"));
 		} finally {
 			markAllReadLock.current = false;
 			markAllReadController.current = null;
@@ -1622,7 +1734,7 @@ export function MessageListView({
 						}}
 						data-testid="virtual-mail-list"
 					>
-						{visibleVirtualRows.map((row) => row.kind === "header" ? (
+						{visibleVirtualRows.map((row, rowIndex) => row.kind === "header" ? (
 							<div
 								key={row.key}
 								className="absolute left-0 right-0 flex items-center px-3 text-meta font-semibold tracking-[0.01em] text-ink-3"
@@ -1643,8 +1755,13 @@ export function MessageListView({
 						) : (
 							<MailItem
 								key={row.key}
-								className="absolute left-0 right-0"
-								style={{ top: row.top, height: row.height }}
+								className={cn(
+									"absolute left-0 right-0",
+									rowIndex < firstPaintRows && "skeleton-row-in",
+									shakeIds.has(row.email.id) && "wm-shake",
+								)}
+								style={{ top: row.top, height: row.height, animationDelay: rowIndex < firstPaintRows ? `${rowIndex * 40}ms` : undefined }}
+								actionError={starErrors.get(row.email.id)}
 								id={row.email.id}
 								sender={senderLabel(row.email)}
 								subject={row.email.subject}

@@ -141,10 +141,13 @@ textarea,
   51%, 100% { opacity: 0; }
 }
 .streaming-caret::after {
-  content: "▍";
+  content: "";
   display: inline-block;
-  margin-left: 1px;
-  color: var(--color-ink-3);
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--color-coral);
   animation: caret-blink 1s steps(1) infinite;
 }
 
@@ -270,8 +273,9 @@ textarea,
   min-width: 0;
   padding: .15rem .2rem .35rem;
   color: var(--color-ink);
-  font-size: .8125rem;
-  line-height: 1.72;
+  /* Answer body reads at 15px/24px (S8) — the same size as mail reading. */
+  font-size: var(--text-body, 0.9375rem);
+  line-height: 24px;
   overflow-wrap: anywhere;
 }
 .agent-response .agent-markdown h1,
@@ -395,6 +399,148 @@ textarea,
   .shimmer-line {
     animation: none;
     background: var(--color-paper-3, #efece5);
+  }
+}
+
+/* ============================================================
+ * Wait states (S1–S8): shared motion for delayed loaders, skeletons,
+ * toasts, job cards, optimistic rows and AI answers. All colours flow
+ * through tokens; every animation stops under prefers-reduced-motion.
+ * ============================================================ */
+
+/* Button spinner (S2): one turn per 0.9s; cross-fades in over 180ms. */
+@keyframes wm-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.wm-btn-spinner > span {
+  animation: wm-turn 0.9s linear infinite;
+}
+.wm-btn-spinner {
+  animation: wm-fade-blur-in 180ms var(--ease-out-quart);
+}
+@keyframes wm-fade-blur-in {
+  from { opacity: 0; filter: blur(2px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+/* Skeleton sweep band (S3): one 320px 75%-white highlight crossing the
+ * whole list at once, 1.2s. Stops to a static fill under reduced motion. */
+@keyframes skeleton-band-sweep {
+  from { background-position: -340px 0; }
+  to { background-position: calc(100% + 340px) 0; }
+}
+.skeleton-band {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.75) 42%,
+    rgba(255, 255, 255, 0.75) 58%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 320px 100%;
+  animation: skeleton-band-sweep 1.2s linear infinite;
+}
+
+/* Rows fade in 200ms, staggered 40ms apart (inline animation-delay). */
+@keyframes skeleton-row-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.skeleton-row-in {
+  animation: skeleton-row-in 200ms var(--ease-out-quart) backwards;
+}
+
+/* Result toast (S4): drops 10px from a slight blur over 500ms. Sonner
+ * injects its stylesheet after the bundle, so !important wins cascade. */
+@keyframes wm-toast-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+[data-sonner-toast][data-y-position="top"][data-mounted="true"] {
+  animation: wm-toast-drop 500ms var(--ease-out-quart) !important;
+}
+
+/* Job card (S5): drops 56px onto the page out of a 4px blur from 96%
+ * over 420ms. Done cards swap words in place (160ms out / 420ms in). */
+@keyframes wm-job-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-56px) scale(0.96);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.wm-job-enter {
+  animation: wm-job-enter 420ms var(--ease-out-quart);
+}
+@keyframes wm-word-out {
+  from { opacity: 1; filter: blur(0); }
+  to { opacity: 0; filter: blur(2px); }
+}
+.wm-word-out {
+  animation: wm-word-out 160ms ease-in forwards;
+}
+@keyframes wm-word-in {
+  from { opacity: 0; filter: blur(4px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.wm-word-in {
+  animation: wm-word-in 420ms var(--ease-out-quart);
+}
+@keyframes wm-job-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
+.wm-job-indeterminate {
+  animation: wm-job-indeterminate 1.2s var(--ease-out-quart) infinite;
+}
+
+/* Optimistic failure (S7): the row shakes 6px, twice, over 360ms. */
+@keyframes wm-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+.wm-shake {
+  animation: wm-shake 360ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-btn-spinner,
+  .wm-btn-spinner > span,
+  .skeleton-band,
+  .skeleton-row-in,
+  .wm-job-enter,
+  .wm-word-out,
+  .wm-word-in,
+  .wm-job-indeterminate,
+  .wm-shake {
+    animation: none;
+  }
+  .skeleton-band {
+    background-image: none;
+  }
+  [data-sonner-toast][data-y-position="top"][data-mounted="true"] {
+    animation: none !important;
   }
 }
 

@@ -19,6 +19,7 @@
   --color-paper-2: #ffffff; /* card surface (AI summary card, popovers, dialog) */
   --color-paper-3: #efece5; /* floating chrome (sidebar, agent, draft panel) */
   --color-paper-4: #e7e3d8; /* floating chrome hover / active */
+  --color-skeleton: #f0f0f2; /* raised grey placeholder shapes (skeletons) */
   --color-summary-surface: #f5f4f0; /* quiet inline region above message content */
   --color-workbench-surface: #fafaf9; /* unified list/detail canvas and AI gutter */
 

@@ -162,7 +162,14 @@ export function getThemeInitScript() {
 })();`;
 }
 
-export function useTheme(): { theme: Theme; setTheme: (theme: Theme) => void } {
+export function useTheme(): {
+	theme: Theme;
+	setTheme: (theme: Theme) => void;
+	resolvedTheme: Exclude<Theme, "system">;
+} {
 	const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-	return { theme, setTheme };
+	// Resolved concrete theme ("system" folded to "dark"/"codex") — what
+	// `data-theme` on <html> actually is right now. Useful for non-tokenized
+	// surfaces (sonner) that must pick a palette variant.
+	return { theme, setTheme, resolvedTheme: resolvedTheme(theme) };
 }

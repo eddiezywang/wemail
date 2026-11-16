@@ -3,6 +3,7 @@ import { CaretRightIcon } from "@phosphor-icons/react/CaretRight";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/EnvelopeSimple";
 import { SpinnerGapIcon } from "@phosphor-icons/react/SpinnerGap";
 import { UsersThreeIcon } from "@phosphor-icons/react/UsersThree";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import type { DirectoryContactSummary } from "../../../shared/wemail/directory";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -46,6 +47,9 @@ export function DirectoryContactTable({
 }: DirectoryContactTableProps) {
 	const pageCount = Math.max(1, Math.ceil(total / pageSize));
 	const pageSelected = contacts.length > 0 && contacts.every((contact) => selectedIds.has(contact.id));
+	// S1: the paging spinner only shows when a page truly takes over 300ms;
+	// the old page's rows stay on-screen meanwhile.
+	const spinnerVisible = useDelayedFlag(loading);
 	return (
 		<section className="flex min-w-0 flex-1 flex-col bg-transparent">
 			<div className="flex min-h-14 items-center justify-between gap-4 border-b border-edge px-4">
@@ -158,7 +162,7 @@ export function DirectoryContactTable({
 					</tbody>
 				</table>
 
-				{loading ? (
+				{loading && spinnerVisible ? (
 					<div className="flex h-40 items-center justify-center gap-2 text-xs text-ink-3" role="status" aria-live="polite">
 						<SpinnerGapIcon size={16} className="animate-spin motion-reduce:animate-none" />
 						正在读取通讯录…
