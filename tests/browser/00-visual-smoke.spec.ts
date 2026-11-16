@@ -56,7 +56,9 @@ for (const vp of VIEWPORTS) {
     await expect(sidebar).toBeVisible({ timeout: 15_000 });
 
     // Compose pill in the rail (localized label since the design refresh).
-    await expect(page.getByRole("button", { name: "写邮件" })).toBeVisible();
+    // Use the testid: a bare role query collides with the mail-list
+    // empty-state "写邮件" CTA on a fresh mailbox.
+    await expect(page.getByTestId("compose-button")).toBeVisible();
 
     // Inbox folder NavLink (compact).
     await expect(

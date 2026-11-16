@@ -53,20 +53,18 @@ test("settings dialog exposes the simplified primary destinations", async ({ pag
   await expect(usage.getByText("总计：0")).toBeVisible();
   await expect(usage.getByText("当前范围读取失败，请刷新重试")).toHaveCount(0);
 
-  for (const section of ["账户", "个性化", "AI 模型", "MCP", "连接", "Skill Center", "关于", "高级设置"]) {
+  for (const section of ["账户", "个性化", "AI 模型", "MCP", "连接", "Skill Center", "外观", "关于", "高级设置"]) {
     await expect(dialog.getByRole("button", { name: section, exact: true })).toBeVisible();
   }
   await expect(dialog.getByText("自定义 AI", { exact: true })).toHaveCount(0);
   await expect(dialog.getByTestId("settings-nav-mail")).toHaveCount(0);
   await expect(dialog.getByTestId("settings-nav-notifications")).toHaveCount(0);
-  await expect(dialog.getByTestId("settings-nav-appearance")).toHaveCount(0);
 
   await dialog.getByTestId("settings-nav-advanced").click();
   await expect(dialog.getByRole("heading", { name: "签名" })).toBeVisible();
 
-  // 外观 is a pane card inside 高级设置; its accessible name concatenates the
-  // card label and description.
-  await dialog.getByRole("button", { name: /外观/ }).click();
+  // 外观 is a primary nav item; theme picker renders in the main pane.
+  await dialog.getByTestId("settings-nav-appearance").click();
   await expect(dialog.getByRole("heading", { name: "外观" })).toBeVisible();
   await expect(dialog.getByTestId("theme-selector")).toBeVisible();
   await expect(dialog.getByRole("tab", { name: "跟随系统" })).toBeVisible();

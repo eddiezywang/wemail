@@ -14,8 +14,9 @@ test("desktop launches the production renderer without a white screen", async ()
     // "WeMail AI" brand label is gated to ≥1500px viewports (AgentSidebar
 // min-[1500px]:inline) and the AI panel starts closed on a fresh profile;
 // CI launches the default 1280px window. Probe the always-rendered
-// compose button instead.
-await expect(window.getByRole("button", { name: "写邮件" })).toBeVisible({ timeout: 20_000 });
+// compose button by testid — a bare role query collides with the
+// mail-list empty-state "写邮件" CTA.
+await expect(window.getByTestId("compose-button")).toBeVisible({ timeout: 20_000 });
 
     const visualHealth = await window.evaluate(() => {
       const body = document.body;
@@ -33,7 +34,7 @@ await expect(window.getByRole("button", { name: "写邮件" })).toBeVisible({ ti
       platform: window.wemailDesktop?.platform,
       apiBaseUrl: window.wemailDesktop?.apiBaseUrl,
     }));
-    expect(bridge.platform).toBe("win32");
+    expect(bridge.platform).toBe(process.platform);
     expect(bridge.apiBaseUrl).toBe(app.apiBaseUrl);
 
     const startupLog = fs.readFileSync(path.join(app.dataDir, "startup.log"), "utf8");
