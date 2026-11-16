@@ -1,52 +1,39 @@
 // Copyright (c) 2026 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
+//
+// Logout must not wipe local mail data ("退出登录不清理本地数据"): the
+// canonical database row survives logout + app restart. The mock-inbox
+// fixture is deleted before the re-open so a re-login cannot re-inject
+// the message — any surviving row proves persistence.
+import fs from "node:fs";
+import path from "node:path";
+import { expect, test } from "@playwright/test";
+import { launchElectron, loginWithFixture } from "./helpers/electronApp";
 
-import { test, expect } from "@playwright/test";
-import {
-  bundledLlmResponder,
-  launchElectron,
-  loginWithFixture,
-  waitFor,
-} from "./helpers/electronApp";
-
-test("logout preserves mail DB across app re-open", async () => {
+test("logout preserves canonical mail across app re-open", async () => {
   const first = await launchElectron({
-    rendererUrl: "http://127.0.0.1:14175",
+    rendererUrl: "http://127.0.0.1:14175/",
     inboxFixtures: ["mail-001-question.json"],
-    llmResponder: bundledLlmResponder(),
   });
   const dataDir = first.dataDir;
   try {
-    await loginWithFixture(first.apiBaseUrl);
     const window = await first.electronApp.firstWindow();
-    await window.waitForLoadState("domcontentloaded");
-
-    // The preload bridge may still be connecting on a cold CI runner; wait
-    // for Mail Core before the first refresh instead of assuming it is ready
-    // at domcontentloaded.
-    const refresh = await waitFor(
-      async () => {
-        const result = await window.evaluate(async () => {
-          const mailCore = window.wemailDesktop?.mailCore;
-          if (!mailCore?.isConnected()) return null;
-          return await mailCore.refreshMail("acct-e2e");
-        });
-        return result && result.status === "queued" ? result : null;
-      },
-      { label: "mail-core-refresh", timeoutMs: 30_000 },
+    await loginWithFixture(first.apiBaseUrl);
+    await expect(window.getByTestId("workbench")).toBeVisible();
+    await expect.poll(() =>
+      window.evaluate(async () =>
+        (await window.wemailDesktop?.mailCore?.health())?.accountRuntime?.accountId ?? null,
+      ),
+    ).toBe("acct-e2e");
+    const refresh = await window.evaluate(() =>
+      window.wemailDesktop?.mailCore?.refreshMail("acct-e2e"),
     );
-    expect(refresh.status).toBe("queued");
-
-    const listed = await waitFor(async () => {
-      const data = await window.evaluate(async () => {
-        const database = window.wemailDesktop?.mailDatabase;
-        if (!database?.isConnected()) return null;
-        return await database.listMail({ accountId: "acct-e2e", folder: "INBOX" });
-      });
-      return data && data.messages.length > 0 ? data : null;
-    }, { label: "message-listed", timeoutMs: 20_000 });
-    expect(listed.messages.length).toBe(1);
+    expect(refresh?.status).toBe("queued");
+    await expect(
+      window.getByTestId("mail-item").filter({ hasText: "Quick question" }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(window.getByTestId("mail-item")).toHaveCount(1);
 
     const out = await fetch(`${first.apiBaseUrl}/api/account/logout`, {
       method: "POST",
@@ -56,24 +43,29 @@ test("logout preserves mail DB across app re-open", async () => {
     await first.close();
   }
 
-  // Re-open with the same data directory — SQLite rows survive the logout
-  // (logout clears session secrets only, never the canonical store).
+  fs.rmSync(path.join(dataDir, "mock-inbox"), { recursive: true, force: true });
+
   const second = await launchElectron({
     reuseDataDir: dataDir,
-    rendererUrl: "http://127.0.0.1:14175",
+    rendererUrl: "http://127.0.0.1:14175/",
   });
   try {
-    const reopened = await second.electronApp.firstWindow();
-    const after = await waitFor(async () => {
-      const data = await reopened.evaluate(async () => {
-        const database = window.wemailDesktop?.mailDatabase;
-        if (!database?.isConnected()) return null;
-        return await database.listMail({ accountId: "acct-e2e", folder: "INBOX" });
-      });
-      return data && data.messages.length > 0 ? data : null;
-    }, { label: "cache-preserved", timeoutMs: 20_000 });
-    expect(after.messages[0].id).toBeDefined();
-    expect(after.messages[0].subject).toContain("launch");
+    const window = await second.electronApp.firstWindow();
+    await loginWithFixture(second.apiBaseUrl);
+    await expect(window.getByTestId("workbench")).toBeVisible();
+    await expect.poll(() =>
+      window.evaluate(async () =>
+        (await window.wemailDesktop?.mailCore?.health())?.accountRuntime?.accountId ?? null,
+      ),
+    ).toBe("acct-e2e");
+    const refresh = await window.evaluate(() =>
+      window.wemailDesktop?.mailCore?.refreshMail("acct-e2e"),
+    );
+    expect(refresh?.status).toBe("queued");
+    await expect(
+      window.getByTestId("mail-item").filter({ hasText: "Quick question" }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(window.getByTestId("mail-item")).toHaveCount(1);
   } finally {
     await second.close();
   }

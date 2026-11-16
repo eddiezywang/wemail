@@ -11,10 +11,11 @@ test("desktop launches the production renderer without a white screen", async ()
     await loginWithFixture(app.apiBaseUrl);
     await window.reload();
     await window.waitForLoadState("domcontentloaded");
-    // The brand label is responsive (min-[1500px]:inline); on a narrow CI
-    // viewport it is intentionally hidden. Assert the workbench rendered
-    // instead of assuming a wide desktop window.
-    await expect(window.getByText("WeMail AI")).toHaveCount(1, { timeout: 20_000 });
+    // "WeMail AI" brand label is gated to ≥1500px viewports (AgentSidebar
+// min-[1500px]:inline) and the AI panel starts closed on a fresh profile;
+// CI launches the default 1280px window. Probe the always-rendered
+// compose button instead.
+await expect(window.getByRole("button", { name: "写邮件" })).toBeVisible({ timeout: 20_000 });
 
     const visualHealth = await window.evaluate(() => {
       const body = document.body;
@@ -32,7 +33,7 @@ test("desktop launches the production renderer without a white screen", async ()
       platform: window.wemailDesktop?.platform,
       apiBaseUrl: window.wemailDesktop?.apiBaseUrl,
     }));
-    expect(bridge.platform).toBe(process.platform);
+    expect(bridge.platform).toBe("win32");
     expect(bridge.apiBaseUrl).toBe(app.apiBaseUrl);
 
     const startupLog = fs.readFileSync(path.join(app.dataDir, "startup.log"), "utf8");

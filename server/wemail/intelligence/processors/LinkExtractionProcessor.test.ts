@@ -97,12 +97,12 @@ test("LinkExtractionProcessor extracts HTML anchor links", async () => {
 test("LinkExtractionProcessor preserves markdown link labels", async () => {
   const processor = new LinkExtractionProcessor();
   const msg = makeMessage({
-    bodyText: "[Follow up on ITSM problem 10071940](https://itsm.example.com/problems/10071940)",
+    bodyText: "[Follow up on 服务台 problem 10071940](https://itsm.example.com/problems/10071940)",
   });
   const result = await extractAsync(processor, msg);
   assert.equal(result.links.length, 1);
   assert.equal(result.links[0]!.url, "https://itsm.example.com/problems/10071940");
-  assert.equal(result.links[0]!.actionText, "Follow up on ITSM problem 10071940");
+  assert.equal(result.links[0]!.actionText, "Follow up on 服务台 problem 10071940");
 });
 
 test("LinkExtractionProcessor extracts List-Unsubscribe header URLs", async () => {

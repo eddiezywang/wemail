@@ -31,5 +31,5 @@
 
 - [x] 4.1 typecheck:server pass; analysis 7/7 + design 15/15 tests pass.
 - [x] 4.2 autoPivot sample: 7-day × model × status → 5 pivots + switchable trend card + 环比 callout.
-- [x] 4.3 Extractor + htmlTableDataset verified on real IDAS data (24 emails → 84 rows → 540K calls); product function ready for processor wiring.
+- [x] 4.3 Extractor + htmlTableDataset verified on real DataAPI data (24 emails → 84 rows → 540K calls); product function ready for processor wiring.
 - [x] 4.4 Raw-table detail: per-table export (viewer auto-enhances each table) + combined export ("全部导出 CSV" button).
