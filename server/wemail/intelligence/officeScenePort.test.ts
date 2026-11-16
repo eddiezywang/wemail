@@ -13,7 +13,7 @@ test("NO_OP_OFFICE_SCENES never detects and never filters", () => {
   assert.equal(port.detect("【问题超时提醒】[10080565]大表整改"), undefined);
   assert.equal(port.detect("hello"), undefined);
   assert.equal(port.isSystemMail("【问题超时提醒】[10080565]大表整改"), false);
-  assert.equal(port.isSystemMail("PACE+发布单结单提醒"), false);
+  assert.equal(port.isSystemMail("ReleaseFlow发布单结单提醒"), false);
   assert.deepEqual(port.actionableScenes(), []);
   assert.equal(port.actionMeta("overdue"), undefined);
 });

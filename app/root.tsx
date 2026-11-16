@@ -19,6 +19,7 @@ import {
 	useLocation,
 } from "react-router";
 import { AppTitlebar } from "~/components/shell/AppTitlebar";
+import { JobCenter } from "~/components/jobs/JobCenter";
 import ScrollbarActivity from "~/components/shell/ScrollbarActivity";
 import MailCredentialDialog from "~/components/MailCredentialDialog";
 import { DesktopUpdateCenter } from "~/components/updates/DesktopUpdateCenter";
@@ -27,6 +28,7 @@ import { Toaster } from "~/components/ui/sonner";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { ApiError } from "~/services/api";
 import { useCurrentAccount } from "~/queries/currentAccount";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import { telemetrySurface, trackTelemetry } from "~/lib/telemetry";
 import { zhCN } from "~/copy/zh-CN";
 import "./index.css";
@@ -94,6 +96,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export function HydrateFallback() {
+	// Delayed: under 300ms boots show nothing at all (S1).
+	const visible = useDelayedFlag(true);
+	if (!visible) return null;
 	return (
 		<div
 			className="flex min-h-[100dvh] items-center justify-center"
@@ -144,6 +149,7 @@ export default function App() {
 				<ScrollbarActivity />
 				<MailCredentialDialog />
 				<DesktopUpdateCenter />
+				<JobCenter />
 				<div className="flex h-[100dvh] w-full flex-col">
 					<AppTitlebar />
 					<div

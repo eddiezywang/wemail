@@ -1,6 +1,6 @@
 /**
  * Layer 1 (data-analysis skill): a GENERIC HTML-table extractor. Works for ANY HTML
- * email with tables — not specific to any sender (IDAS, monitoring, reports…).
+ * email with tables — not specific to any sender (DataAPI, monitoring, reports…).
  * Tolerant of malformed tags (`<td>…</th>` mismatches common in enterprise HTML email).
  * Returns each table as { columns, rows } for downstream analysis / rendering.
  */

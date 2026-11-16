@@ -1,4 +1,5 @@
 import EmailIframe from "~/components/EmailIframe";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import { rewriteInlineImages } from "~/lib/utils";
 import type { Email } from "~/types";
 import { memo, useEffect, useState } from "react";
@@ -40,21 +41,25 @@ function DeferredEmailIframe(props: {
 	highlightTerms?: string[];
 }) {
 	const [ready, setReady] = useState(false);
+	// Delayed (S1): cached bodies swap within a frame and show nothing;
+	// slow (uncached IMAP ensure) bodies get 12px lines under 15px text.
+	const skeletonVisible = useDelayedFlag(!ready);
 	useEffect(() => {
 		setReady(false);
 		const frame = requestAnimationFrame(() => setReady(true));
 		return () => cancelAnimationFrame(frame);
 	}, [props.body, props.highlightTerms]);
 	if (!ready) {
+		if (!skeletonVisible) return null;
 		return (
 			<div
 				data-testid="email-body-loading"
 				data-email-id={props.emailId}
-				className="animate-pulse space-y-2 py-2 motion-reduce:animate-none"
+				className="space-y-2 py-2"
 			>
-				<div className="h-2.5 w-full rounded bg-paper-3" />
-				<div className="h-2.5 w-5/6 rounded bg-paper-3" />
-				<div className="h-2.5 w-3/5 rounded bg-paper-3" />
+				<div className="skeleton-row-in h-3 w-full rounded-[6px] bg-[var(--color-skeleton)]" />
+				<div className="skeleton-row-in h-3 w-5/6 rounded-[6px] bg-[var(--color-skeleton)]" style={{ animationDelay: "40ms" }} />
+				<div className="skeleton-row-in h-3 w-3/5 rounded-[6px] bg-[var(--color-skeleton)]" style={{ animationDelay: "80ms" }} />
 			</div>
 		);
 	}
@@ -84,11 +89,11 @@ function EmailBodyRendererBase({
 			<div
 				data-testid="email-body-loading"
 				data-email-id={email.id}
-				className="animate-pulse space-y-2 py-2 motion-reduce:animate-none"
+				className="space-y-2 py-2"
 			>
-				<div className="h-2.5 w-full rounded bg-paper-3" />
-				<div className="h-2.5 w-5/6 rounded bg-paper-3" />
-				<div className="h-2.5 w-3/5 rounded bg-paper-3" />
+				<div className="h-3 w-full rounded-[6px] bg-[var(--color-skeleton)]" />
+				<div className="h-3 w-5/6 rounded-[6px] bg-[var(--color-skeleton)]" />
+				<div className="h-3 w-3/5 rounded-[6px] bg-[var(--color-skeleton)]" />
 			</div>
 		);
 	}

@@ -35,8 +35,9 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useAiProfile } from "~/queries/aiProfile";
 import { useWritingStyles } from "~/queries/writingStyles";
+import { ErrorSlot } from "~/components/ui/error-slot";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import api from "~/services/api";
-import { getUserFacingError } from "~/lib/user-facing-error";
 import type { ComposeMailResult } from "../../../shared/wemail/intelligence";
 import {
 	mergeComposeAiBody,
@@ -147,6 +148,11 @@ export const AiPromptBar = forwardRef<AiPromptBarHandle, AiPromptBarProps>(funct
 	);
 	const [promptHistory, setPromptHistory] = useState<string[]>([]);
 	const [historyOpen, setHistoryOpen] = useState(false);
+	// Delayed skeleton (S1): quick generations show nothing at all.
+	const generateSkeletonVisible = useDelayedFlag(pending);
+	// Inline failure (S6): last submitted prompt enables Retry from the slot.
+	const [generateError, setGenerateError] = useState<unknown>(null);
+	const lastIntentRef = useRef<string | null>(null);
 	const [versions, setVersions] = useState<string[]>([]);
 	const [versionIndex, setVersionIndex] = useState(-1);
 	const [changeSummary, setChangeSummary] = useState<string[]>([]);
@@ -258,6 +264,8 @@ export const AiPromptBar = forwardRef<AiPromptBarHandle, AiPromptBarProps>(funct
 			...items.filter((item) => item !== trimmed),
 		].slice(0, 8));
 		setHistoryOpen(false);
+		setGenerateError(null);
+		lastIntentRef.current = conversationalIntent;
 		setPending(true);
 		const controller = new AbortController();
 		requestControllerRef.current = controller;
@@ -306,7 +314,7 @@ export const AiPromptBar = forwardRef<AiPromptBarHandle, AiPromptBarProps>(funct
 				!(error instanceof DOMException && error.name === "AbortError") &&
 				!controller.signal.aborted
 			) {
-				toast.error(getUserFacingError(error, "AI 生成失败，请稍后重试。"));
+				setGenerateError(error);
 			}
 		} finally {
 			if (requestControllerRef.current === controller) {
@@ -349,12 +357,23 @@ export const AiPromptBar = forwardRef<AiPromptBarHandle, AiPromptBarProps>(funct
 			) : null}
 
 			{pending ? (
-				<div
-					data-testid="compose-ai-loading"
-					className="mb-2 grid gap-1.5 animate-pulse motion-reduce:animate-none"
-				>
-					<div className="h-2.5 w-2/3 rounded bg-paper-3" />
-					<div className="h-2.5 w-5/6 rounded bg-paper-3" />
+				generateSkeletonVisible ? (
+					<div
+						data-testid="compose-ai-loading"
+						className="mb-2 grid gap-1.5"
+					>
+						<div className="skeleton-row-in h-3 w-2/3 rounded-[6px] bg-[var(--color-skeleton)]" />
+						<div className="skeleton-row-in h-3 w-5/6 rounded-[6px] bg-[var(--color-skeleton)]" style={{ animationDelay: "40ms" }} />
+					</div>
+				) : null
+			) : null}
+			{generateError ? (
+				<div className="mb-2">
+					<ErrorSlot
+						error={generateError}
+						fallback="AI 生成失败，请稍后重试。"
+						onRetry={lastIntentRef.current ? () => void submit(lastIntentRef.current!) : undefined}
+					/>
 				</div>
 			) : null}
 

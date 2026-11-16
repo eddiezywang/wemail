@@ -83,3 +83,5 @@
       `ensureVisible()` (restore/focus) before every step in `steps()`
 - [x] Folder-switch target moved to a uniquely-named folder (中文孪生链接
       AMBIGUOUS_TARGET documented)
+- [x] GitHub wemail main 同步：合并 e2e-assets（spec 18-21 + live packs + 稳定性加固）
+      与并行线的 edition/viewport 适配（f18f32ca，无冲突自动合并）

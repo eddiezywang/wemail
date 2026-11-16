@@ -15,6 +15,18 @@ export const zhCN = {
 		description: "这个页面可能已被移动或删除。",
 		backHome: "返回首页",
 	},
+	waits: {
+		loadingApp: "正在加载…",
+		loadingMailList: "正在加载邮件列表",
+		loadingDetail: "正在加载邮件",
+		loadingBody: "正在加载正文",
+		loadingMore: "正在加载更多邮件…",
+		retry: "重试",
+		jobEstimating: "剩余时间估算中…",
+		jobDone: "已完成",
+		jobCancel: "取消",
+		jobDismiss: "关闭",
+	},
 	pageError: {
 		title: "WeMail 暂时无法打开此页面",
 		description: "发生了意外问题。你可以返回首页后重试。",

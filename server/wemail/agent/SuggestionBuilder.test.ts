@@ -40,7 +40,7 @@ test("buildSuggestions suggests an analyzed next step without copying summary or
       result: {
         type: "summary",
         bullets: ["问题单 10071940 超时待处理"],
-        actionItems: ["在 ITSM 处理问题单 10071940"],
+        actionItems: ["在 服务台 处理问题单 10071940"],
         urgency: "medium",
       },
     },
@@ -50,7 +50,7 @@ test("buildSuggestions suggests an analyzed next step without copying summary or
         type: "linkExtraction",
         links: [{
           url: "https://itsm.example.com/problems/10071940",
-          actionText: "在 ITSM 处理问题单 10071940",
+          actionText: "在 服务台 处理问题单 10071940",
           risk: false,
           riskReasons: [],
           category: "action",
@@ -67,7 +67,7 @@ test("buildSuggestions suggests an analyzed next step without copying summary or
 
   assert.equal(suggestions[0]?.id, "analyze-next-step");
   assert.equal(suggestions[0]?.label, "给出下一步建议");
-  assert.doesNotMatch(suggestions[0]?.label ?? "", /10071940|ITSM/);
+  assert.doesNotMatch(suggestions[0]?.label ?? "", /10071940|服务台/);
   assert.match(suggestions[0]?.prompt ?? "", /不要把邮件链接的标题直接当作行动建议/);
 });
 

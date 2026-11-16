@@ -68,7 +68,7 @@ export function ApplicationMessageCenter({ accountId }: { accountId?: string }) 
 		if (!target.readAt) read.mutate({ id: target.id, value: true });
 	}, [messages, read, searchParams, selected]);
 	if (!accountId) return <AsyncState kind="empty" title="请先登录邮箱账户" description="连接邮箱后，自动化和智能助手的消息会显示在这里。" />;
-	if (query.isLoading) return <AsyncState kind="loading" title="正在加载应用消息" />;
+	if (query.isLoading) return <AsyncState kind="loading" title="正在加载应用消息" delayed />;
 	if (query.isError) return <AsyncState kind="error" title="应用消息加载失败" description="请检查网络后重试。" actionLabel="重试" onAction={() => void query.refetch()} actionPending={query.isFetching} />;
 	const selectedArtifactUrl = selected?.artifact ? api.getApplicationMessageArtifactUrl(selected.id, accountId) : undefined;
 	return <div className="flex h-full min-h-0 flex-col bg-paper">

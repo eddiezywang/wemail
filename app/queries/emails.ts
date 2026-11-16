@@ -3,6 +3,7 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import {
+	keepPreviousData,
 	type QueryClient,
 	useInfiniteQuery,
 	useMutation,
@@ -169,6 +170,10 @@ export function useEmails(
 	>({
 		queryKey,
 		initialPageParam: undefined,
+		// Keep the previous list on-screen while a new filter/search/page-set
+		// loads (S3 "keep known old data while refreshing") — the skeleton only
+		// shows when there is truly nothing to show.
+		placeholderData: keepPreviousData,
 		queryFn: ({ pageParam, signal }) =>
 			fetchEmailPage(mailboxId!, queryParams, pageParam, signal),
 		getNextPageParam: (lastPage) => {

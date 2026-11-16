@@ -3,6 +3,7 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import { PaperclipIcon } from "@phosphor-icons/react/Paperclip";
+import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
 import { StarIcon } from "@phosphor-icons/react/Star";
 import { ArchiveIcon } from "@phosphor-icons/react/Archive";
 import { EnvelopeOpenIcon } from "@phosphor-icons/react/EnvelopeOpen";
@@ -47,6 +48,12 @@ export interface MailItemProps {
 	onContextMenu?: (id: string, event: MouseEvent<HTMLDivElement>) => void;
 	/** Optional left-edge importance/category accent stripe. */
 	accent?: MailItemAccent;
+	/**
+	 * Inline failure strip (S7): an optimistic action on this row failed.
+	 * Renders reason + Retry as an overlay at the row's bottom edge — the
+	 * row height never changes, so the list never jumps.
+	 */
+	actionError?: { message: string; onRetry: () => void };
 	onClick?: (id: string) => void;
 }
 
@@ -135,6 +142,7 @@ function MailItemBase({
 	onToggleRead,
 	onContextMenu,
 	accent,
+	actionError,
 	onClick,
 }: MailItemProps) {
 	const isCheckboxSelected = checkboxSelected ?? selected ?? false;
@@ -289,6 +297,27 @@ function MailItemBase({
 					</div>
 				</div>
 			</div>
+			{actionError ? (
+				<div
+					data-testid="mail-item-error"
+					role="alert"
+					className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 border-t border-red/20 bg-red-bg px-2 py-0.5 text-xs text-red"
+				>
+					<WarningCircleIcon size={12} weight="fill" className="shrink-0" />
+					<span className="min-w-0 flex-1 truncate">{actionError.message}</span>
+					<button
+						type="button"
+						data-testid="mail-item-error-retry"
+						className="shrink-0 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={(event) => {
+							event.stopPropagation();
+							actionError.onRetry();
+						}}
+					>
+						重试
+					</button>
+				</div>
+			) : null}
 		</div>
 	);
 }

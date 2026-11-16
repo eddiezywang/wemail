@@ -2,6 +2,7 @@ import { SpinnerGapIcon } from "@phosphor-icons/react/SpinnerGap";
 import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Button } from "~/components/ui/button";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import { cn } from "~/lib/cn";
 
 type AsyncStateKind = "loading" | "empty" | "error" | "degraded" | "not-found";
@@ -14,6 +15,12 @@ export interface AsyncStateProps extends Omit<HTMLAttributes<HTMLDivElement>, "t
 	onAction?: () => void;
 	actionPending?: boolean;
 	icon?: ReactNode;
+	/**
+	 * Delay the loading state (S1): nothing renders for the first 300ms and
+	 * a shown state stays at least 500ms. Off by default so existing fast
+	 * surfaces keep their behaviour; opt in on queries that can be quick.
+	 */
+	delayed?: boolean;
 	className?: string;
 }
 
@@ -25,9 +32,12 @@ export function AsyncState({
 	onAction,
 	actionPending = false,
 	icon,
+	delayed = false,
 	className,
 	...props
 }: AsyncStateProps) {
+	const delayedVisible = useDelayedFlag(kind === "loading" && delayed);
+	if (delayed && !delayedVisible) return null;
 	const live = kind === "loading" ? "polite" : kind === "error" ? "assertive" : undefined;
 	const role = kind === "error" ? "alert" : kind === "loading" ? "status" : undefined;
 	return (
@@ -40,9 +50,9 @@ export function AsyncState({
 		>
 			<div aria-hidden="true" className={cn("mb-3 text-ink-3", kind === "error" && "text-red")}>
 				{icon ?? (kind === "loading" ? (
-					<SpinnerGapIcon size={22} className="animate-spin motion-reduce:animate-none" />
+					<SpinnerGapIcon size={16} className="animate-spin motion-reduce:animate-none" />
 				) : kind === "error" ? (
-					<WarningCircleIcon size={22} />
+					<WarningCircleIcon size={16} />
 				) : null)}
 			</div>
 			<h3 className="text-sm font-semibold text-ink">{title}</h3>

@@ -8,6 +8,8 @@ import { useParams, useSearchParams } from "react-router";
 import { Folders, isSentFolder } from "shared/folders";
 import { toast } from "sonner";
 import EmailPanelDialogs from "~/components/email-panel/EmailPanelDialogs";
+import { Skeleton } from "~/components/ui/skeleton";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import EmailPanelHeader from "~/components/email-panel/EmailPanelHeader";
 import EmailPanelToolbar from "~/components/email-panel/EmailPanelToolbar";
 import MessageSenderBar from "~/components/email-panel/MessageSenderBar";
@@ -110,6 +112,10 @@ async function loadCompleteDraft(
 }
 
 function EmailPanelSkeleton({ recovering = false }: { recovering?: boolean }) {
+	// Delayed (S1): fast opens skip the skeleton entirely; shapes mirror the
+	// real detail layout so nothing jumps when content lands.
+	const visible = useDelayedFlag(true);
+	if (!visible && !recovering) return null;
 	return (
 		<div className="h-full overflow-hidden bg-workbench-surface">
 			{recovering ? (
@@ -117,10 +123,24 @@ function EmailPanelSkeleton({ recovering = false }: { recovering?: boolean }) {
 					邮件服务正在恢复，连接完成后会自动继续加载…
 				</div>
 			) : null}
-			<div className="animate-pulse p-5 space-y-4 motion-reduce:animate-none">
-				<div className="h-5 w-2/3 rounded bg-paper-3" />
-				<div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-paper-3" /><div className="space-y-2 flex-1"><div className="h-3 w-40 rounded bg-paper-3" /><div className="h-2.5 w-24 rounded bg-paper-3" /></div></div>
-				<div className="space-y-2 pt-4"><div className="h-2.5 w-full rounded bg-paper-3" /><div className="h-2.5 w-5/6 rounded bg-paper-3" /><div className="h-2.5 w-4/6 rounded bg-paper-3" /><div className="h-2.5 w-3/4 rounded bg-paper-3" /></div>
+			<div className="relative space-y-4 p-5">
+				<div className="space-y-4">
+					<Skeleton className="h-5 w-2/3" />
+					<div className="flex items-center gap-3">
+						<Skeleton className="h-10 w-10 rounded-full" />
+						<div className="flex-1 space-y-2">
+							<Skeleton className="h-3 w-40" />
+							<Skeleton className="h-3 w-24" />
+						</div>
+					</div>
+					<div className="space-y-2 pt-4">
+						<Skeleton className="h-3 w-full" />
+						<Skeleton className="h-3 w-5/6" />
+						<Skeleton className="h-3 w-4/6" />
+						<Skeleton className="h-3 w-3/4" />
+					</div>
+				</div>
+				<div aria-hidden="true" className="skeleton-band" />
 			</div>
 		</div>
 	);

@@ -15,6 +15,31 @@ import { useMailFilters } from "~/hooks/useMailFilters";
 import { buildMailFilterParams } from "~/components/wemail/MailFilterPopover";
 import EmptyState from "~/components/wemail/EmptyState";
 import { MessageListView } from "./_workbench";
+import { Skeleton } from "~/components/ui/skeleton";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
+
+// Delayed tag-list skeleton (S1/S3): nothing under 300ms, then tag-shaped
+// rows (icon tile + two lines) with the shared sweep band.
+function SmartTagsSkeleton() {
+	const visible = useDelayedFlag(true);
+	if (!visible) return null;
+	return (
+		<div className="relative h-full p-3" role="status" aria-label="正在加载智能标签">
+			<div className="space-y-2">
+				{Array.from({ length: 7 }).map((_, i) => (
+					<div key={i} className="flex items-center gap-3 rounded-md px-2 py-2.5">
+						<Skeleton className="h-8 w-8 rounded-lg" />
+						<div className="min-w-0 flex-1 space-y-1.5">
+							<Skeleton className="h-3 w-32" />
+							<Skeleton className="h-3 w-3/4" />
+						</div>
+					</div>
+				))}
+			</div>
+			<div aria-hidden="true" className="skeleton-band" />
+		</div>
+	);
+}
 
 export function meta() {
 	return [{ title: "WeMail" }];
@@ -78,11 +103,7 @@ export default function SmartTagRoute() {
 
 	let listContent: ReactNode;
 	if (smartTagsQuery.isLoading) {
-		listContent = (
-			<div className="flex h-full items-center justify-center text-sm text-ink-3" role="status" aria-live="polite">
-				正在加载智能标签…
-			</div>
-		);
+		listContent = <SmartTagsSkeleton />;
 	} else if (smartTagsQuery.isError) {
 		listContent = (
 			<EmptyState

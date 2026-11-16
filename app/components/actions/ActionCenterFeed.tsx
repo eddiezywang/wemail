@@ -73,6 +73,7 @@ export function ActionCenterFeed() {
 				<AsyncState
 					kind="loading"
 					title="正在加载行动中心"
+					delayed
 					className="min-h-[520px]"
 					data-testid="action-center-loading"
 				/>

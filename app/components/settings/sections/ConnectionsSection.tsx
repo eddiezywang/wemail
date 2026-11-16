@@ -1035,7 +1035,7 @@ function ProfileConsole({ profile, observation, onRefresh, onReconfigure }: { pr
 					<div className="flex items-start justify-between gap-4">
 						<div>
 							<div className="text-sm font-semibold text-ink">{profile.owner ? "重新绑定等待中" : "绑定主人"}</div>
-							<p className="mt-1 text-xs leading-4 text-ink-3">{command ? `让新主人在与「${profile.displayName}」的私聊中发送：` : profile.owner ? "原主人仍被保留；生成新命令即可切换。" : `让主人在与「${profile.displayName}」的私聊中发送一次性命令。`}</p>
+							<p className="mt-1 text-xs leading-4 text-ink-3">{command ? `让新主人在与「${profile.displayName}」的私聊中发送：` : profile.owner ? "原主人仍被保留；生成新命令即可切换。" : `让主人在与「${profile.displayName}」的私聊中发送一次性命令；或在 Bot 创建后 15 分钟内，直接在私聊中发送任意消息即可完成绑定。`}</p>
 						</div>
 						<div className="flex shrink-0 items-center gap-3">
 							<span className="rounded-full bg-amber-bg px-2 py-1 text-xs text-amber">等待主人</span>

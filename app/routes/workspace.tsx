@@ -27,6 +27,8 @@ import {
 } from "~/services/api";
 import EmptyState from "~/components/wemail/EmptyState";
 import PageFrame from "~/components/wemail/PageFrame";
+import { Skeleton } from "~/components/ui/skeleton";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 
 export function meta() {
 	return [{ title: "工作空间 / Workspace" }];
@@ -173,6 +175,9 @@ function WorkspaceFileContent({
 		enabled: !!filePath && !!accountId && isSafeWorkspacePath(filePath),
 		staleTime: 5_000,
 	});
+	// Hook must run unconditionally (rules of hooks); the flag only gates
+	// whether the skeleton below renders.
+	const skeletonVisible = useDelayedFlag(fileQuery.isLoading);
 	if (!filePath || !isSafeWorkspacePath(filePath)) {
 		return (
 			<EmptyState
@@ -184,13 +189,23 @@ function WorkspaceFileContent({
 		);
 	}
 	if (fileQuery.isLoading) {
+		// Delayed file skeleton (S1/S3): nothing under 300ms, then a title line
+		// and body lines at reading size.
+		if (!skeletonVisible) return <div className="h-full" aria-busy="true" />;
 		return (
 			<div
-				className="flex h-full items-center justify-center text-sm text-ink-3"
+				className="relative h-full space-y-3 p-6"
 				role="status"
-				aria-live="polite"
+				aria-label="正在读取文件"
 			>
-				正在读取文件…
+				<Skeleton className="h-5 w-1/2" />
+				<div className="space-y-2 pt-2">
+					<Skeleton className="h-3 w-full" />
+					<Skeleton className="h-3 w-11/12" />
+					<Skeleton className="h-3 w-4/5" />
+					<Skeleton className="h-3 w-3/4" />
+				</div>
+				<div aria-hidden="true" className="skeleton-band" />
 			</div>
 		);
 	}
