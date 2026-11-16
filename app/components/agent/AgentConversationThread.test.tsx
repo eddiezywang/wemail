@@ -320,4 +320,34 @@ describe("AgentConversationThread", () => {
     expect(confirmation.compareDocumentPosition(process) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(process.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it("shows Copy and Retry on the last completed answer; Retry resends the last prompt (S8)", () => {
+    const onFollowup = vi.fn();
+    const state = conversationStateFromEvents("conv-1", [
+      event(0, { type: "run_started" }),
+      event(1, { type: "message_started", role: "user", messageId: "user-1" }),
+      event(2, { type: "text_started", partId: "u-1", messageId: "user-1" }),
+      event(3, { type: "text_completed", partId: "u-1", text: "总结本周预算邮件", messageId: "user-1" }),
+      event(4, { type: "message_completed", messageId: "user-1" }),
+      event(5, { type: "message_started", role: "assistant", messageId: "assistant-1" }),
+      event(6, { type: "text_started", partId: "text-1", messageId: "assistant-1" }),
+      event(7, { type: "text_completed", partId: "text-1", text: "本周预算邮件共三封，要点如下。", messageId: "assistant-1" }),
+      event(8, { type: "message_completed", messageId: "assistant-1" }),
+      event(9, { type: "run_settled" }),
+    ]);
+    render(
+      <AgentConversationThread state={state} isStreaming={false} onFollowup={onFollowup} />,
+    );
+
+    expect(screen.getByTestId("agent-answer-actions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "复制" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(onFollowup).toHaveBeenCalledWith("总结本周预算邮件");
+  });
+
+  it("omits Retry when there is no user prompt to resend", () => {
+    render(<AgentConversationThread state={completedState()} isStreaming={false} />);
+    expect(screen.getByTestId("agent-answer-actions")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+  });
 });

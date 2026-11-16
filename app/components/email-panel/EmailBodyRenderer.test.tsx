@@ -78,7 +78,9 @@ describe("EmailBodyRenderer", () => {
 			/>,
 		);
 
-		expect(screen.getByTestId("email-body-loading")).toBeInTheDocument();
+		// Fast paint (< 300ms): no skeleton at all (S1) — the iframe lands
+		// directly.
+		expect(screen.queryByTestId("email-body-loading")).not.toBeInTheDocument();
 		expect(await screen.findByTestId("email-iframe")).toHaveAttribute(
 			"data-body-length",
 			String("<p>Hello HTML</p>".length),

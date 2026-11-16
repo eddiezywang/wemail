@@ -449,4 +449,34 @@ describe("AiPromptBar", () => {
 			}),
 		);
 	});
+
+	it("surfaces generation failures inline with a working retry (S6)", async () => {
+		vi.mocked(api.composeDraft)
+			.mockRejectedValueOnce(new Error("network down"))
+			.mockResolvedValueOnce({
+				ok: true,
+				draft: {
+					type: "composeMail",
+					operationType: "REPLY",
+					status: "draft",
+					to: ["dharmesh@example.com"],
+					subject: "Re: Newsletter",
+						draftMarkdown: "重试成功的内容。",
+				},
+			});
+		const { onApply } = renderBar();
+		const input = screen.getByPlaceholderText(/让 AI 帮你写邮件/);
+
+		await userEvent.type(input, "回复已收到");
+		fireEvent.keyDown(input, { key: "Enter" });
+		await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+		expect(screen.getByRole("alert")).toHaveTextContent("暂时无法连接服务");
+		// The failure no longer relies on a disappearing toast.
+		expect(toast.error).not.toHaveBeenCalledWith("AI 生成失败，请稍后重试。");
+
+		fireEvent.click(screen.getByRole("button", { name: "重试" }));
+		await waitFor(() => expect(api.composeDraft).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(onApply).toHaveBeenCalled());
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+	});
 });

@@ -127,4 +127,34 @@ describe("MailItem", () => {
 		await user.click(screen.getByTestId("mail-item"));
 		expect(onClick).toHaveBeenCalledWith("msg-1");
 	});
+
+	it("shows an inline failure strip with reason and Retry without changing the row (S7)", async () => {
+		const user = userEvent.setup();
+		const onRetry = vi.fn();
+		const onClick = vi.fn();
+		render(
+			<MailItem
+				{...baseProps}
+				onClick={onClick}
+				actionError={{ message: "星标状态未能保存", onRetry }}
+				style={{ top: 0, height: 48 }}
+				className="absolute left-0 right-0"
+			/>,
+		);
+		const alert = screen.getByTestId("mail-item-error");
+		expect(alert).toHaveAttribute("role", "alert");
+		expect(alert).toHaveTextContent("星标状态未能保存");
+		// Row keeps its virtual height — the strip is an overlay, no layout shift.
+		expect(screen.getByTestId("mail-item")).toHaveStyle({ height: "48px" });
+
+		await user.click(screen.getByTestId("mail-item-error-retry"));
+		expect(onRetry).toHaveBeenCalledTimes(1);
+		// Retrying the row error must not open the mail underneath.
+		expect(onClick).not.toHaveBeenCalled();
+	});
+
+	it("renders no failure strip by default", () => {
+		render(<MailItem {...baseProps} />);
+		expect(screen.queryByTestId("mail-item-error")).not.toBeInTheDocument();
+	});
 });
