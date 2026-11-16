@@ -17,7 +17,6 @@ export type LegacySettingsSection =
 	| "mail"
 	| "signature"
 	| "notifications"
-	| "appearance"
 	| "shortcuts"
 	| "language";
 
@@ -32,6 +31,7 @@ const PRIMARY_SECTIONS = new Set<SettingsSection>([
 	"mcp",
 	"connections",
 	"skills",
+	"appearance",
 	"about",
 	"advanced",
 ]);
@@ -56,7 +56,6 @@ export const LEGACY_SETTINGS_DESTINATIONS: Record<
 	mail: { kind: "settings", section: "advanced" },
 	signature: { kind: "settings", section: "advanced" },
 	notifications: { kind: "settings", section: "advanced" },
-	appearance: { kind: "settings", section: "advanced" },
 	shortcuts: { kind: "settings", section: "advanced" },
 	language: { kind: "settings", section: "advanced" },
 };

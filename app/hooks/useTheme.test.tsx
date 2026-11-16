@@ -30,24 +30,34 @@ describe("useTheme", () => {
 		expect(result.current.theme).toBe("dark");
 	});
 
-	it("migrates legacy claude default to codex exactly once", () => {
+	it("migrates legacy claude default to paper exactly once", () => {
 		localStorage.setItem(STORAGE_KEY, "claude");
 		const { result } = renderHook(() => useTheme());
-		expect(result.current.theme).toBe("codex");
-		expect(localStorage.getItem(STORAGE_KEY)).toBe("codex");
-		expect(localStorage.getItem("wemail.theme.migrated.codex-default")).toBe(
+		expect(result.current.theme).toBe("paper");
+		expect(localStorage.getItem(STORAGE_KEY)).toBe("paper");
+		expect(localStorage.getItem("wemail.theme.migrated.paper-default")).toBe(
 			"1",
 		);
 	});
 
-	it("migrates legacy paper default to codex exactly once", () => {
+	it("keeps explicitly stored codex and paper values as-is", () => {
+		localStorage.setItem(STORAGE_KEY, "codex");
+		const codex = renderHook(() => useTheme());
+		expect(codex.result.current.theme).toBe("codex");
+		codex.unmount();
 		localStorage.setItem(STORAGE_KEY, "paper");
+		const paper = renderHook(() => useTheme());
+		expect(paper.result.current.theme).toBe("paper");
+	});
+
+	it("system light resolves to the warm stone default (paper)", () => {
 		const { result } = renderHook(() => useTheme());
-		expect(result.current.theme).toBe("codex");
-		expect(localStorage.getItem(STORAGE_KEY)).toBe("codex");
-		expect(localStorage.getItem("wemail.theme.migrated.codex-default")).toBe(
-			"1",
-		);
+		act(() => {
+			result.current.setTheme("system");
+		});
+		// jsdom matches no media queries, so "system" falls to the light surface.
+		expect(document.documentElement.dataset.theme).toBe("paper");
+		expect(result.current.resolvedTheme).toBe("paper");
 	});
 
 	it("setTheme('dark') updates document.documentElement.dataset.theme", () => {

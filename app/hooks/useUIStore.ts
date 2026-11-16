@@ -203,17 +203,17 @@ export type SettingsSection =
 	| "ai"
 	| "model"
 	| "mcp"
+	| "appearance"
 	/** Legacy values remain accepted so existing callers can migrate safely. */
 	| "mail"
 	| "notifications"
-	| "appearance"
 	| "connections"
 	| "skills"
 	| "about"
 	| "advanced";
 
 function normalizeSettingsSection(section: SettingsSection): SettingsSection {
-	return section === "mail" || section === "notifications" || section === "appearance"
+	return section === "mail" || section === "notifications"
 		? "advanced"
 		: section;
 }

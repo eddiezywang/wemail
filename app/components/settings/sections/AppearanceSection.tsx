@@ -19,7 +19,7 @@ export function AppearanceSection() {
 				<TabsList data-testid="theme-selector">
 					<TabsTrigger value="system">跟随系统</TabsTrigger>
 					<TabsTrigger value="paper">暖石</TabsTrigger>
-					<TabsTrigger value="codex">黑白灰</TabsTrigger>
+					<TabsTrigger value="codex">水墨</TabsTrigger>
 					<TabsTrigger value="dark">深色</TabsTrigger>
 				</TabsList>
 			</Tabs>

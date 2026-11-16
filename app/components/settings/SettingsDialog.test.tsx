@@ -308,7 +308,7 @@ describe("SettingsDialog", () => {
 		expect(screen.getByText(/后自动关闭/)).toBeInTheDocument();
 	});
 
-	it("groups signature, notification, and appearance under Advanced", async () => {
+	it("shows appearance as a primary nav item and keeps other panes under Advanced", async () => {
 		vi.mocked(useCurrentAccount).mockReturnValue({
 			data: {
 				account: {
@@ -328,11 +328,12 @@ describe("SettingsDialog", () => {
 			</MemoryRouter>,
 		);
 
-		for (const label of ["账户", "个性化", "AI 模型", "MCP", "连接", "Skill Center", "关于"]) {
+		for (const label of ["账户", "个性化", "AI 模型", "MCP", "连接", "Skill Center", "外观", "关于"]) {
 			expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
 		}
 		expect(screen.getByRole("button", { name: "高级设置" })).toBeInTheDocument();
-		for (const testId of ["settings-nav-mail", "settings-nav-notifications", "settings-nav-appearance"]) {
+		expect(screen.getByTestId("settings-nav-appearance")).toBeInTheDocument();
+		for (const testId of ["settings-nav-mail", "settings-nav-notifications"]) {
 			expect(screen.queryByTestId(testId)).toBeNull();
 		}
 		expect(screen.queryByRole("button", { name: "历史与回溯" })).toBeNull();

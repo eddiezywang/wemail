@@ -1,6 +1,7 @@
 import { BrainIcon } from "@phosphor-icons/react/Brain";
 import { GearSixIcon } from "@phosphor-icons/react/GearSix";
 import { InfoIcon } from "@phosphor-icons/react/Info";
+import { PaintBrushIcon } from "@phosphor-icons/react/PaintBrush";
 import { PlugsIcon } from "@phosphor-icons/react/Plugs";
 import { SlidersHorizontalIcon } from "@phosphor-icons/react/SlidersHorizontal";
 import { PlugsConnectedIcon } from "@phosphor-icons/react/PlugsConnected";
@@ -26,6 +27,7 @@ const AboutSection = lazy(() => import("./sections/AboutSection").then((module) 
 const AccountSection = lazy(() => import("./sections/AccountSection").then((module) => ({ default: module.AccountSection })));
 const AdvancedSection = lazy(() => import("./sections/AdvancedSection").then((module) => ({ default: module.AdvancedSection })));
 const AiProfileSection = lazy(() => import("./sections/AiProfileSection").then((module) => ({ default: module.AiProfileSection })));
+const AppearanceSection = lazy(() => import("./sections/AppearanceSection").then((module) => ({ default: module.AppearanceSection })));
 const ConnectionsSection = lazy(() => import("./sections/ConnectionsSection").then((module) => ({ default: module.ConnectionsSection })));
 const McpSection = lazy(() => import("./sections/McpSection").then((module) => ({ default: module.McpSection })));
 const ModelSection = lazy(() => import("./sections/ModelSection").then((module) => ({ default: module.ModelSection })));
@@ -54,6 +56,7 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
 	{ id: "mcp", label: "MCP", icon: <PlugsIcon size={16} /> },
 	{ id: "connections", label: "连接", icon: <PlugsConnectedIcon size={16} /> },
 	{ id: "skills", label: "Skill Center", icon: <PuzzlePieceIcon size={16} /> },
+	{ id: "appearance", label: "外观", icon: <PaintBrushIcon size={16} /> },
 	{ id: "about", label: "关于", icon: <InfoIcon size={16} /> },
 	{
 		id: "advanced",
@@ -123,6 +126,8 @@ export default function SettingsDialog() {
 		<ConnectionsSection initialSelected={settingsConnectionDetail} />
 	) : settingsSection === "skills" ? (
 		<SkillCenterSection />
+	) : settingsSection === "appearance" ? (
+		<AppearanceSection />
 	) : settingsSection === "about" ? (
 		<AboutSection />
 	) : (

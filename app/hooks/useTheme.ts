@@ -7,8 +7,8 @@ import { useSyncExternalStore } from "react";
 /**
  * Theme system for the WeMail renderer.
  *
- * - Themes: `codex` (monochrome light, the default), `paper` (warm stone,
- *   opt-in), `dark`, `claude` (legacy).
+ * - Themes: `paper` (warm stone, the default light surface), `codex`
+ *   (monochrome light, opt-in), `dark`, `claude` (legacy).
  * - Persisted under `localStorage[wemail.theme]`.
  * - Applied via `document.documentElement.dataset.theme` so the matching
  *   `:root[data-theme="…"]` block in `app/styles/themes/*.css` activates.
@@ -25,7 +25,7 @@ import { useSyncExternalStore } from "react";
 export type Theme = "system" | "paper" | "dark" | "claude" | "codex";
 
 export const THEME_STORAGE_KEY = "wemail.theme";
-const THEME_MIGRATED_KEY = "wemail.theme.migrated.codex-default";
+const THEME_MIGRATED_KEY = "wemail.theme.migrated.paper-default";
 
 const THEMES: readonly Theme[] = ["system", "paper", "dark", "claude", "codex"] as const;
 const DEFAULT_THEME: Theme = "system";
@@ -37,16 +37,16 @@ function isTheme(value: unknown): value is Theme {
 function readStoredTheme(): Theme {
 	if (typeof window === "undefined") return DEFAULT_THEME;
 	try {
-		// One-time migration: `claude` and `paper` were previous defaults;
-		// the Codex monochrome direction is the new default light surface.
-		// Move users who never explicitly left the old defaults over to
-		// codex, exactly once (also covers the earlier claude→paper chain).
+		// One-time migration: `claude` was an earlier default light surface and
+		// has no tab in the appearance picker; fold it into the current default
+		// (paper / warm stone), exactly once. Stored `codex` values are treated
+		// as explicit choices and preserved.
 		const migrated = window.localStorage.getItem(THEME_MIGRATED_KEY);
 		const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-		if (!migrated && (raw === "paper" || raw === "claude")) {
-			window.localStorage.setItem(THEME_STORAGE_KEY, "codex");
+		if (!migrated && raw === "claude") {
+			window.localStorage.setItem(THEME_STORAGE_KEY, "paper");
 			window.localStorage.setItem(THEME_MIGRATED_KEY, "1");
-			return "codex";
+			return "paper";
 		}
 		return isTheme(raw) ? raw : DEFAULT_THEME;
 	} catch {
@@ -59,7 +59,7 @@ function resolvedTheme(theme: Theme): Exclude<Theme, "system"> {
 	return typeof window !== "undefined" &&
 		window.matchMedia?.("(prefers-color-scheme: dark)").matches
 		? "dark"
-		: "codex";
+		: "paper";
 }
 
 function applyThemeAttribute(theme: Theme) {
@@ -148,9 +148,9 @@ export function getThemeInitScript() {
   try {
     const migrated = window.localStorage.getItem(migratedKey);
     let storedTheme = window.localStorage.getItem(storageKey);
-    if (!migrated && (storedTheme === "paper" || storedTheme === "claude")) {
-      storedTheme = "codex";
-      window.localStorage.setItem(storageKey, "codex");
+    if (!migrated && storedTheme === "claude") {
+      storedTheme = "paper";
+      window.localStorage.setItem(storageKey, "paper");
       window.localStorage.setItem(migratedKey, "1");
     }
     if (themes.has(storedTheme)) theme = storedTheme;
@@ -158,7 +158,7 @@ export function getThemeInitScript() {
   document.documentElement.dataset.theme =
     theme === "system" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
       ? "dark"
-      : theme === "system" ? "codex" : theme;
+      : theme === "system" ? "paper" : theme;
 })();`;
 }
 
@@ -168,7 +168,7 @@ export function useTheme(): {
 	resolvedTheme: Exclude<Theme, "system">;
 } {
 	const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-	// Resolved concrete theme ("system" folded to "dark"/"codex") — what
+	// Resolved concrete theme ("system" folded to "dark"/"paper") — what
 	// `data-theme` on <html> actually is right now. Useful for non-tokenized
 	// surfaces (sonner) that must pick a palette variant.
 	return { theme, setTheme, resolvedTheme: resolvedTheme(theme) };

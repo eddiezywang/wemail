@@ -1,7 +1,6 @@
 import { BellIcon } from "@phosphor-icons/react/Bell";
 import { DatabaseIcon } from "@phosphor-icons/react/Database";
 import { GaugeIcon } from "@phosphor-icons/react/Gauge";
-import { PaintBrushIcon } from "@phosphor-icons/react/PaintBrush";
 import { SignatureIcon } from "@phosphor-icons/react/Signature";
 import { SlidersHorizontalIcon } from "@phosphor-icons/react/SlidersHorizontal";
 import { StethoscopeIcon } from "@phosphor-icons/react/Stethoscope";
@@ -10,7 +9,6 @@ import { toast } from "sonner";
 import { getUserFacingError } from "~/lib/user-facing-error";
 import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
-import { AppearanceSection } from "./AppearanceSection";
 import { ComposeSection } from "./ComposeSection";
 import { NotificationsSection } from "./NotificationsSection";
 import { PreferencesSection } from "./PreferencesSection";
@@ -22,7 +20,7 @@ import {
 	AI_WORKER_CONCURRENCY_MIN,
 } from "../../../../shared/wemail/settings";
 
-type AdvancedPane = "signature" | "notifications" | "appearance" | "preferences" | "performance" | "data" | "diagnostics";
+type AdvancedPane = "signature" | "notifications" | "preferences" | "performance" | "data" | "diagnostics";
 
 const PANES: Array<{
 	id: AdvancedPane;
@@ -41,12 +39,6 @@ const PANES: Array<{
 		label: "通知",
 		description: "管理新邮件和系统提醒",
 		icon: <BellIcon size={18} />,
-	},
-	{
-		id: "appearance",
-		label: "外观",
-		description: "主题与显示方式",
-		icon: <PaintBrushIcon size={18} />,
 	},
 	{
 		id: "preferences",
@@ -109,7 +101,6 @@ export function AdvancedSection() {
 			<div className="border-t border-edge-3 pt-5">
 				{pane === "signature" ? <ComposeSection /> : null}
 				{pane === "notifications" ? <NotificationsSection /> : null}
-				{pane === "appearance" ? <AppearanceSection /> : null}
 				{pane === "preferences" ? <PreferencesSection /> : null}
 				{pane === "performance" ? <PerformancePane /> : null}
 				{pane === "data" ? <StorageSection /> : null}
