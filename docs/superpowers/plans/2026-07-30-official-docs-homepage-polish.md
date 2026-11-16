@@ -801,15 +801,15 @@ Create `website/src/components/landing/InvoiceHeroDemo.astro`:
       <section class="invoice-hero__list">
         <div class="invoice-hero__search">⌕　搜索邮件…　　共 14450 封</div>
         <small>最近 7 天</small>
-        <article><b>MailAlert　11:41</b><span>[Warning] IMS2.2:Alert - 周期内…</span></article>
-        <article><b>MailAlert　11:41</b><span>[Warning] IMS2.2:Alert - 周期内…</span></article>
+        <article><b>MailAlert　11:41</b><span>[Warning] OpsMonitor:Alert - 周期内…</span></article>
+        <article><b>MailAlert　11:41</b><span>[Warning] OpsMonitor:Alert - 周期内…</span></article>
         <article class="is-selected">
           <b>山姆会员商店　11:33</b>
           <span>电子发票开具通知</span>
           <em>● 发票 · 未上传</em>
         </article>
-        <article><b>MailAlert　11:33</b><span>[Warning] IMS2.2:Alert - 命中次…</span></article>
-        <article><b>MailAlert　11:23</b><span>[Warning] IMS2.2:Alert - 周期内…</span></article>
+        <article><b>MailAlert　11:33</b><span>[Warning] OpsMonitor:Alert - 命中次…</span></article>
+        <article><b>MailAlert　11:23</b><span>[Warning] OpsMonitor:Alert - 周期内…</span></article>
       </section>
 
       <section class="invoice-hero__reader">

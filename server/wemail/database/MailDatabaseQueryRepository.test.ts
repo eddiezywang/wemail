@@ -314,7 +314,7 @@ test("search covers html-only bodies, smart-tag names, and scope presets", () =>
       to: [{ email: "me@example.test" }],
       cc: [],
       bcc: [],
-      subject: "IDAS-智能辅助通话分析",
+      subject: "DataAPI-智能辅助通话分析",
       snippet: "Snippet",
       receivedAt: "2026-08-04T00:00:00.000Z",
       hasAttachments: false,
@@ -418,7 +418,7 @@ function officeMailFixture(db: ReturnType<typeof createMailDatabase>): void {
   insertCanonicalTestMessage(db, {
     id: "office-mail",
     accountId: "office-account",
-    subject: "ITSM今日待办事项",
+    subject: "服务台今日待办事项",
   });
   db.prepare("UPDATE mail_messages SET sender_preview = ? WHERE public_id = ?")
     .run("itsm@example.test", "office-mail");
@@ -428,7 +428,7 @@ function officeMailFixture(db: ReturnType<typeof createMailDatabase>): void {
     intent: "notification",
     attention: "know",
     displayMode: "brief",
-    headline: "ITSM 今日待办。",
+    headline: "服务台 今日待办。",
     details: [],
     bullets: ["有 3 条待办。"],
     actions: [],
@@ -455,7 +455,7 @@ test("non-invoice office mail reaches scene contributors through the DB query pa
     const queries = new MailDatabaseQueryRepository(db, {
       sceneActionContributors: [(input) => {
         seen.push(input);
-        return input.message?.subject.includes("ITSM") ? [contributed] : [];
+        return input.message?.subject.includes("服务台") ? [contributed] : [];
       }],
     });
     const state = queries.getIntelligenceState("office-mail");
@@ -466,7 +466,7 @@ test("non-invoice office mail reaches scene contributors through the DB query pa
     assert.equal(seen.length, 1);
     // The contributor gets the minimal envelope even though this is NOT an
     // invoice/receipt summary — the production chain used to pass undefined.
-    assert.equal(seen[0]?.message?.subject, "ITSM今日待办事项");
+    assert.equal(seen[0]?.message?.subject, "服务台今日待办事项");
     assert.equal(seen[0]?.message?.from.email, "itsm@example.test");
     assert.equal(seen[0]?.invoiceIntent, false);
     assert.equal(seen[0]?.message?.bodyText, undefined);

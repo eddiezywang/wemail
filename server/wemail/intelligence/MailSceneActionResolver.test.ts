@@ -174,7 +174,7 @@ test("summary action prompt carries only the generic confirmation skeleton", () 
   assert.match(prompt, /等待我确认后再执行/);
   // Edition-specific platform exploration guidance is contributed through
   // scene action contributors, never embedded in the open resolver.
-  assert.doesNotMatch(prompt, /wecLi_query|ITSM|PACE\+|SDL|企业平台操作/i);
+  assert.doesNotMatch(prompt, /wecLi_query|服务台|PACE\+|SDL|企业平台操作/i);
 });
 
 test("scene action contributors append edition actions after built-ins", () => {
