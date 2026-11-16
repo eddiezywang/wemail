@@ -24,6 +24,8 @@ import {
 } from "~/queries/scheduledDrafts";
 import { useCurrentAccount } from "~/queries/currentAccount";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
+import { useDelayedFlag } from "~/hooks/useDelayedFlag";
 import {
 	Dialog,
 	DialogContent,
@@ -68,6 +70,31 @@ function statusClass(status: string): string {
 	}
 }
 
+// Delayed skeleton (S1/S3): nothing under 300ms; then rows shaped like the
+// real scheduled items (badge line + subject line) with the shared band.
+function ScheduledSkeleton() {
+	const visible = useDelayedFlag(true);
+	if (!visible) return null;
+	return (
+		<div className="relative" role="status" aria-label="正在加载定时发送列表">
+			<ul className="divide-y divide-edge-3">
+				{Array.from({ length: 5 }).map((_, i) => (
+					<li key={i} className="flex items-start gap-3 px-5 py-3">
+						<div className="min-w-0 flex-1 space-y-1.5">
+							<div className="flex items-center gap-2">
+								<Skeleton className="h-7 w-14 rounded-full" />
+								<Skeleton className="h-3 w-36" />
+							</div>
+							<Skeleton className="h-3 w-2/3" />
+						</div>
+					</li>
+				))}
+			</ul>
+			<div aria-hidden="true" className="skeleton-band" />
+		</div>
+	);
+}
+
 export default function ScheduledRoute() {
 	const { data: currentAccount } = useCurrentAccount();
 	const mailboxId = currentAccount?.account?.id;
@@ -95,7 +122,7 @@ export default function ScheduledRoute() {
 				</span>
 			</div>
 			{isLoading ? (
-				<div className="p-6 text-sm text-ink-3">加载中…</div>
+				<ScheduledSkeleton />
 			) : isError ? (
 				<div className="p-6 text-sm text-red">
 					{getUserFacingError(error, "定时发送列表加载失败，请稍后重试。")}

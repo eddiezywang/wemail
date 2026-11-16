@@ -1,4 +1,5 @@
 import { CaretDownIcon } from "@phosphor-icons/react/CaretDown";
+import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react/ArrowCounterClockwise";
 import { CheckIcon } from "@phosphor-icons/react/Check";
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
 import { ClockIcon } from "@phosphor-icons/react/Clock";
@@ -16,6 +17,7 @@ import { FileTextIcon } from "@phosphor-icons/react/FileText";
 import { PresentationIcon } from "@phosphor-icons/react/Presentation";
 import { ScrollIcon } from "@phosphor-icons/react/Scroll";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CopyButton } from "~/components/ui/copy-button";
 import type {
   ConversationMessagePart,
   ConversationMessageState,
@@ -137,7 +139,7 @@ function ProcessToolChip({
   return (
     <button
       type="button"
-      className={`inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/30 ${chipClass}`}
+      className={`inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-control transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/30 ${chipClass}`}
       aria-pressed={selected}
       aria-label={`${label}，${statusWord}${selected ? "，已展开详情" : ""}`}
       onClick={(event) => {
@@ -146,21 +148,21 @@ function ProcessToolChip({
       }}
     >
       {failed ? (
-        <WarningCircleIcon size={12} weight="fill" className="shrink-0" />
+        <WarningCircleIcon size={16} weight="fill" className="shrink-0" />
       ) : running ? (
-        <CircleNotchIcon size={12} weight="bold" className="shrink-0 animate-spin motion-reduce:animate-none" />
+        <CircleNotchIcon size={16} weight="bold" className="shrink-0 animate-spin motion-reduce:animate-none" />
       ) : /^(list|search)_?(mail|email)/.test(tool.toolName) ? (
-        <MagnifyingGlassIcon size={12} weight="bold" className="shrink-0" />
+        <MagnifyingGlassIcon size={16} weight="bold" className="shrink-0" />
       ) : /^(read|get)_?(mail|email|thread)/.test(tool.toolName) || tool.toolName === "read_mail_source" ? (
-        <EnvelopeOpenIcon size={12} weight="duotone" className="shrink-0" />
+        <EnvelopeOpenIcon size={16} weight="duotone" className="shrink-0" />
       ) : /draft|compose/.test(tool.toolName) ? (
-        <PaperclipIcon size={12} className="shrink-0" />
+        <PaperclipIcon size={16} className="shrink-0" />
       ) : (
-        <WrenchIcon size={12} className="shrink-0" />
+        <WrenchIcon size={16} className="shrink-0" />
       )}
       <span className="truncate">{label}</span>
       {!failed && !running ? (
-        <CheckIcon size={11} weight="bold" className="shrink-0 text-green" />
+        <CheckIcon size={16} weight="bold" className="shrink-0 text-green" />
       ) : null}
     </button>
   );
@@ -210,7 +212,7 @@ export function ProcessDisclosure({
         onClick={() => setOpen((value) => !value)}
       >
         {isActive ? (
-          <CircleNotchIcon size={13} weight="bold" className="shrink-0 animate-spin text-coral motion-reduce:animate-none" />
+          <CircleNotchIcon size={16} weight="bold" className="shrink-0 animate-spin text-coral motion-reduce:animate-none" />
         ) : hasFailed ? (
           <WarningCircleIcon size={13} weight="fill" className="shrink-0 text-red" />
         ) : (
@@ -306,6 +308,7 @@ function FinalAnswerPart({
   onOpenEmail,
   onOpenAttachment,
   onFollowup,
+  retryPrompt,
 }: {
   part: AgentFinalAnswerPart;
   state: ConversationState;
@@ -313,6 +316,8 @@ function FinalAnswerPart({
   onOpenEmail?: (emailId: string) => void;
   onOpenAttachment?: (attachmentId: string) => void;
   onFollowup?: (text: string) => void;
+  /** Last user prompt — enables Retry on the completed answer (S8). */
+  retryPrompt?: string;
 }) {
   if (part.type === "artifact") {
     return <AgentArtifactCard artifact={part.artifact} accountId={accountId} />;
@@ -333,6 +338,26 @@ function FinalAnswerPart({
         onOpenEmail={onOpenEmail}
         onOpenAttachment={onOpenAttachment}
       />
+      {part.state !== "streaming" ? (
+        <div className="mt-1.5 flex items-center gap-1" data-testid="agent-answer-actions">
+          <CopyButton
+            text={part.markdown}
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-caption text-ink-3 hover:bg-paper-3 hover:text-ink"
+          />
+          {retryPrompt && onFollowup ? (
+            <button
+              type="button"
+              onClick={() => onFollowup(retryPrompt)}
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-caption font-medium text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ArrowCounterClockwiseIcon size={12} weight="bold" />
+              重试
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <FollowupChips suggestions={followups} onFollowup={onFollowup} />
     </div>
   );
@@ -454,7 +479,7 @@ function RunProcessDisclosure({
         onClick={() => setOpen((value) => !value)}
       >
         {active ? (
-          <CircleNotchIcon size={13} weight="bold" className="shrink-0 animate-spin text-coral motion-reduce:animate-none" />
+          <CircleNotchIcon size={16} weight="bold" className="shrink-0 animate-spin text-coral motion-reduce:animate-none" />
         ) : run?.state === "failed" ? (
           <WarningCircleIcon size={13} weight="fill" className="shrink-0 text-red" />
         ) : (
@@ -827,6 +852,13 @@ function UserMessageContextTags({
   );
 }
 
+function messageText(message: ConversationMessageState): string {
+  return message.parts
+    .filter((part): part is Extract<ConversationMessagePart, { type: "text" }> => part.type === "text")
+    .map((part) => part.markdown)
+    .join("");
+}
+
 export function UserMessage({
   message,
   onOpenEmail,
@@ -860,6 +892,7 @@ export function AssistantMessage({
   onOpenEmail,
   onOpenAttachment,
   onFollowup,
+  retryPrompt,
   renderConfirmationCard,
 }: {
   message: ConversationMessageState;
@@ -868,6 +901,7 @@ export function AssistantMessage({
   onOpenEmail?: (emailId: string) => void;
   onOpenAttachment?: (attachmentId: string) => void;
   onFollowup?: (text: string) => void;
+  retryPrompt?: string;
   renderConfirmationCard?: (confirmationId: string) => ReactNode;
 }) {
   const blocks = buildAgentMessagePresentation(message.parts);
@@ -904,6 +938,7 @@ export function AssistantMessage({
               onOpenEmail={onOpenEmail}
               onOpenAttachment={onOpenAttachment}
               onFollowup={onFollowup}
+              retryPrompt={retryPrompt}
             />
         ))}
       </div>
@@ -989,7 +1024,7 @@ export function AgentConversationThread({
 			加载更早的对话（还有 {hiddenCount} 条）
 		</button>
 	  ) : null}
-      {visibleMessages.map((message) => (
+      {visibleMessages.map((message, messageIndex) => (
         message.role === "user"
           ? <UserMessage key={message.id} message={message} onOpenEmail={onOpenEmail} />
           : <AssistantMessage
@@ -1000,6 +1035,11 @@ export function AgentConversationThread({
               onOpenEmail={onOpenEmail}
               onOpenAttachment={onOpenAttachment}
               onFollowup={onFollowup}
+              retryPrompt={
+                !isStreaming && message === lastMessage && lastUserMessage
+                  ? messageText(lastUserMessage)
+                  : undefined
+              }
               renderConfirmationCard={renderConfirmationCard}
             />
       ))}

@@ -58,30 +58,44 @@ export interface ButtonProps
 	loading?: boolean;
 }
 
-// Loading state: replaces children with a spinner glyph; button is also disabled.
+// Loading (S2): children keep their box (opacity only) so label and width
+// never move; a 16px spinner cross-fades in centred over 180ms. The button
+// stays keyboard-reachable — `aria-disabled` instead of `disabled` — and
+// clicks are swallowed while busy. `disabled` still applies as before.
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-	{ className, variant, size, loading = false, disabled, children, type, ...props },
+	{ className, variant, size, loading = false, disabled, children, type, onClick, ...props },
 	ref,
 ) {
-	const isDisabled = disabled || loading;
+	const busy = loading;
 	return (
 		<button
 			ref={ref}
 			type={type ?? "button"}
-			disabled={isDisabled}
-			aria-busy={loading || undefined}
-			data-loading={loading || undefined}
-			className={cn(buttonVariants({ variant, size }), className)}
+			disabled={disabled}
+			aria-disabled={busy || disabled || undefined}
+			aria-busy={busy || undefined}
+			data-loading={busy || undefined}
+			onClick={(event) => {
+				if (busy) {
+					event.preventDefault();
+					return;
+				}
+				onClick?.(event);
+			}}
+			className={cn(buttonVariants({ variant, size }), "relative", className)}
 			{...props}
 		>
-			{loading ? (
+			<span className={cn("inline-flex items-center gap-2", busy && "opacity-0")}>
+				{children}
+			</span>
+			{busy ? (
 				<span
 					aria-hidden="true"
-					className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none"
-				/>
-			) : (
-				children
-			)}
+					className="wm-btn-spinner absolute inset-0 flex items-center justify-center"
+				>
+					<span className="inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent" />
+				</span>
+			) : null}
 		</button>
 	);
 });
