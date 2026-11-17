@@ -1,0 +1,17 @@
+{
+  "fixtureId": "tags-with-tier",
+  "feature": "tags",
+  "llmResponse": {
+    "type": "tags",
+    "tags": [
+      { "name": "告警", "confidence": 0.92, "source": "ai" }
+    ]
+  },
+  "inputTokens": 80,
+  "outputTokens": 20,
+  "assertions": {
+    "has-tier": "(result) => result?.tags?.every(t => t.tier === 'auto' || t.tier === 'suggested') ? null : 'tier-missing';",
+    "builtin-auto-tier": "(result) => { const t = result?.tags?.[0]; return (t?.name === '告警' && t?.confidence >= 0.85 && t?.tier === 'auto') ? null : 'builtin-not-auto'; }"
+  },
+  "required": true
+}

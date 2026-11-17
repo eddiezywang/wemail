@@ -1,0 +1,4 @@
+interface:
+  display_name: "WeMail 洞察报告"
+  short_description: "分析数据并生成、保存和投递可追溯的 HTML 洞察报告"
+  default_prompt: "Use $wemail-insight-report to turn the extracted mail data into an insight report."

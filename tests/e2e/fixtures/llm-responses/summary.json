@@ -1,0 +1,9 @@
+{
+  "bullets": [
+    "Alice asks when the launch is",
+    "She needs it for the slide deck",
+    "The recipient should confirm the date"
+  ],
+  "actionItems": ["Reply to Alice with the confirmed launch date"],
+  "urgency": "medium"
+}

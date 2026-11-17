@@ -1,0 +1,21 @@
+{
+  "id": "acct-e2e",
+  "emailAddress": "cqqdy@cqdly.us",
+  "displayName": "E2E Tester",
+  "imap": {
+    "host": "imap.example.test",
+    "port": 993,
+    "secure": true,
+    "username": "cqqdy@cqdly.us"
+  },
+  "smtp": {
+    "host": "smtp.example.test",
+    "port": 465,
+    "secure": true,
+    "username": "cqqdy@cqdly.us"
+  },
+  "secrets": {
+    "imapPassword": "imap-pw-e2e",
+    "smtpPassword": "smtp-pw-e2e"
+  }
+}

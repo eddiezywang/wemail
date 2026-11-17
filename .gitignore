@@ -1,0 +1,125 @@
+node_modules/
+build/
+!docs/build/
+.wrangler/
+.react-router/
+*.tsbuildinfo
+*.tgz
+*.pdf
+.env
+.env.*
+!.env.example
+!.env.midscene.example
+.dev.vars
+!.dev.vars.example
+playwright-report-midscene/
+midscene_run/
+.playwright-browsers/
+.tmp/
+.vite/
+.astro/
+dist/
+dist-electron/
+.wemail/
+snapshot-*.txt
+.agents/
+!.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/wemail-docs-image-build/
+!.agents/skills/wemail-docs-image-build/**
+opencode.jsonc
+skills-lock.json
+# Machine/agent-local desktop build & launch skill — not a product builtin.
+skills/builtin/wemail-desktop-build/
+.DS_Store
+worker-configuration.d.ts
+test-results/
+playwright-report/
+coverage/
+
+# bun.lock is the canonical lockfile (text, tracked).
+# Ignore the npm + binary-bun fallbacks so they cannot drift.
+package-lock.json
+!website/package-lock.json
+bun.lockb
+
+# Temporary scripts
+_*.bat
+_*.ps1
+_*.sh
+
+
+# Python cache
+__pycache__/
+*.pyc
+
+
+# Claude Code local state
+.claude/
+
+# Git worktrees
+.worktrees/
+
+# Prompt-polish eval rig — raw reports gitignored, only summaries committed
+eval-reports/**/*.json
+# But manifests are the immutable acceptance anchor — committed.
+!eval-reports/_manifests/**/*.json
+
+# Real-mail corpus is local-only. NEVER commit even after PII redaction.
+# Anchored at repo root so it doesn't shadow the eval framework's
+# server/wemail/intelligence/eval/corpus/ source directory.
+/corpus/
+/corpus-quarantine/
+
+# Design mockups (local only)
+design-mockups/
+.superpowers/
+
+# Prototypes (local exploration only — never commit)
+prototype/
+
+
+# Workspace reports & screenshots (local only)
+workspace/reports/
+/workspace/signing/private/
+.tmp-home
+.tmp-codex/
+.playwright-mcp/
+dist-packager
+
+# Local assistant configuration and one-off mailbox diagnostics
+/.codebuddy/
+/mail-list-load-failure-diagnosis.md
+/scripts/codebuddy-chat.ps1
+/scripts/diag-*.cjs
+
+# Local agent-skill tool state (impeccable design skill, ralph loop)
+.impeccable/
+.ralph/
+
+# Large local binary artifacts (never commit)
+/wemail-docs-local.tar
+
+# Code Graph daemon (local only)
+.codegraph/
+
+# Dev process logs (local only)
+.codex-desktop-restart-*
+.desktop-*.out
+.desktop-*.err
+.dev-desktop-current.out
+.electron-dev.out
+.renderer-dev.out
+.win-*.out
+.win-*.err
+.tmp-*.out
+.tmp-*.err
+.tmp-*.png
+desktop-*.log
+
+# Local tool artifacts
+.github/skills/
+.impeccable/
+workspace/cache/

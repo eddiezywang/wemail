@@ -1,0 +1,97 @@
+/* ============================================================
+ * WeMail · Dark theme
+ * Activated via `:root[data-theme="dark"]`. Overrides only the
+ * design tokens defined in `tokens.css`/`paper.css` — adds no
+ * component-specific selectors. Token names mirror paper exactly
+ * so every utility (bg-paper, text-ink, border-edge, …) inherits.
+ * ============================================================ */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Canvas — main surface (list / detail flush, sidebar/agent float above) */
+  --color-canvas: #0e0e10;
+
+  /* Paper tones → near-black surfaces */
+  --color-paper: #0e0e10;
+  --color-paper-2: #18181b;
+  --color-paper-3: #1f1f23;
+  --color-paper-4: #2a2a2f;
+  --color-skeleton: rgba(255, 255, 255, 0.08);
+  --color-summary-surface: #1f1f23;
+  --color-workbench-surface: #111113;
+
+  --color-sidebar: #17171a;
+  --color-sidebar-hover: #242429;
+  --color-sidebar-active: #34221d;
+
+  /* Ink → soft off-white inks */
+  --color-ink: #e8e8ea;
+  --color-ink-2: #c7c7cc;
+  --color-ink-3: #a8a8af;
+  --color-ink-4: #9a9aa3;
+
+  /* Edges → low-contrast separators */
+  --color-edge: #2a2a2f;
+  --color-edge-2: #353539;
+  --color-edge-3: #232327;
+
+  /* Brand & semantic — readable on dark */
+  --color-coral: #ee7a55;
+  --color-coral-2: #d96343;
+  --color-coral-bg: #3a1f17;
+  --color-amber: #e0b057;
+  --color-amber-bg: #3a2c14;
+  --color-green: #8fb37a;
+  --color-green-bg: #1f2a18;
+  --color-blue: #7ba0c2;
+  --color-blue-bg: #182431;
+  --color-red: #e06a5b;
+  --color-red-bg: #321c19;
+
+  /* Focus ring follows brand */
+  --color-focus: var(--color-coral);
+
+  /* Terminal — neutral charcoal (was inheriting the warm paper palette) */
+  --color-term-bg: #1c1c1e;
+  --color-term-fg: #ededed;
+  --color-term-ok: #3fb950;
+  --color-term-run: #d29922;
+  --color-term-tool: #d2a8ff;
+  --color-term-arg: #8b949e;
+  --color-term-cmt: #6a737d;
+
+  /* Shadows — heavier on black backgrounds */
+  --shadow-1: 0 1px 0 #2a2a2f;
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+
+  /* shadcn aliases — re-resolve under the dark palette */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-border: var(--color-edge);
+  --color-input: var(--color-edge);
+  --color-ring: var(--color-focus);
+  --color-muted: var(--color-paper-3);
+  --color-muted-foreground: var(--color-ink-3);
+  --color-accent: var(--color-coral);
+  --color-accent-foreground: #0e0e10;
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-paper);
+  --color-secondary: var(--color-paper-2);
+  --color-secondary-foreground: var(--color-ink-2);
+  --color-destructive: var(--color-red);
+  --color-destructive-foreground: #ffffff;
+  --color-popover: var(--color-paper-2);
+  --color-popover-foreground: var(--color-ink);
+  --color-card: var(--color-paper-2);
+  --color-card-foreground: var(--color-ink);
+
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+:root[data-theme="dark"] body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}

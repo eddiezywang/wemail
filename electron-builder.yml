@@ -1,0 +1,79 @@
+appId: com.wemail.app
+productName: WeMail
+artifactName: "${productName}-${version}-${arch}.${ext}"
+
+directories:
+  output: dist
+  buildResources: packaging
+
+# Whitelist what ships inside the asar. Keeping this tight keeps the installer
+# small and prevents test fixtures / specs / docs from leaking into a shipped
+# build.
+files:
+  - "dist-electron/**/*"
+  - "build/**/*"
+  - "public/**/*"
+  - "package.json"
+  - "!**/*.map"
+  - "!**/*.test.ts"
+  - "!**/*.test.tsx"
+  - "!tests/**"
+  - "!openspec/**"
+  - "!docs/**"
+  - "!scripts/**"
+  - "!docker/**"
+  - "!server/**/*.test.ts"
+
+# better-sqlite3 ships a .node binary that must live outside the asar so it
+# can be dlopen'd at runtime.
+asarUnpack:
+  - "**/*.node"
+
+# Runtime seed assets (built-in skills + automation templates) live outside
+# the asar so the server can discover them via process.resourcesPath at startup.
+extraResources:
+  - from: licenses/third-party
+    to: licenses/third-party
+  - from: LICENSE
+    to: licenses/LICENSE
+  - from: THIRD_PARTY_NOTICES.md
+    to: licenses/THIRD_PARTY_NOTICES.md
+  - from: THIRD_PARTY_LICENSES.md
+    to: licenses/THIRD_PARTY_LICENSES.md
+  - from: electron/assets
+    to: assets
+  - from: skills/builtin
+    to: skills/builtin
+  - from: automation-templates/builtin
+    to: automation-templates/builtin
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # If packaging/icon.ico is absent electron-builder will fall back to its default
+  # icon. Drop a real icon into packaging/ to brand the installer.
+  icon: packaging/icon.ico
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+  category: public.app-category.productivity
+  # If packaging/icon.icns is absent electron-builder will fall back to its default
+  # icon. Drop a real icon into packaging/ to brand the app bundle / dmg.
+  icon: packaging/icon.icns
+
+nsis:
+  include: packaging/nsis/install-update-trust.nsh
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: false
+  shortcutName: WeMail
+  installerIcon: packaging/icon.ico
+  uninstallerIcon: packaging/icon.ico
+  installerHeaderIcon: packaging/icon.ico
+  deleteAppDataOnUninstall: false

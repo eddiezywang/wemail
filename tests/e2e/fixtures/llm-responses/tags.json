@@ -1,0 +1,6 @@
+{
+  "tags": [
+    { "name": "待回复", "confidence": 0.78, "source": "ai" },
+    { "name": "通知", "confidence": 0.41, "source": "ai" }
+  ]
+}

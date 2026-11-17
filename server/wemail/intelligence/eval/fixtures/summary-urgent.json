@@ -1,0 +1,17 @@
+{
+  "fixtureId": "summary-urgent",
+  "feature": "summary",
+  "llmResponse": {
+    "type": "summary",
+    "bullets": ["Server outage affecting production", "Customer complaints rising", "Incident response team activated"],
+    "actionItems": ["Join incident bridge", "Update status page"],
+    "urgency": "high"
+  },
+  "inputTokens": 200,
+  "outputTokens": 50,
+  "assertions": {
+    "urgency-is-high": "(result) => result?.urgency === 'high' ? null : 'urgency-not-high';",
+    "has-action-items": "(result) => result?.actionItems?.length > 0 ? null : 'no-action-items';"
+  },
+  "required": true
+}

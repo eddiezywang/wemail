@@ -1,0 +1,15 @@
+---
+import { INSTALL_LINK_ATTRIBUTES } from "../../config/site-links.mjs";
+---
+
+<header class="site-header">
+  <a class="site-header__brand" href="/" aria-label="WeMail 首页">
+    <img src="/favicon.svg" width="32" height="32" alt="" />
+    <span>WeMail</span>
+  </a>
+  <nav aria-label="主要导航">
+    <a href="/getting-started/overview/">使用指南</a>
+    <a href="/features/mcp/">MCP</a>
+    {INSTALL_LINK_ATTRIBUTES && <a class="site-header__button" {...INSTALL_LINK_ATTRIBUTES}>开始使用</a>}
+  </nav>
+</header>

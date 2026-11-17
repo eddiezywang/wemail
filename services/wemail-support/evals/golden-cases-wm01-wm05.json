@@ -1,0 +1,70 @@
+[
+  {
+    "id": "wm01-install-on-exit-still-pending-after-close",
+    "query": "更新已经下载好了，我选了‘退出时安装’，但点右上角关闭后再打开还是旧版本，是不是安装坏了？",
+    "expected_document": "wm-01-update-and-close-behavior",
+    "expected_module": "WM-01",
+    "expected_action": "explain_tray_close_and_guide_full_exit_or_restart_install",
+    "must_include": [
+      "关闭到托盘不会触发安装",
+      "继续在后台同步",
+      "完全退出 WeMail",
+      "立即重启安装",
+      "设置 → 关于"
+    ],
+    "must_not_include": [
+      "安装一定损坏",
+      "删除本地数据",
+      "卸载重装",
+      "强制结束后台进程",
+      "关闭窗口就一定会安装"
+    ]
+  },
+  {
+    "id": "wm03-first-login-body-backfill-not-complete",
+    "query": "首次登录后邮件列表和主题都同步出来了，但智能助手查这一批邮件时有十几封没有正文。手动刷新也点过，过了很久还是空的，只有我逐封点开后才有正文。",
+    "expected_document": "wm-03-unread-body-sync",
+    "expected_module": "WM-03",
+    "expected_action": "identify_incomplete_background_body_backfill_and_create_case_and_support_todo",
+    "must_include": [
+      "元数据",
+      "后台正文补全",
+      "未完成",
+      "前台优先获取",
+      "不是正常前置条件",
+      "已记录"
+    ],
+    "must_not_include": [
+      "正常的按需加载",
+      "未读邮件本来就没有正文",
+      "MCP 缺少正文补取",
+      "继续逐封点开就解决了",
+      "一定是邮件太大",
+      "明天再试",
+      "完整版本号是多少",
+      "设置 → 关于"
+    ],
+    "expected_followup_tool": "wemail_support_create_case"
+  },
+  {
+    "id": "wm04-ambiguous-send-result-avoid-duplicate",
+    "query": "我点发送后窗口卡了一会儿，后来弹了错误。我不确定对方有没有收到，能不能直接再发一次？",
+    "expected_document": "wm-04-compose-send-and-schedule",
+    "expected_module": "WM-04",
+    "expected_action": "avoid_blind_resend_check_sent_state_then_create_case_if_ambiguous",
+    "must_include": [
+      "不要连续点击发送",
+      "已发送",
+      "避免重复发送",
+      "发生时间",
+      "建立 WM-04 案例"
+    ],
+    "must_not_include": [
+      "直接再发一次",
+      "错误就代表对方一定没收到",
+      "成功发送",
+      "删除草稿",
+      "把邮件正文发给我"
+    ]
+  }
+]

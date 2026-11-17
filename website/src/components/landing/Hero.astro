@@ -1,0 +1,15 @@
+---
+import { INSTALL_LINK_ATTRIBUTES } from "../../config/site-links.mjs";
+import SmartTagMiniDemo from "../demos/SmartTagMiniDemo.astro";
+---
+
+<section class="hero">
+  <p class="hero__eyebrow">Local-first AI Mail</p>
+  <h1>让邮件里的工作，自动向前一步</h1>
+  <p class="hero__copy">WeMail 在本地优先的 Windows 工作台中帮助你理解邮件、整理信息，并通过本地 MCP 连接你的 AI 工具。</p>
+  <div class="hero__actions">
+    {INSTALL_LINK_ATTRIBUTES && <a class="button button--primary" {...INSTALL_LINK_ATTRIBUTES}>安装 WeMail</a>}
+    <a class="button button--secondary" href="/getting-started/overview/">阅读文档</a>
+  </div>
+  <SmartTagMiniDemo />
+</section>

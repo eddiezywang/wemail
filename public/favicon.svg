@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title description">
+  <title id="title">WeMail</title>
+  <description id="description">An ivory envelope with a raised W fold on a saddle-orange tile.</description>
+  <defs>
+    <linearGradient id="saddle-orange" x1="36" y1="22" x2="224" y2="238" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DD682D"/>
+      <stop offset="0.48" stop-color="#D65A24"/>
+      <stop offset="1" stop-color="#C94D20"/>
+    </linearGradient>
+    <linearGradient id="ivory" x1="128" y1="58" x2="128" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFF9F0"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#saddle-orange)"/>
+  <g fill="url(#ivory)">
+    <path d="M48 61H208C218 61 219 68 212 73L157 128C152 133 148 133 143 129L138 122C132 116 124 116 118 122L111 129C107 133 103 132 99 128L44 73C37 67 39 61 48 61Z"/>
+    <path d="M35 82C32 82 30 85 30 89V183C30 195 42 199 51 191L99 143L35 82ZM221 82C224 82 226 85 226 89V183C226 195 214 199 205 191L157 143L221 82Z"/>
+    <path d="M59 195C55 195 55 193 57 191L128 116L199 191C201 193 200 195 197 195H59Z"/>
+  </g>
+  <path id="upper-w-seam" d="M35 77L106 148L128 126L150 148L221 77" fill="none" stroke="#D65A24" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path id="lower-envelope-seams" d="M45 194L128 116L211 194" fill="none" stroke="#D65A24" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M100 142L128 112L156 142L150 149L128 128L106 149Z" fill="#D65A24"/>
+</svg>

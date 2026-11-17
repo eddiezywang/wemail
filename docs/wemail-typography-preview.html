@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WeMail · Typography Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --canvas: #fafaf9;
+      --paper: #ffffff;
+      --chrome: #f1eee7;
+      --chrome-hover: #e8e4da;
+      --ink: #1c1917;
+      --ink-2: #4b4641;
+      --ink-3: #817a74;
+      --ink-4: #aaa39d;
+      --line: #e5e2df;
+      --line-strong: #d8d4d0;
+      --coral: #cb6847;
+      --coral-deep: #a8462a;
+      --coral-soft: #f8e7df;
+      --amber: #bd8425;
+      --blue-select: #edf6fb;
+      --ui: "Inter", "Noto Sans SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+      --display: "Fraunces", "Noto Sans SC", serif;
+      --row-pad: 13px;
+      --shadow: 0 18px 50px rgba(47, 38, 31, .1), 0 2px 8px rgba(47, 38, 31, .06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background: #e9e7e4;
+      font-family: var(--ui);
+      font-feature-settings: "cv11" 1, "ss01" 1, "cv02" 1;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      width: 100vw;
+      height: 100vh;
+      min-width: 1080px;
+      min-height: 680px;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+
+    .titlebar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      height: 36px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .92);
+      padding: 0 14px;
+      font-size: 12px;
+      font-weight: 500;
+      -webkit-app-region: drag;
+    }
+
+    .brand {
+      letter-spacing: -.015em;
+    }
+
+    .title-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      -webkit-app-region: no-drag;
+    }
+
+    .mode-button {
+      height: 26px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 10px;
+      background: var(--paper);
+      color: var(--ink-3);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+    }
+
+    .mode-button:hover,
+    .mode-button.active {
+      border-color: #d5b5aa;
+      color: var(--coral-deep);
+      background: var(--coral-soft);
+    }
+
+    .window-actions {
+      display: flex;
+      align-items: center;
+      margin-left: 8px;
+      color: var(--ink-3);
+    }
+
+    .window-actions span {
+      display: grid;
+      width: 38px;
+      height: 26px;
+      place-items: center;
+      font-size: 13px;
+    }
+
+    .shell {
+      display: grid;
+      height: calc(100vh - 36px);
+      grid-template-columns: 144px minmax(680px, 1fr) 300px;
+    }
+
+    .sidebar {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      border-right: 1px solid var(--line);
+      border-radius: 0 16px 0 0;
+      background: var(--chrome);
+      padding: 14px 9px 10px;
+    }
+
+    .compose-link,
+    .nav-item {
+      position: relative;
+      display: flex;
+      width: 100%;
+      align-items: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .compose-link {
+      height: 42px;
+      gap: 10px;
+      padding: 0 11px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .nav {
+      display: grid;
+      gap: 3px;
+      margin-top: 8px;
+    }
+
+    .nav-item {
+      height: 37px;
+      gap: 10px;
+      padding: 0 10px;
+      color: var(--ink-2);
+      font-size: 14px;
+      font-weight: 400;
+      transition: color 130ms ease, background 130ms ease, transform 130ms ease;
+      white-space: nowrap;
+    }
+
+    .nav-item > span:nth-child(2) {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .46);
+      color: var(--ink);
+      transform: translateX(1px);
+    }
+
+    .nav-item.active {
+      color: var(--coral-deep);
+      background: var(--chrome-hover);
+      font-weight: 500;
+    }
+
+    .nav-icon {
+      width: 18px;
+      color: var(--ink-3);
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .nav-item.active .nav-icon { color: var(--coral); }
+
+    .count {
+      margin-left: auto;
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: auto;
+      border-top: 1px solid rgba(120, 113, 108, .12);
+      padding: 12px 8px 2px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .avatar {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--paper);
+      font-size: 11px;
+    }
+
+    .mail-area {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+
+    .mail-toolbar {
+      display: flex;
+      height: 56px;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 18px;
+    }
+
+    .refresh {
+      border: 0;
+      background: transparent;
+      color: var(--ink-3);
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .search {
+      display: flex;
+      width: min(420px, 48%);
+      height: 36px;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: #efeded;
+      padding: 0 14px;
+      color: var(--ink-3);
+      transition: width 180ms ease, background 180ms ease, border-color 180ms ease;
+    }
+
+    .search:focus-within {
+      width: min(460px, 52%);
+      border-color: var(--line-strong);
+      background: var(--paper);
+    }
+
+    .search input {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 400;
+    }
+
+    .summary {
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    .filter {
+      margin-left: auto;
+      border: 0;
+      background: transparent;
+      color: var(--ink-3);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .tabs {
+      display: flex;
+      height: 36px;
+      align-items: flex-end;
+      gap: 23px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 20px;
+    }
+
+    .tab {
+      position: relative;
+      height: 36px;
+      border: 0;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: var(--coral-deep);
+      font-weight: 600;
+    }
+
+    .tab.active::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--coral);
+      content: "";
+      animation: tab-in 180ms ease-out;
+    }
+
+    .list {
+      width: 390px;
+      height: calc(100% - 92px);
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+    }
+
+    .group-label {
+      height: 44px;
+      padding: 19px 20px 0;
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .01em;
+    }
+
+    .mail-row {
+      position: relative;
+      display: grid;
+      gap: 3px;
+      min-height: 68px;
+      border-bottom: 1px solid var(--line);
+      padding: var(--row-pad) 20px;
+      cursor: pointer;
+      transition: background 130ms ease, padding 180ms ease;
+    }
+
+    .mail-row:hover { background: #f5fafc; }
+    .mail-row.selected { background: var(--blue-select); }
+    .mail-row.selected::before {
+      position: absolute;
+      top: 12px;
+      bottom: 12px;
+      left: 0;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--coral);
+      content: "";
+    }
+
+    .row-top {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .sender {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      color: var(--ink-2);
+      font-size: 14px;
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mail-row.unread .sender {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .date {
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .subject {
+      overflow: hidden;
+      color: var(--ink-2);
+      font-size: 14px;
+      font-weight: 400;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mail-row.unread .subject {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .snippet {
+      overflow: hidden;
+      color: var(--ink-3);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.45;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tag {
+      display: inline-flex;
+      width: max-content;
+      align-items: center;
+      gap: 5px;
+      margin-top: 1px;
+      color: var(--amber);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .tag::before {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+
+    .compose {
+      position: absolute;
+      z-index: 8;
+      top: 136px;
+      right: 18px;
+      bottom: 30px;
+      left: 168px;
+      display: flex;
+      min-width: 570px;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 17px;
+      background: rgba(255, 255, 255, .96);
+      box-shadow: var(--shadow);
+      animation: compose-in 360ms cubic-bezier(.16, 1, .3, 1) both;
+      backdrop-filter: blur(18px);
+    }
+
+    .compose-head {
+      display: flex;
+      height: 46px;
+      align-items: center;
+      gap: 9px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 11px 0 13px;
+    }
+
+    .drag { color: var(--ink-4); letter-spacing: -2px; }
+
+    .compose-title {
+      min-width: 0;
+      flex: 1;
+      margin-left: 5px;
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .send {
+      display: flex;
+      height: 30px;
+      align-items: center;
+      gap: 6px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--coral);
+      padding: 0 14px;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 140ms ease, transform 140ms ease;
+    }
+
+    .send:hover { background: var(--coral-deep); transform: translateY(-1px); }
+
+    .fields { padding: 8px 16px 0; }
+
+    .field {
+      display: grid;
+      min-height: 40px;
+      grid-template-columns: 60px 1fr auto;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .field-label {
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .field-value {
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .field.subject-field .field-value {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .cc {
+      color: var(--coral-deep);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .editor {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      padding: 22px 18px;
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.68;
+    }
+
+    .editor textarea {
+      width: 100%;
+      height: 126px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: inherit;
+      line-height: inherit;
+    }
+
+    .signature {
+      margin-top: 6px;
+      color: var(--ink-2);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+
+    .signature-brand {
+      margin-top: 3px;
+      color: var(--ink-4);
+      font-size: 11px;
+      font-weight: 400;
+    }
+
+    .signature-brand b { color: var(--coral); font-weight: 600; }
+
+    .ai-controls {
+      display: flex;
+      height: 38px;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+      border-top: 1px solid rgba(229, 226, 223, .55);
+      padding: 0 14px;
+    }
+
+    .chip {
+      height: 27px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--chrome);
+      padding: 0 11px;
+      color: var(--ink-2);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .ai-prompt {
+      display: flex;
+      min-height: 46px;
+      align-items: center;
+      gap: 9px;
+      margin: 0 12px 10px;
+      border-radius: 13px;
+      background: var(--chrome);
+      padding: 6px 7px 6px 13px;
+      color: var(--coral);
+    }
+
+    .ai-prompt input {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 400;
+    }
+
+    .round-send {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: var(--ink);
+      color: white;
+      cursor: pointer;
+    }
+
+    .compose-foot {
+      display: flex;
+      height: 47px;
+      align-items: center;
+      gap: 15px;
+      border-top: 1px solid var(--line);
+      padding: 0 15px;
+      color: var(--ink-2);
+      font-size: 13px;
+    }
+
+    .save-draft {
+      height: 30px;
+      margin-left: auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 0 12px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .agent {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      border-left: 1px solid var(--line);
+      border-radius: 16px 0 0;
+      background: #fbfaf9;
+      box-shadow: -10px 0 30px rgba(47, 38, 31, .035);
+    }
+
+    .agent-head {
+      display: flex;
+      height: 58px;
+      align-items: center;
+      gap: 7px;
+      padding: 0 20px;
+    }
+
+    .agent-title {
+      margin-right: auto;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -.025em;
+    }
+
+    .circle-action {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: #f0eeee;
+      color: var(--ink-3);
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .agent-empty {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .spark {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--ink-3);
+      font-size: 24px;
+    }
+
+    .greeting {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -.015em;
+    }
+
+    .agent-note {
+      margin: 7px 0 0;
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+    }
+
+    .agent-composer {
+      margin: 0 20px 16px;
+      border: 1px solid var(--line-strong);
+      border-radius: 22px;
+      background: var(--paper);
+      padding: 14px 14px 10px;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .agent-composer:focus-within {
+      border-color: #c9b8b0;
+      box-shadow: 0 8px 24px rgba(47, 38, 31, .06);
+    }
+
+    .agent-composer textarea {
+      width: 100%;
+      height: 62px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      color: var(--ink);
+      background: transparent;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.55;
+    }
+
+    .composer-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      color: var(--ink-3);
+      font-size: 11px;
+    }
+
+    .composer-foot .round-send {
+      width: 34px;
+      height: 34px;
+      margin-left: 8px;
+      background: var(--coral);
+    }
+
+    .annotation {
+      display: none;
+    }
+
+    body.annotated [data-spec]::after {
+      position: absolute;
+      z-index: 40;
+      top: -10px;
+      right: 4px;
+      border: 1px solid rgba(203, 104, 71, .3);
+      border-radius: 4px;
+      background: rgba(255, 247, 243, .96);
+      padding: 2px 5px;
+      color: var(--coral-deep);
+      content: attr(data-spec);
+      font-family: var(--ui);
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1.2;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(47, 38, 31, .06);
+    }
+
+    body.annotated [data-spec] {
+      position: relative;
+      outline: 1px dashed rgba(203, 104, 71, .26);
+      outline-offset: 3px;
+    }
+
+    body.annotated .mail-row[data-spec]::after {
+      top: 5px;
+      right: 6px;
+    }
+
+    body.compact { --row-pad: 9px; }
+    body.compact .mail-row { min-height: 60px; }
+
+    @keyframes compose-in {
+      from { opacity: 0; transform: translateY(10px) scale(.992); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes tab-in {
+      from { transform: scaleX(.3); opacity: 0; }
+      to { transform: scaleX(1); opacity: 1; }
+    }
+
+    @media (max-width: 1180px) {
+      .shell { grid-template-columns: 132px minmax(650px, 1fr) 280px; }
+      .list { width: 345px; }
+      .compose { right: 10px; left: 60px; min-width: 0; }
+      .nav-item { gap: 8px; padding-right: 7px; padding-left: 7px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="titlebar">
+      <span class="brand" data-spec="12 / 500">WeMail</span>
+      <div class="title-tools">
+        <button class="mode-button" id="annotation-toggle" type="button">显示排版标注</button>
+        <button class="mode-button active" data-density="comfortable" type="button">舒适</button>
+        <button class="mode-button" data-density="compact" type="button">紧凑</button>
+        <div class="window-actions" aria-hidden="true"><span>−</span><span>□</span><span>×</span></div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <aside class="sidebar">
+        <button class="compose-link" type="button" data-spec="14 / 600"><span>✎</span><span>写邮件</span></button>
+        <nav class="nav" aria-label="邮箱导航">
+          <button class="nav-item active" type="button"><span class="nav-icon">▣</span><span>收件箱</span><span class="count">13</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">☑</span><span>待办</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">♢</span><span>应用消息</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">♧</span><span>通讯录</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">✉</span><span>所有邮件</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">☆</span><span>已加星标</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">◷</span><span>已延后</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">◴</span><span>定时发送</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">□</span><span>草稿</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">➤</span><span>已发送</span></button>
+          <button class="nav-item" type="button"><span class="nav-icon">▱</span><span>归档</span></button>
+        </nav>
+        <div class="sidebar-user"><span class="avatar">王</span><span>王者</span><span style="margin-left:auto;color:var(--ink-3)">⚙</span></div>
+      </aside>
+
+      <section class="mail-area">
+        <div class="mail-toolbar">
+          <button class="refresh" type="button" aria-label="刷新">↻</button>
+          <label class="search" data-spec="13 / 400"><span>⌕</span><input type="search" placeholder="搜索邮件…" /></label>
+          <span class="summary" data-spec="12 / 400">共 29 封 · 13 封未读</span>
+          <button class="filter" type="button" aria-label="筛选">≡</button>
+        </div>
+        <div class="tabs" role="tablist">
+          <button class="tab active" type="button" role="tab">待处理</button>
+          <button class="tab" type="button" role="tab">订阅</button>
+          <button class="tab" type="button" role="tab">营销</button>
+          <button class="tab" type="button" role="tab">收据</button>
+          <button class="tab" type="button" role="tab">通知</button>
+          <button class="tab" type="button" role="tab">个人</button>
+          <button class="tab" type="button" role="tab">全部</button>
+        </div>
+
+        <div class="list">
+          <div class="group-label" data-spec="12 / 500">最近 7 天</div>
+          <article class="mail-row unread" data-spec="发件人 14/600 · 主题 14/500 · 摘要 13/400">
+            <div class="row-top"><span class="sender">Agoda Deals</span><time class="date">10:24</time></div>
+            <div class="subject">ZHENYU, pack your bags for summer</div>
+            <div class="snippet">独家酒店优惠已为你准备好，查看本周推荐。</div>
+          </article>
+          <article class="mail-row unread selected">
+            <div class="row-top"><span class="sender">WeMail E2E</span><time class="date">昨天</time></div>
+            <div class="subject">7 月产品体验回访</div>
+            <div class="snippet">想听听你对新版写信体验的看法。</div>
+          </article>
+          <article class="mail-row">
+            <div class="row-top"><span class="sender">WeMail IMAP INBOX E2E</span><time class="date">周一</time></div>
+            <div class="subject">WeMail IMAP inbound test</div>
+            <div class="snippet">This message verifies the incoming mail flow.</div>
+          </article>
+          <div class="group-label">7 月</div>
+          <article class="mail-row">
+            <div class="row-top"><span class="sender">示例发件人</span><time class="date">7 月 18 日</time></div>
+            <div class="subject">WeMail IMAP E2E 2026</div>
+            <div class="snippet">自动化测试结果与运行摘要。</div>
+          </article>
+          <article class="mail-row">
+            <div class="row-top"><span class="sender">云上贵州</span><time class="date">7 月 11 日</time></div>
+            <div class="subject">iCloud+ 订阅发票</div>
+            <div class="snippet">你本月的电子发票已经开具。</div>
+            <span class="tag">发票</span>
+          </article>
+        </div>
+
+        <section class="compose" aria-label="新邮件">
+          <header class="compose-head">
+            <span class="drag" aria-hidden="true">⠿</span>
+            <span style="color:var(--ink-3)">×</span>
+            <span class="compose-title" data-spec="13 / 600">New Message</span>
+            <span style="color:var(--ink-3)">↗</span>
+            <button class="send" type="button">➤&nbsp; 发送 <span style="opacity:.75">⌄</span></button>
+          </header>
+          <div class="fields">
+            <label class="field">
+              <span class="field-label" data-spec="12 / 500">收件人</span>
+              <input class="field-value" value="product@example.com" aria-label="收件人" />
+              <span class="cc">CC / BCC</span>
+            </label>
+            <label class="field subject-field">
+              <span class="field-label">主题</span>
+              <input class="field-value" value="关于 7 月产品体验的反馈" aria-label="主题" />
+              <span></span>
+            </label>
+          </div>
+          <div class="editor" data-spec="正文 15 / 400 · 行高 1.68">
+            <textarea aria-label="邮件正文">你好，
+
+新版的写信流程整体更清晰了，尤其是 AI 写作入口与正文区之间的关系。建议继续统一列表、编辑器和助手面板的字体层级，让重要信息更容易被快速扫描。
+
+谢谢。</textarea>
+            <div class="signature" data-spec="签名 14 / 500">
+              王者
+              <div class="signature-brand">Sent with <b>WeMail</b></div>
+            </div>
+          </div>
+          <div class="ai-controls">
+            <button class="chip" type="button">写作风格⌄</button>
+            <button class="chip" type="button">输出：简体中文⌄</button>
+          </div>
+          <label class="ai-prompt">
+            <span>✦</span>
+            <input type="text" placeholder="让 AI 帮你润色，例如：语气再自然一点" />
+            <button class="round-send" type="button">➤</button>
+          </label>
+          <footer class="compose-foot">
+            <span>Aa</span><b>丢弃</b><span>⌕</span>
+            <button class="save-draft" type="button">▣&nbsp; 保存草稿</button>
+          </footer>
+        </section>
+      </section>
+
+      <aside class="agent">
+        <header class="agent-head">
+          <span class="agent-title" data-spec="20 / 600">WeMail AI</span>
+          <button class="circle-action" type="button">↶</button>
+          <button class="circle-action" type="button">↗</button>
+          <button class="circle-action" type="button">×</button>
+        </header>
+        <div class="agent-empty">
+          <div>
+            <span class="spark">✦</span>
+            <h2 class="greeting" data-spec="18 / 600">Hi 王者</h2>
+            <p class="agent-note" data-spec="12 / 400">今天还没有收到新邮件。<br />我可以帮你搜索、总结或起草回复。</p>
+          </div>
+        </div>
+        <label class="agent-composer">
+          <textarea placeholder="搜索、写作或询问任何内容"></textarea>
+          <span class="composer-foot">Enter 发送 · Shift+Enter 换行<button class="round-send" type="button">↑</button></span>
+        </label>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const annotationToggle = document.querySelector("#annotation-toggle");
+    const densityButtons = document.querySelectorAll("[data-density]");
+    const tabs = document.querySelectorAll(".tab");
+    const mailRows = document.querySelectorAll(".mail-row");
+    const navItems = document.querySelectorAll(".nav-item");
+
+    annotationToggle.addEventListener("click", () => {
+      const enabled = document.body.classList.toggle("annotated");
+      annotationToggle.classList.toggle("active", enabled);
+      annotationToggle.textContent = enabled ? "隐藏排版标注" : "显示排版标注";
+    });
+
+    densityButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        densityButtons.forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        document.body.classList.toggle("compact", button.dataset.density === "compact");
+      });
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((item) => item.classList.remove("active"));
+        tab.classList.add("active");
+      });
+    });
+
+    mailRows.forEach((row) => {
+      row.addEventListener("click", () => {
+        mailRows.forEach((item) => item.classList.remove("selected"));
+        row.classList.add("selected");
+      });
+    });
+
+    navItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        navItems.forEach((nav) => nav.classList.remove("active"));
+        item.classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>

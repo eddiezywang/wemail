@@ -1,0 +1,187 @@
+{
+  "id": "2026-05-04-fixtures",
+  "createdAt": "2026-05-04T02:35:06.074Z",
+  "manifestHash": "3d2cf5ac94e8",
+  "samples": [
+    {
+      "source": "fixtures",
+      "id": "alert-imap-connection-error",
+      "hash": "c164fc35e0ff",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "alert-p2-queue-lag",
+      "hash": "601bd8b261a9",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "alert-security-advisory",
+      "hash": "48115ac0244b",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "broadcast-all-hands-april",
+      "hash": "c05f647bdb05",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "broadcast-hr-policy-update",
+      "hash": "d64a74a17a0c",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "daily-digest-2026-04-23",
+      "hash": "50b4b79fdf29",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "daily-digest-newsapi",
+      "hash": "f96831c88ed6",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "long-thread-summary-approach",
+      "hash": "fcb0e29bf05e",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "meeting-phase-one-review",
+      "hash": "5533a5ad6a70",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "meeting-reschedule",
+      "hash": "409028354f3a",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "meeting-zoom-invite",
+      "hash": "1716296c5a51",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "mixed-language-acceptance",
+      "hash": "61cc7aa09a82",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "notification-github-pr-merged",
+      "hash": "880a61f30ac2",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "notification-jira-assignment",
+      "hash": "187f508893cc",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "notification-servicenow-update",
+      "hash": "494e739a4583",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "notification-slack-weekly-digest",
+      "hash": "240d677b91e4",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "prompt-injection-forward-all",
+      "hash": "a558d3e640fa",
+      "stratum": "injection"
+    },
+    {
+      "source": "fixtures",
+      "id": "prompt-injection-html-comment",
+      "hash": "420c5c310c46",
+      "stratum": "injection"
+    },
+    {
+      "source": "fixtures",
+      "id": "question-code-review",
+      "hash": "10f2240c3915",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "question-onboarding-flow",
+      "hash": "2004d9fafd8a",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "question-password-reset",
+      "hash": "fca1a63f50ec",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "question-support-ticket",
+      "hash": "40033dd7eccb",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "release-k8s-cluster-upgrade",
+      "hash": "05d23b1b0f1a",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "release-npm-intelligence-sdk",
+      "hash": "322022dbb81f",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "release-wemail-desktop-0.4.0",
+      "hash": "c5f740b6af28",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "requirement-design-doc-curator",
+      "hash": "21d5d32dfcca",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "requirement-prd-action-center",
+      "hash": "8a00ce3cc04c",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "requirement-wemail-312",
+      "hash": "82a305cfb6b5",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "with-attachment-invoice",
+      "hash": "d36aa60c4340",
+      "stratum": "fixtures"
+    },
+    {
+      "source": "fixtures",
+      "id": "with-attachment-q2-roadmap",
+      "hash": "430c8b763c94",
+      "stratum": "fixtures"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-data-selection",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "数据选择",
+  "description": "将自然语言邮件范围编译为有边界的数据选择规则。",
+  "protected": true,
+  "inputKinds": ["mail-reference", "mail-collection"],
+  "outputKinds": ["data-selection"],
+  "dependencies": [],
+  "toolAllowlist": [],
+  "requestedPermissions": [],
+  "reviewPolicy": "recommended",
+  "contentHash": "pending"
+}

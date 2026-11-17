@@ -1,0 +1,243 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  color: #2d2825;
+  background: #fffaf7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% 0, #fff 0, #fffaf7 35rem, #f7f0eb 100%);
+}
+
+a {
+  color: inherit;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(72rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 0.85rem 0;
+  background: rgba(255, 250, 247, 0.88);
+  backdrop-filter: blur(16px);
+}
+
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.site-header nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.site-header nav a {
+  color: #625750;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.site-header__button {
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.65rem;
+  background: #2d2825;
+  color: #fff !important;
+}
+
+.hero {
+  width: min(72rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: clamp(4rem, 8vw, 7rem) 0 0;
+  text-align: center;
+}
+
+.hero__eyebrow {
+  color: #cc543f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 13ch;
+  margin: 0.65rem auto 1rem;
+  font-size: clamp(2.8rem, 7vw, 5.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.06em;
+}
+
+.hero__copy {
+  max-width: 43rem;
+  margin: 0 auto;
+  color: #756a63;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.75;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.button {
+  display: inline-flex;
+  padding: 0.8rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.button--primary {
+  background: #2d2825;
+  color: #fff;
+}
+
+.button--secondary {
+  border: 1px solid #d9cdc6;
+  background: #fff;
+}
+
+.section {
+  width: min(72rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: clamp(4rem, 8vw, 7rem) 0;
+}
+
+.section__heading {
+  max-width: 45rem;
+  margin-bottom: 2rem;
+}
+
+.section__heading span {
+  color: #c9513d;
+  font-weight: 800;
+}
+
+.section__heading h2 {
+  margin: 0.5rem 0;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  letter-spacing: -0.045em;
+}
+
+.section__heading p {
+  color: #756a63;
+  line-height: 1.7;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.feature-card {
+  display: block;
+  padding: 1.35rem;
+  border: 1px solid #e5dbd5;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-0.2rem);
+  box-shadow: 0 1rem 2.2rem rgba(82, 57, 45, 0.1);
+}
+
+.feature-card > span {
+  color: #c9513d;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.feature-card h3 {
+  margin: 0.55rem 0;
+}
+
+.feature-card p {
+  min-height: 4.5rem;
+  color: #756a63;
+  line-height: 1.6;
+}
+
+.feature-card strong {
+  color: #b44835;
+}
+
+.security-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2rem;
+  border-radius: 1.2rem;
+  background: #2d2825;
+  color: #fff;
+}
+
+.security-callout p {
+  color: #d9cec8;
+}
+
+.security-callout .button--secondary {
+  color: #2d2825;
+}
+
+.site-footer {
+  padding: 2rem 1rem;
+  border-top: 1px solid #e5dbd5;
+  color: #756a63;
+  text-align: center;
+}
+
+@media (max-width: 62rem) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 42rem) {
+  .site-header nav a:not(.site-header__button) {
+    display: none;
+  }
+
+  .security-callout {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .feature-card {
+    transition: none;
+  }
+}

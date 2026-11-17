@@ -1,0 +1,17 @@
+{
+  "fixtureId": "summary-with-action-items",
+  "feature": "summary",
+  "llmResponse": {
+    "type": "summary",
+    "bullets": ["Client requested changes to the proposal", "Deadline extended to next Wednesday", "Team lead approval still pending"],
+    "actionItems": ["Revise proposal sections 3-5", "Get team lead sign-off", "Send updated version to client"],
+    "urgency": "medium"
+  },
+  "inputTokens": 180,
+  "outputTokens": 70,
+  "assertions": {
+    "has-multiple-action-items": "(result) => result?.actionItems?.length >= 2 ? null : 'too-few-action-items';",
+    "has-bullets": "(result) => result?.bullets?.length >= 3 ? null : 'too-few-bullets';"
+  },
+  "required": true
+}

@@ -1,0 +1,15 @@
+diff --git a/tools/url_safety.py b/tools/url_safety.py
+--- a/tools/url_safety.py
++++ b/tools/url_safety.py
+@@ -197,6 +197,9 @@ _ALWAYS_BLOCKED_NETWORKS = (
+ # Exact HTTPS hostnames allowed to resolve to private/benchmark-space IPs.
+-# This is intentionally narrow: QQ media downloads can legitimately resolve
+-# to 198.18.0.0/15 behind local proxy/benchmark infrastructure.
++# This is intentionally narrow: QQ and WeCom media downloads can legitimately
++# resolve to 198.18.0.0/15 behind local proxy/benchmark infrastructure.  The
++# WeCom hostname is the official short-lived encrypted AI Bot media bucket;
++# allowing that exact HTTPS host keeps the general SSRF boundary intact.
+ _TRUSTED_PRIVATE_IP_HOSTS = frozenset({
+     "multimedia.nt.qq.com.cn",
++    "ww-aibot-img-1258476243.cos.ap-guangzhou.myqcloud.com",
+ })

@@ -1,0 +1,17 @@
+{
+  "fixtureId": "summary-low-urgency",
+  "feature": "summary",
+  "llmResponse": {
+    "type": "summary",
+    "bullets": ["Newsletter about new product features", "Monthly digest of industry news", "Tips for better productivity"],
+    "actionItems": [],
+    "urgency": "low"
+  },
+  "inputTokens": 120,
+  "outputTokens": 40,
+  "assertions": {
+    "urgency-is-low": "(result) => result?.urgency === 'low' ? null : 'urgency-not-low';",
+    "no-action-items": "(result) => Array.isArray(result?.actionItems) && result.actionItems.length === 0 ? null : 'action-items-should-be-empty';"
+  },
+  "required": true
+}

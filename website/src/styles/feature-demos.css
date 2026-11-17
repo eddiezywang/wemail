@@ -1,0 +1,220 @@
+.feature-demo {
+  --demo-accent: #e8654f;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(99, 73, 61, 0.16);
+  border-radius: 1.25rem;
+  background: #fffdfb;
+  box-shadow: 0 1.5rem 4rem rgba(77, 50, 37, 0.12);
+}
+
+.feature-demo__toolbar,
+.demo-window__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feature-demo__toolbar {
+  min-height: 3rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #eee6e1;
+}
+
+.feature-demo__eyebrow {
+  color: #b94c39;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.feature-demo__stage {
+  min-height: 19rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  background: linear-gradient(145deg, #fff8f5, #f2ebe6);
+}
+
+.feature-demo figcaption {
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.feature-demo figcaption h3 {
+  margin: 0 0 0.35rem;
+  color: #2d2825;
+  font-size: 1.05rem;
+}
+
+.feature-demo figcaption p {
+  margin: 0;
+  color: #756a63;
+  line-height: 1.6;
+}
+
+.demo-window {
+  min-height: 15rem;
+  overflow: hidden;
+  border: 1px solid #e5dbd5;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 1rem 2.5rem rgba(82, 57, 45, 0.12);
+}
+
+.demo-window__header {
+  min-height: 2.5rem;
+  padding: 0 0.85rem;
+  border-bottom: 1px solid #eee6e1;
+  color: #756a63;
+  font-size: 0.72rem;
+}
+
+.demo-mail {
+  display: grid;
+  grid-template-columns: 0.85fr 1.6fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.demo-mail__copy {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 0.75rem;
+  background: #f8f4f1;
+  color: #514943;
+}
+
+.demo-mail__copy span {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: #ded4ce;
+}
+
+.demo-mail__copy span:last-child {
+  width: 65%;
+}
+
+.demo-steps {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-steps li {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #eadfd9;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: #514943;
+}
+
+.demo-steps strong,
+.demo-steps small {
+  display: block;
+}
+
+.demo-steps small {
+  margin-top: 0.2rem;
+  color: #8c7f77;
+}
+
+.demo-step--confirm {
+  border-color: #e8654f !important;
+  background: #fff1ed !important;
+}
+
+.demo-steps--horizontal {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  padding: 1rem;
+}
+
+[data-scene-step] {
+  opacity: 1;
+  transform: none;
+}
+
+[data-demo-state="playing"] [data-scene-step] {
+  animation: demo-step 6s ease-in-out infinite both;
+}
+
+[data-demo-state="playing"] [data-scene-step="1"] { animation-delay: 0s; }
+[data-demo-state="playing"] [data-scene-step="2"] { animation-delay: 0.7s; }
+[data-demo-state="playing"] [data-scene-step="3"] { animation-delay: 1.4s; }
+[data-demo-state="playing"] [data-scene-step="4"] { animation-delay: 2.1s; }
+[data-demo-state="playing"] [data-scene-step="5"] { animation-delay: 2.8s; }
+
+@keyframes demo-step {
+  0%, 8% {
+    opacity: 0.35;
+    transform: translateY(0.45rem);
+  }
+  18%, 72% {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 0 0 3px rgba(232, 101, 79, 0.13);
+  }
+  86%, 100% {
+    opacity: 0.65;
+    transform: translateY(0);
+    box-shadow: none;
+  }
+}
+
+.smart-tag-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid #eadfd9;
+  border-radius: 0.9rem;
+  background: #fff8f5;
+}
+
+.smart-tag-demo__tag,
+.smart-tag-demo__feedback {
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.smart-tag-demo__tag {
+  background: #ffe2da;
+  color: #a93f2d;
+}
+
+.smart-tag-demo__feedback {
+  background: #e6f6ed;
+  color: #28734f;
+}
+
+.smart-tag-demo__result {
+  color: #756a63;
+}
+
+@media (max-width: 48rem) {
+  .demo-mail {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-steps--horizontal {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-demo__stage {
+    min-height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scene-step] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

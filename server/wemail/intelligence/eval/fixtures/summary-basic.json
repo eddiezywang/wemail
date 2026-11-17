@@ -1,0 +1,18 @@
+{
+  "fixtureId": "summary-basic",
+  "feature": "summary",
+  "llmResponse": {
+    "type": "summary",
+    "bullets": ["Team meeting scheduled for Friday", "Budget review needed by end of week", "New hire starts on Monday"],
+    "actionItems": ["Prepare budget report", "Set up onboarding for new hire"],
+    "urgency": "medium"
+  },
+  "inputTokens": 150,
+  "outputTokens": 60,
+  "assertions": {
+    "has-bullets": "(result) => { const b = result?.bullets; return (Array.isArray(b) && b.length >= 3 && b.length <= 4) ? null : 'bullets-count-out-of-range'; }",
+    "has-urgency": "(result) => ['low','medium','high'].includes(result?.urgency) ? null : 'urgency-not-valid';",
+    "has-action-items": "(result) => Array.isArray(result?.actionItems) ? null : 'actionItems-not-array';"
+  },
+  "required": true
+}

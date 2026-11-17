@@ -1,0 +1,6 @@
+/*
+ * The desktop renderer intentionally makes no runtime font requests.
+ * Font variables in tokens.css use the best installed family and then fall
+ * back to the Windows/system stacks. Licensed font assets can be introduced
+ * here later with local @font-face declarations and `font-display: swap`.
+ */

@@ -1,0 +1,18 @@
+{
+  "id": "acct-e2e/INBOX/1-2",
+  "accountId": "acct-e2e",
+  "folder": "INBOX",
+  "messageId": "<mail-002@example.test>",
+  "from": { "name": "Noreply", "email": "noreply@example.test" },
+  "to": [{ "name": "E2E Tester", "email": "cqqdy@cqdly.us" }],
+  "cc": [],
+  "bcc": [],
+  "subject": "Weekly digest",
+  "snippet": "Your weekly digest — no action required.",
+  "bodyText": "This is an automated weekly digest. No action is required on your part.",
+  "receivedAt": "2026-04-23T09:00:00.000Z",
+  "hasAttachments": false,
+  "attachments": [],
+  "flags": { "seen": false, "flagged": false, "answered": false, "draft": false },
+  "sync": { "uid": 2, "uidValidity": 1, "internalDate": "2026-04-23T09:00:00.000Z" }
+}

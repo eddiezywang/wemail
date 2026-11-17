@@ -1,0 +1,17 @@
+{
+  "fixtureId": "tags-high-confidence",
+  "feature": "tags",
+  "llmResponse": {
+    "type": "tags",
+    "tags": [
+      { "name": "审批", "confidence": 0.95, "source": "ai" }
+    ]
+  },
+  "inputTokens": 90,
+  "outputTokens": 25,
+  "assertions": {
+    "has-tags": "(result) => result?.tags?.length > 0 ? null : 'no-tags';",
+    "high-confidence": "(result) => result?.tags?.some(t => t.confidence >= 0.85) ? null : 'no-high-confidence-tag';"
+  },
+  "required": true
+}

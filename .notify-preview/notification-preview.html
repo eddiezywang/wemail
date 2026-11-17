@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>WeMail 自绘通知预览 v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 左侧舞台：模拟桌面右下角 */
+  #stage {
+    flex: 1; position: relative;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    padding: 48px;
+    background: radial-gradient(1100px 500px at 78% -12%, #ffffff 0%, #f2ece1 55%, #e8ddcb 100%);
+    transition: background 0.3s ease;
+  }
+  #stage.dark {
+    background: radial-gradient(1100px 500px at 78% -12%, #3a332a 0%, #241f18 70%, #1a1611 100%);
+  }
+  #stage .hint {
+    position: absolute; top: 22px; left: 30px;
+    font-size: 13px; color: #8a8071; letter-spacing: 0.02em;
+  }
+  #stage.dark .hint { color: #9b907d; }
+
+  /* 卡片：与 electron/assets/notification-window.html 完全一致 */
+  #card {
+    width: 340px;
+    display: flex; flex-direction: column;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 13px 14px 12px;
+    box-shadow:
+      0 2px 6px rgba(64, 44, 24, 0.06),
+      0 14px 34px rgba(64, 44, 24, 0.20);
+    cursor: pointer;
+    animation: enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #card.no-mark .mark { display: none; }
+  @keyframes enter {
+    from { transform: translateY(14px) scale(0.985); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes exit {
+    to { transform: translateY(10px) scale(0.99); opacity: 0; }
+  }
+  #card.leaving { animation: exit 0.18s ease-in forwards; pointer-events: none; }
+  .head { display: flex; align-items: center; gap: 10px; }
+  .mark {
+    width: 30px; height: 30px; border-radius: 9px; flex: none;
+    filter: drop-shadow(0 1px 2px rgba(180, 90, 30, 0.35));
+  }
+  #title {
+    flex: 1; min-width: 0;
+    font-size: 13px; font-weight: 600; color: #1c1917;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    letter-spacing: 0.01em;
+  }
+  #dismiss {
+    flex: none; width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 7px;
+    background: transparent; color: #9a9286; cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  #dismiss:hover { background: #f2eee8; color: #5f584c; }
+  #body {
+    margin-top: 7px;
+    font-size: 12px; line-height: 1.5; color: #6b645a;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  #actions { display: none; margin-top: 9px; justify-content: flex-end; gap: 8px; }
+  #actions.show { display: flex; }
+  #actions button {
+    border: 0; border-radius: 9px; padding: 5px 12px;
+    font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+    transition: background 0.12s ease, transform 0.05s ease;
+  }
+  #actions button:active { transform: scale(0.97); }
+  #actions button.secondary { background: #f5f1e9; color: #4a443a; }
+  #actions button.secondary:hover { background: #ece6da; }
+  #actions button.primary { background: #d65a24; color: #ffffff; }
+  #actions button.primary:hover { background: #c94d20; }
+
+  /* 右侧控制面板 */
+  #panel {
+    width: 300px; padding: 24px 20px;
+    background: #fff; border-left: 1px solid #ece5da;
+    display: flex; flex-direction: column; gap: 14px;
+    font-size: 13px; color: #1c1917;
+  }
+  #panel h1 { font-size: 16px; letter-spacing: 0.01em; }
+  #panel p.desc { color: #6b645a; line-height: 1.6; font-size: 12px; }
+  #panel label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  #panel input[type="radio"], #panel input[type="checkbox"] { accent-color: #d65a24; }
+  #panel .field { display: flex; flex-direction: column; gap: 6px; }
+  #panel button.go {
+    border: 0; border-radius: 9px; padding: 8px 12px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    background: #d65a24; color: #fff;
+    transition: background 0.12s ease;
+  }
+  #panel button.go:hover { background: #c94d20; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div class="hint">自绘通知 · 右下角弹出 · 6 秒自动消失</div>
+    <div id="card">
+      <div class="head">
+        <svg class="mark" viewBox="0 0 256 256" aria-hidden="true">
+          <defs>
+            <linearGradient id="brand-tile" x1="36" y1="22" x2="224" y2="238" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#DD682D"/>
+              <stop offset="0.48" stop-color="#D65A24"/>
+              <stop offset="1" stop-color="#C94D20"/>
+            </linearGradient>
+          </defs>
+          <rect width="256" height="256" rx="58" fill="url(#brand-tile)"/>
+          <g fill="#FFF9F0">
+            <path d="M48 61H208C218 61 219 68 212 73L157 128C152 133 148 133 143 129L138 122C132 116 124 116 118 122L111 129C107 133 103 132 99 128L44 73C37 67 39 61 48 61Z"/>
+            <path d="M35 82C32 82 30 85 30 89V183C30 195 42 199 51 191L99 143L35 82ZM221 82C224 82 226 85 226 89V183C226 195 214 199 205 191L157 143L221 82Z"/>
+            <path d="M59 195C55 195 55 193 57 191L128 116L199 191C201 193 200 195 197 195H59Z"/>
+          </g>
+        </svg>
+        <div id="title"></div>
+        <button id="dismiss" title="关闭" aria-label="关闭通知">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M1 1L9 9M9 1L1 9"/>
+          </svg>
+        </button>
+      </div>
+      <div id="body"></div>
+      <div id="actions"></div>
+    </div>
+  </div>
+  <div id="panel">
+    <h1>WeMail 自绘通知 v2</h1>
+    <p class="desc">对齐品牌色（马鞍橙 #D65A24 + 象牙白），内联 SVG 品牌标记（不再依赖外部图片文件），按钮橙色主操作 / 暖灰次要操作。</p>
+    <div class="field">
+      <label><input type="radio" name="type" value="mail" checked> 新邮件</label>
+      <label><input type="radio" name="type" value="agent"> Agent 任务</label>
+      <label><input type="radio" name="type" value="batch"> 多封邮件聚合</label>
+      <label><input type="radio" name="type" value="long"> 超长标题 + 无按钮</label>
+    </div>
+    <div class="field">
+      <label><input type="checkbox" id="showMark" checked> 显示品牌标记</label>
+      <label><input type="checkbox" id="darkStage"> 深色桌面背景</label>
+    </div>
+    <div class="field">
+      <button class="go" id="reshow">重新弹出</button>
+    </div>
+    <p class="desc">点击卡片 = 打开邮件；点按钮 = 执行操作；点 ✕ = 关闭。都会播放退场动画。</p>
+  </div>
+  <script>
+    const card = document.getElementById("card");
+    const stage = document.getElementById("stage");
+    const titleEl = document.getElementById("title");
+    const bodyEl = document.getElementById("body");
+    const actionsEl = document.getElementById("actions");
+    const dismissEl = document.getElementById("dismiss");
+
+    const SAMPLES = {
+      mail: {
+        title: "本周产品例会纪要",
+        body: "来自 林小满 · 附件：Q3 产品路线图 v2，请查收并确认下周三前反馈",
+        actions: [{ label: "标为已读", primary: false }, { label: "打开邮件", primary: true }],
+      },
+      agent: {
+        title: "Agent 任务需要处理",
+        body: "「市场周报」自动生成完成，其中 2 项关键数据待你确认。",
+        actions: [{ label: "查看并确认", primary: true }],
+      },
+      batch: {
+        title: "收到 3 封新邮件",
+        body: "林小满 · 本周产品例会纪要\n陈卓 · 季度预算审批",
+        actions: [{ label: "查看邮件", primary: true }],
+      },
+      long: {
+        title: "这是一封标题特别特别特别长需要被省略号截断的邮件标题演示",
+        body: "来自 行政部 · 关于公司中秋节放假安排及值班注意事项的通知",
+        actions: [],
+      },
+    };
+
+    let exiting = false;
+    function replay() {
+      exiting = false;
+      card.classList.remove("leaving");
+      card.style.animation = "none";
+      void card.offsetWidth;
+      card.style.animation = "";
+    }
+    function exitThen(fn) {
+      if (exiting) return;
+      exiting = true;
+      card.classList.add("leaving");
+      setTimeout(fn, 180);
+    }
+
+    function render() {
+      const type = document.querySelector('input[name="type"]:checked').value;
+      const sample = SAMPLES[type];
+      titleEl.textContent = sample.title;
+      bodyEl.textContent = sample.body;
+      card.classList.toggle("no-mark", !document.getElementById("showMark").checked);
+      actionsEl.innerHTML = "";
+      actionsEl.classList.toggle("show", sample.actions.length > 0);
+      sample.actions.forEach((action) => {
+        const button = document.createElement("button");
+        button.textContent = action.label;
+        button.className = action.primary ? "primary" : "secondary";
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          exitThen(() => alert(`动作：${action.label}`));
+        });
+        actionsEl.appendChild(button);
+      });
+      replay();
+    }
+
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      exitThen(() => alert("点击卡片 → 打开邮件（真实场景唤起主窗口）"));
+    });
+    dismissEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      exitThen(() => alert("已关闭"));
+    });
+    document.querySelectorAll('input[name="type"]').forEach((r) => r.addEventListener("change", render));
+    document.getElementById("showMark").addEventListener("change", render);
+    document.getElementById("darkStage").addEventListener("change", () => stage.classList.toggle("dark"));
+    document.getElementById("reshow").addEventListener("click", replay);
+
+    render();
+  </script>
+</body>
+</html>

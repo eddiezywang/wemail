@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-delivery-planning",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "投递规划",
+  "description": "规划消息中心与已连接 Bot 的投递和回退。",
+  "protected": true,
+  "inputKinds": ["artifact-reference", "artifact-recipe", "analysis-result"],
+  "outputKinds": ["delivery-plan"],
+  "dependencies": [],
+  "toolAllowlist": [],
+  "requestedPermissions": [],
+  "reviewPolicy": "required",
+  "contentHash": "pending"
+}
