@@ -1,0 +1,84 @@
+/* ============================================================
+ * WeMail · Claude theme
+ * Activated via `:root[data-theme="claude"]`. A warm, sepia-leaning
+ * variant inspired by Claude.ai's cream-and-coral palette. Token-only
+ * overrides — no component-specific selectors.
+ * ============================================================ */
+
+:root[data-theme="claude"] {
+  color-scheme: light;
+
+  /* Canvas — main surface (list / detail flush, sidebar/agent float above) */
+  --color-canvas: #f6f3ec;
+
+  /* Paper tones → cream */
+  --color-paper: #f6f3ec;
+  --color-paper-2: #fbf8f1;
+  --color-paper-3: #f2ede2;
+  --color-paper-4: #ece4d3;
+  --color-summary-surface: #eee9df;
+  --color-workbench-surface: #f6f3ec;
+
+  /* Sidebar stays quieter than the cream canvas; coral marks location. */
+  --color-sidebar: #faf7f1;
+  --color-sidebar-hover: #eee8dc;
+  --color-sidebar-active: #f6e2d7;
+
+  /* Ink → deep sepia */
+  --color-ink: #2a1f14;
+  --color-ink-2: #5a4636;
+  --color-ink-3: #705c49;
+  --color-ink-4: #76624f;
+
+  /* Edges */
+  --color-edge: #e2d9c6;
+  --color-edge-2: #ead8b6;
+  --color-edge-3: #efe7d6;
+
+  /* Brand & semantic — Claude-warm coral and warm semantics */
+  --color-coral: #a8462a;
+  --color-coral-2: #8f371f;
+  --color-coral-bg: #f4dccc;
+  --color-amber: #b88436;
+  --color-amber-bg: #ecd9b0;
+  --color-green: #6a8a55;
+  --color-green-bg: #dde3cb;
+  --color-blue: #5a7a96;
+  --color-blue-bg: #d6dfe9;
+  --color-red: #b34736;
+  --color-red-bg: #ecccc2;
+
+  --color-focus: var(--color-coral);
+
+  --shadow-1: 0 1px 0 #e2d9c6;
+  --shadow-2: 0 1px 2px rgba(70, 40, 18, 0.06);
+  --shadow-3: 0 8px 24px rgba(70, 40, 18, 0.08), 0 1px 2px rgba(70, 40, 18, 0.04);
+
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-border: var(--color-edge);
+  --color-input: var(--color-edge);
+  --color-ring: var(--color-focus);
+  --color-muted: var(--color-paper-3);
+  --color-muted-foreground: var(--color-ink-3);
+  --color-accent: var(--color-coral);
+  --color-accent-foreground: #ffffff;
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-paper-2);
+  --color-secondary: var(--color-paper-2);
+  --color-secondary-foreground: var(--color-ink-2);
+  --color-destructive: var(--color-red);
+  --color-destructive-foreground: #ffffff;
+  --color-popover: var(--color-paper-2);
+  --color-popover-foreground: var(--color-ink);
+  --color-card: var(--color-paper-2);
+  --color-card-foreground: var(--color-ink);
+
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+:root[data-theme="claude"] body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}

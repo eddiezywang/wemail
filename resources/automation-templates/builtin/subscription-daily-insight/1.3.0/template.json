@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "id": "subscription-daily-insight",
+  "version": "1.3.0",
+  "scope": "builtin",
+  "protected": true,
+  "metadata": {
+    "fallbackLocale": "zh-CN",
+    "locales": {
+      "zh-CN": {
+        "name": "邮箱速览",
+        "description": "每天整理当前邮箱中的订阅、产品更新、安全提醒和可处理建议，保留来源并投递到消息中心及所有已配置 Bot。",
+        "shortDescription": "整理当前邮箱的订阅与重要更新",
+        "category": "效率",
+        "icon": "newspaper"
+      },
+      "en": {
+        "name": "Subscription Daily Insight",
+        "description": "Curate subscriptions, product updates, security notices, and verified actions from the current mailbox, then deliver them to Message Center and every configured bot.",
+        "shortDescription": "Current-mailbox subscription insight",
+        "category": "Productivity",
+        "icon": "newspaper"
+      }
+    }
+  },
+  "configurationSchema": {
+    "type": "object",
+    "required": [
+      "localTime",
+      "timezone",
+      "accountScope",
+      "dataWindowMode",
+      "windowHours",
+      "delivery"
+    ],
+    "properties": {
+      "localTime": {
+        "type": "string",
+        "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+      },
+      "timezone": {
+        "type": "string"
+      },
+      "accountScope": {
+        "type": "object"
+      },
+      "includePromotions": {
+        "type": "boolean"
+      },
+      "dataWindowMode": {
+        "type": "string",
+        "enum": [
+          "boundedPreviousRun",
+          "rollingWindow",
+          "previousRun",
+          "calendarDay"
+        ]
+      },
+      "windowHours": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 168
+      },
+      "delivery": {
+        "type": "object"
+      },
+      "maxMessages": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "perAccountLimit": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 500
+      }
+    },
+    "additionalProperties": false
+  },
+  "uiSchema": {
+    "version": 1,
+    "fields": [
+      {
+        "path": "accountScope",
+        "control": "account_scope",
+        "label": "邮箱范围",
+        "description": "仅扫描当前邮箱。",
+        "section": "accounts",
+        "order": 10
+      },
+      {
+        "path": "localTime",
+        "control": "time",
+        "label": "每日执行时间",
+        "section": "trigger",
+        "order": 20
+      },
+      {
+        "path": "timezone",
+        "control": "timezone",
+        "label": "时区",
+        "section": "trigger",
+        "order": 30
+      },
+      {
+        "path": "includePromotions",
+        "control": "toggle",
+        "label": "包含营销订阅",
+        "section": "data",
+        "order": 40
+      },
+      {
+        "path": "dataWindowMode",
+        "control": "select",
+        "label": "邮件时间范围",
+        "description": "默认取上次成功执行至今与最长回溯时段的交集。",
+        "section": "data",
+        "order": 41,
+        "options": [
+          {
+            "value": "boundedPreviousRun",
+            "label": "上次成功执行至今，且不超过最长回溯时长"
+          },
+          {
+            "value": "rollingWindow",
+            "label": "固定滚动时间窗口"
+          },
+          {
+            "value": "previousRun",
+            "label": "上次成功执行至今，不限制回溯"
+          },
+          {
+            "value": "calendarDay",
+            "label": "当天 00:00 至执行时"
+          }
+        ]
+      },
+      {
+        "path": "windowHours",
+        "control": "number",
+        "label": "最长回溯小时数",
+        "description": "仅限制需要回溯的最长时间，默认 24 小时。",
+        "section": "data",
+        "order": 42,
+        "advanced": true
+      },
+      {
+        "path": "delivery",
+        "control": "delivery",
+        "label": "投递方式",
+        "description": "默认投递到消息中心及所有已配置的飞书、企业微信 Bot。",
+        "section": "delivery",
+        "order": 50
+      },
+      {
+        "path": "maxMessages",
+        "control": "number",
+        "label": "全局最多扫描邮件",
+        "section": "advanced",
+        "order": 60,
+        "advanced": true
+      },
+      {
+        "path": "perAccountLimit",
+        "control": "number",
+        "label": "每个邮箱最多扫描邮件",
+        "section": "advanced",
+        "order": 70,
+        "advanced": true
+      }
+    ]
+  },
+  "pipelineBlueprint": {
+    "version": 1,
+    "steps": [
+      {
+        "id": "subscription-insight",
+        "capabilityId": "analysis.subscriptionInsight",
+        "name": "筛选、分组并生成邮箱速览",
+        "input": {
+          "maxMessages": {
+            "type": "literal",
+            "value": 400
+          },
+          "perAccountLimit": {
+            "type": "literal",
+            "value": 150
+          },
+          "includePromotions": {
+            "type": "literal",
+            "value": true
+          }
+        },
+        "outputKind": "analysis-result",
+        "onError": {
+          "policy": "stop",
+          "retries": 1
+        }
+      },
+      {
+        "id": "message-center",
+        "capabilityId": "delivery.messageCenter.publish",
+        "name": "发布到消息中心",
+        "input": {
+          "value": {
+            "type": "path",
+            "from": "step",
+            "stepId": "subscription-insight",
+            "path": ""
+          }
+        },
+        "outputKind": "delivery-receipt",
+        "onError": {
+          "policy": "continue",
+          "retries": 1
+        }
+      }
+    ],
+    "bindings": {
+      "trigger.timing.localTime": {
+        "type": "configuration",
+        "path": "localTime"
+      },
+      "trigger.timing.timezone": {
+        "type": "configuration",
+        "path": "timezone"
+      },
+      "accountScope": {
+        "type": "resolvedAccountScope"
+      },
+      "steps.subscription-insight.input.maxMessages": {
+        "type": "configuration",
+        "path": "maxMessages"
+      },
+      "steps.subscription-insight.input.perAccountLimit": {
+        "type": "configuration",
+        "path": "perAccountLimit"
+      },
+      "steps.subscription-insight.input.includePromotions": {
+        "type": "configuration",
+        "path": "includePromotions"
+      },
+      "delivery": {
+        "type": "configuration",
+        "path": "delivery"
+      }
+    }
+  },
+  "resultSchemaId": "wemail.subscriptionDailyInsight",
+  "resultSchemaVersion": 1,
+  "rendererId": "wemail.subscriptionDailyInsight",
+  "rendererVersion": "1.0.0",
+  "defaultConfiguration": {
+    "localTime": "09:00",
+    "timezone": "Asia/Shanghai",
+    "accountScope": {
+      "type": "currentAccount"
+    },
+    "includePromotions": true,
+    "dataWindowMode": "boundedPreviousRun",
+    "windowHours": 24,
+    "delivery": {
+      "destinations": [
+        {
+          "type": "message_center",
+          "enabled": true
+        },
+        {
+          "type": "connected_bot",
+          "enabled": true
+        }
+      ]
+    },
+    "maxMessages": 400,
+    "perAccountLimit": 150
+  },
+  "defaultTrigger": {
+    "type": "scheduled",
+    "schedule": {
+      "type": "daily",
+      "localTime": "09:00",
+      "timezone": "Asia/Shanghai"
+    }
+  },
+  "contentHash": "846aebc3638564d27148f0b9bbf87761e66470315c7b1087fb66bb7351f6a078"
+}

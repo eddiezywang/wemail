@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "id": "subscription-daily-insight",
+  "version": "1.1.0",
+  "scope": "builtin",
+  "protected": true,
+  "metadata": {
+    "fallbackLocale": "zh-CN",
+    "locales": {
+      "zh-CN": {
+        "name": "邮箱速览",
+        "description": "每天整理全部已连接邮箱中的订阅、产品更新、安全提醒和可处理建议，保留来源并投递到消息中心。",
+        "shortDescription": "跨邮箱整理订阅与重要更新",
+        "category": "效率",
+        "icon": "newspaper"
+      },
+      "en": {
+        "name": "Subscription Daily Insight",
+        "description": "Curate subscriptions, product updates, security notices, and verified actions across connected mailboxes.",
+        "shortDescription": "Daily subscription and update insight",
+        "category": "Productivity",
+        "icon": "newspaper"
+      }
+    }
+  },
+  "configurationSchema": {
+    "type": "object",
+    "required": ["localTime", "timezone", "accountScope", "delivery"],
+    "properties": {
+      "localTime": {
+        "type": "string",
+        "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+      },
+      "timezone": {
+        "type": "string"
+      },
+      "accountScope": {
+        "type": "object"
+      },
+      "includePromotions": {
+        "type": "boolean"
+      },
+      "delivery": {
+        "type": "object"
+      },
+      "maxMessages": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "perAccountLimit": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 500
+      }
+    },
+    "additionalProperties": false
+  },
+  "uiSchema": {
+    "version": 1,
+    "fields": [
+      {
+        "path": "accountScope",
+        "control": "account_scope",
+        "label": "邮箱范围",
+        "description": "默认包含全部已连接邮箱；确认时会展示具体账号。",
+        "section": "accounts",
+        "order": 10
+      },
+      {
+        "path": "localTime",
+        "control": "time",
+        "label": "每日执行时间",
+        "section": "trigger",
+        "order": 20
+      },
+      {
+        "path": "timezone",
+        "control": "timezone",
+        "label": "时区",
+        "section": "trigger",
+        "order": 30
+      },
+      {
+        "path": "includePromotions",
+        "control": "toggle",
+        "label": "包含营销订阅",
+        "section": "data",
+        "order": 40
+      },
+      {
+        "path": "delivery",
+        "control": "delivery",
+        "label": "投递方式",
+        "section": "delivery",
+        "order": 50
+      },
+      {
+        "path": "maxMessages",
+        "control": "number",
+        "label": "全局最多扫描邮件",
+        "section": "advanced",
+        "order": 60,
+        "advanced": true
+      },
+      {
+        "path": "perAccountLimit",
+        "control": "number",
+        "label": "每个邮箱最多扫描邮件",
+        "section": "advanced",
+        "order": 70,
+        "advanced": true
+      }
+    ]
+  },
+  "pipelineBlueprint": {
+    "version": 1,
+    "steps": [
+      {
+        "id": "subscription-insight",
+        "capabilityId": "analysis.subscriptionInsight",
+        "name": "筛选、分组并生成邮箱速览",
+        "input": {
+          "maxMessages": {
+            "type": "literal",
+            "value": 400
+          },
+          "perAccountLimit": {
+            "type": "literal",
+            "value": 150
+          }
+        },
+        "outputKind": "analysis-result",
+        "onError": {
+          "policy": "stop",
+          "retries": 1
+        }
+      },
+      {
+        "id": "message-center",
+        "capabilityId": "delivery.messageCenter.publish",
+        "name": "发布到消息中心",
+        "input": {
+          "value": {
+            "type": "path",
+            "from": "step",
+            "stepId": "subscription-insight",
+            "path": ""
+          }
+        },
+        "outputKind": "delivery-receipt",
+        "onError": {
+          "policy": "continue",
+          "retries": 1
+        }
+      }
+    ],
+    "bindings": {
+      "trigger.timing.localTime": {
+        "type": "configuration",
+        "path": "localTime"
+      },
+      "trigger.timing.timezone": {
+        "type": "configuration",
+        "path": "timezone"
+      },
+      "accountScope": {
+        "type": "resolvedAccountScope"
+      },
+      "steps.subscription-insight.input.maxMessages": {
+        "type": "configuration",
+        "path": "maxMessages"
+      },
+      "steps.subscription-insight.input.perAccountLimit": {
+        "type": "configuration",
+        "path": "perAccountLimit"
+      },
+      "delivery": {
+        "type": "configuration",
+        "path": "delivery"
+      }
+    }
+  },
+  "resultSchemaId": "wemail.subscriptionDailyInsight",
+  "resultSchemaVersion": 1,
+  "rendererId": "wemail.subscriptionDailyInsight",
+  "rendererVersion": "1.0.0",
+  "defaultConfiguration": {
+    "localTime": "09:00",
+    "timezone": "Asia/Shanghai",
+    "accountScope": {
+      "type": "allConnectedAccounts"
+    },
+    "includePromotions": true,
+    "delivery": {
+      "destinations": [
+        {
+          "type": "message_center",
+          "enabled": true
+        }
+      ]
+    },
+    "maxMessages": 400,
+    "perAccountLimit": 150
+  },
+  "defaultTrigger": {
+    "type": "scheduled",
+    "schedule": {
+      "type": "daily",
+      "localTime": "09:00",
+      "timezone": "Asia/Shanghai"
+    }
+  },
+  "contentHash": "300006976e23ee445a6dc3c4265cb6bb252eb7fce8ea1f448120a700c8c487fd"
+}

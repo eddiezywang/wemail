@@ -1,0 +1,17 @@
+{
+  "fixtureId": "summary-four-bullets",
+  "feature": "summary",
+  "llmResponse": {
+    "type": "summary",
+    "bullets": ["Point one about the project", "Point two about timeline", "Point three about resources", "Point four about risks"],
+    "actionItems": ["Review timeline"],
+    "urgency": "medium"
+  },
+  "inputTokens": 160,
+  "outputTokens": 80,
+  "assertions": {
+    "max-four-bullets": "(result) => result?.bullets?.length <= 4 ? null : 'too-many-bullets';",
+    "has-bullets": "(result) => result?.bullets?.length >= 3 ? null : 'too-few-bullets';"
+  },
+  "required": true
+}

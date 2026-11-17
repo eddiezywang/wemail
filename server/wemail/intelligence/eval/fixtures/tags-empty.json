@@ -1,0 +1,15 @@
+{
+  "fixtureId": "tags-empty",
+  "feature": "tags",
+  "llmResponse": {
+    "type": "tags",
+    "tags": []
+  },
+  "inputTokens": 70,
+  "outputTokens": 10,
+  "assertions": {
+    "has-empty-tags": "(result) => Array.isArray(result?.tags) ? null : 'tags-not-array';",
+    "tags-is-empty": "(result) => result?.tags?.length === 0 ? null : 'tags-should-be-empty';"
+  },
+  "required": false
+}

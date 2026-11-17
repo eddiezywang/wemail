@@ -1,0 +1,57 @@
+:root {
+  --sl-color-accent-low: #fff0ec;
+  --sl-color-accent: #d85b46;
+  --sl-color-accent-high: #642417;
+  --sl-color-white: #2d2825;
+  --sl-color-gray-1: #3b3531;
+  --sl-color-gray-2: #514943;
+  --sl-color-gray-3: #756a63;
+  --sl-color-gray-4: #a69a92;
+  --sl-color-gray-5: #ded5cf;
+  --sl-color-gray-6: #eee8e4;
+  --sl-color-black: #fffdfb;
+  --sl-font: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --sl-content-width: 52rem;
+}
+
+html:root {
+  --sl-text-h1: 1.5rem !important;
+  --sl-text-h2: 1.25rem !important;
+  --sl-text-h3: 1.125rem !important;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #43221d;
+  --sl-color-accent: #ff8f79;
+  --sl-color-accent-high: #ffe0d8;
+  --sl-color-white: #f7f1ee;
+  --sl-color-gray-1: #e8dfda;
+  --sl-color-gray-2: #c9bdb6;
+  --sl-color-gray-3: #a99c94;
+  --sl-color-gray-4: #786d67;
+  --sl-color-gray-5: #443c38;
+  --sl-color-gray-6: #2d2826;
+  --sl-color-black: #1b1817;
+}
+
+body {
+  letter-spacing: 0.005em;
+}
+
+.site-title {
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-content .group-label .large {
+  color: var(--sl-color-gray-2);
+  opacity: 1;
+}
+
+.sl-markdown-content :is(h1, h2, h3) {
+  letter-spacing: -0.025em;
+}
+
+.sl-markdown-content a:not([class]) {
+  text-underline-offset: 0.2em;
+}

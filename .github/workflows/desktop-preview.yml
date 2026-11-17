@@ -1,0 +1,61 @@
+name: Desktop Preview Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: ${{ matrix.platform }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: Windows, arch: x64, runner: windows-latest }
+          - { platform: Windows, arch: arm64, runner: windows-11-arm }
+          - { platform: macOS, arch: x64, runner: macos-15-intel }
+          - { platform: macOS, arch: arm64, runner: macos-15 }
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          architecture: ${{ matrix.arch }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - name: Check build architecture
+        run: |
+          node -e "if (process.arch !== '${{ matrix.arch }}') throw new Error('Unexpected Node architecture: ' + process.arch)"
+          bun -e "if (process.arch !== '${{ matrix.arch }}') throw new Error('Unexpected Bun architecture: ' + process.arch)"
+      - name: Install dependencies
+        if: matrix.runner != 'windows-11-arm'
+        run: bun install --frozen-lockfile
+      - name: Install Windows ARM64 dependencies
+        if: matrix.runner == 'windows-11-arm'
+        run: |
+          # The locked workerd version has no Windows ARM64 postinstall.
+          # Electron Builder downloads Electron and rebuilds native modules.
+          bun install --frozen-lockfile --ignore-scripts
+          node scripts/patch-pi-skill-exports.mjs
+      - run: npm run build:desktop
+      - name: Package Windows installer
+        if: matrix.platform == 'Windows'
+        run: bun run electron-builder --config packaging/electron-builder.config.cjs --win nsis --${{ matrix.arch }} --publish never
+      - name: Package macOS disk image and ZIP
+        if: matrix.platform == 'macOS'
+        run: bun run electron-builder --config packaging/electron-builder.config.cjs --mac dmg zip --${{ matrix.arch }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wemail-preview-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/*-${{ matrix.arch }}.exe
+            dist/*-${{ matrix.arch }}.dmg
+            dist/*-${{ matrix.arch }}.zip
+          if-no-files-found: error

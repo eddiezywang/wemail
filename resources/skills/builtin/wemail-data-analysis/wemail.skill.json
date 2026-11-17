@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-data-analysis",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "邮件数据分析",
+  "description": "将结构化邮件数据规整为覆盖完整、可追溯的多维分析结果。",
+  "protected": true,
+  "inputKinds": ["data-selection", "dataset", "analysis-recipe"],
+  "outputKinds": ["analysis-result"],
+  "dependencies": [{"skillId": "wemail-data-selection", "version": "1.0.0", "optional": true}],
+  "toolAllowlist": ["extract_email_tables", "aggregate_email_datasets"],
+  "requestedPermissions": [],
+  "reviewPolicy": "recommended",
+  "contentHash": "pending"
+}

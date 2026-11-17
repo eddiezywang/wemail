@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-local-claude-code",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "本地 Claude Code",
+  "description": "默认关闭；启用后可委派给本机 Claude Code，任务会跳过 CLI 权限提示并可运行命令、读写本地文件。",
+  "protected": true,
+  "inputKinds": [],
+  "outputKinds": [],
+  "dependencies": [],
+  "toolAllowlist": [
+    "start_local_claude_code",
+    "get_local_claude_code_task",
+    "wait_local_claude_code_task",
+    "cancel_local_claude_code_task",
+    "list_local_claude_code_tasks"
+  ],
+  "requestedPermissions": [],
+  "reviewPolicy": "recommended",
+  "contentHash": "pending"
+}

@@ -1,0 +1,18 @@
+{
+  "fixtureId": "tags-basic",
+  "feature": "tags",
+  "llmResponse": {
+    "type": "tags",
+    "tags": [
+      { "name": "通知", "confidence": 0.9, "source": "ai" },
+      { "name": "日报", "confidence": 0.7, "source": "ai" }
+    ]
+  },
+  "inputTokens": 100,
+  "outputTokens": 30,
+  "assertions": {
+    "has-tags": "(result) => Array.isArray(result?.tags) && result.tags.length > 0 ? null : 'no-tags';",
+    "tags-have-confidence": "(result) => result?.tags?.every(t => typeof t.confidence === 'number' && t.confidence >= 0 && t.confidence <= 1) ? null : 'confidence-out-of-range';"
+  },
+  "required": true
+}

@@ -1,0 +1,46 @@
+/* ============================================================
+ * WeMail · Paper theme (warm stone, opt-in)
+ * The default light surface is now the codex theme
+ * (themes/codex.css). These `:root` tokens remain the mechanical
+ * base layer that every other theme file overrides, and paper is
+ * still directly selectable via `:root[data-theme="paper"]`.
+ * ============================================================ */
+
+:root {
+  color-scheme: light;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+html,
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Inter character variants — pull silhouette closer to ABC Diatype:
+     cv11 = single-storey a, ss01 = geometric g, cv02 = straight l. */
+  font-feature-settings: "cv11" 1, "ss01" 1, "cv02" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Compose is the app's reading-and-writing surface, so it gets a calmer
+   15px rhythm without changing compact rich-text editors elsewhere. */
+.ProseMirror.compose-editor {
+  font-size: var(--text-body);
+  line-height: 1.68;
+}
+
+.ProseMirror [data-wemail-signature-brand="true"] a,
+.ProseMirror [data-wemail-signature-brand="true"] strong {
+  color: #d96f4a !important;
+  text-decoration: none;
+}

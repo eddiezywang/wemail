@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "wemail-skill-authoring",
+  "version": "1.0.0",
+  "scope": "builtin",
+  "entry": "SKILL.md",
+  "displayName": "Skill 创作",
+  "description": "从成功流程安全地创建和安装个人 Skill。",
+  "protected": true,
+  "inputKinds": ["pipeline-draft"],
+  "outputKinds": ["skill-draft"],
+  "dependencies": [],
+  "toolAllowlist": [],
+  "requestedPermissions": [],
+  "reviewPolicy": "required",
+  "contentHash": "pending"
+}

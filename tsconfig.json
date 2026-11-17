@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./config/tsconfig.node.json" },
+    { "path": "./config/tsconfig.app.json" }
+  ],
+  "compilerOptions": {
+    "checkJs": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "types": [],
+    "paths": {
+      "#edition-modules": ["./server/wemail/bootstrap/editionModules.noop.ts"]
+    }
+  }
+}

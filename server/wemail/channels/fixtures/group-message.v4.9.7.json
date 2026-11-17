@@ -1,0 +1,27 @@
+{
+  "uuid": "evt-group-1",
+  "event_type": "bot.group_message",
+  "data": {
+    "bot_uuid": "22222222-2222-4222-8222-222222222222",
+    "adapter_name": "wecom_intelligent_bot",
+    "group": {
+      "id": "wr_group_1",
+      "name": "测试群"
+    },
+    "sender": {
+      "id": "wm_user_1",
+      "name": "测试成员"
+    },
+    "message": [
+      {
+        "type": "At",
+        "target": "bot"
+      },
+      {
+        "type": "Plain",
+        "text": "总结未读邮件"
+      }
+    ],
+    "timestamp": 1767225600
+  }
+}

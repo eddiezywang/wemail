@@ -1,0 +1,257 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+# dorny/paths-filter needs to read the PR file list via the API on
+# pull_request events; the default token is otherwise too restricted
+# ("Resource not accessible by integration").
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      application: ${{ steps.filter.outputs.application }}
+      website: ${{ steps.filter.outputs.website }}
+      website_mcp: ${{ steps.filter.outputs.website_mcp }}
+      website_icon: ${{ steps.filter.outputs.website_icon }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # The application filter combines a broad include with exclusions.
+          # Every rule must match for exclusions to take effect.
+          predicate-quantifier: every
+          filters: |
+            application:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!openspec/**'
+              - '!website/**'
+            website:
+              - 'website/**'
+            website_mcp:
+              - 'shared/wemail/mcp.ts'
+            website_icon:
+              - 'electron/assets/wemail-icon.svg'
+
+  typecheck:
+    name: typecheck (${{ matrix.scope }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scope: renderer
+            command: typecheck
+          - scope: server
+            command: typecheck:server
+          - scope: desktop
+            command: typecheck:desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run ${{ matrix.command }}
+
+  server-unit:
+    name: server unit (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/4", "2/4", "3/4", "4/4"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:server:unit -- --shard ${{ matrix.shard }}
+
+  renderer:
+    name: vitest ${{ matrix.project }} (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [node, dom]
+        shard: ["1/2", "2/2"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:renderer:${{ matrix.project }} -- --shard=${{ matrix.shard }}
+
+  packaging-contracts:
+    name: packaging and script contracts
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:packaging
+
+  pr-gate:
+    name: pull-request verification
+    if: always()
+    needs: [changes, typecheck, server-unit, renderer, packaging-contracts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all pull-request checks
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          APPLICATION_CHANGED: ${{ needs.changes.outputs.application }}
+          EVENT_NAME: ${{ github.event_name }}
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          SERVER_UNIT_RESULT: ${{ needs.server-unit.result }}
+          RENDERER_RESULT: ${{ needs.renderer.result }}
+          PACKAGING_RESULT: ${{ needs.packaging-contracts.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          if [ "$EVENT_NAME" = pull_request ] && [ "$APPLICATION_CHANGED" = false ]; then
+            test "$TYPECHECK_RESULT" = skipped
+            test "$SERVER_UNIT_RESULT" = skipped
+            test "$RENDERER_RESULT" = skipped
+            test "$PACKAGING_RESULT" = skipped
+          else
+            test "$TYPECHECK_RESULT" = success
+            test "$SERVER_UNIT_RESULT" = success
+            test "$RENDERER_RESULT" = success
+            test "$PACKAGING_RESULT" = success
+          fi
+
+  public-boundary:
+    name: public boundary / schema / edition identity
+    # No `if` guard: docs- and website-only PRs must run these checks too.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run check:public-boundary && npm run check:canonical-mail-schema && npm run test:edition-identity
+
+  website:
+    name: website tests
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.website == 'true' || needs.changes.outputs.website_mcp == 'true' || needs.changes.outputs.website_icon == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+        working-directory: website
+      - run: npm test
+        working-directory: website
+      - run: npm run check
+        working-directory: website
+      - run: npm run test:build
+        working-directory: website
+
+  full-server:
+    name: full server (${{ matrix.scope }})
+    if: github.event_name != 'pull_request'
+    needs: pr-gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scope: [integration, acceptance, evaluation]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run test:server:${{ matrix.scope }}
+
+  desktop-build:
+    name: desktop production build
+    if: github.event_name != 'pull_request' || needs.changes.outputs.application == 'true'
+    needs: [changes, pr-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: npm run build:desktop
+
+  verification-gate:
+    name: verification-gate
+    if: always()
+    needs: [changes, pr-gate, website, full-server, desktop-build, public-boundary]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every applicable verification layer
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          APPLICATION_CHANGED: ${{ needs.changes.outputs.application }}
+          WEBSITE_CHANGED: ${{ needs.changes.outputs.website }}
+          WEBSITE_MCP_CHANGED: ${{ needs.changes.outputs.website_mcp }}
+          WEBSITE_ICON_CHANGED: ${{ needs.changes.outputs.website_icon }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_RESULT: ${{ needs.pr-gate.result }}
+          FULL_SERVER_RESULT: ${{ needs.full-server.result }}
+          DESKTOP_BUILD_RESULT: ${{ needs.desktop-build.result }}
+          WEBSITE_RESULT: ${{ needs.website.result }}
+          PUBLIC_BOUNDARY_RESULT: ${{ needs.public-boundary.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          test "$PR_RESULT" = success
+          if [ "$EVENT_NAME" = pull_request ]; then
+            test "$FULL_SERVER_RESULT" = skipped
+          else
+            test "$FULL_SERVER_RESULT" = success
+          fi
+          if [ "$EVENT_NAME" = pull_request ] && [ "$APPLICATION_CHANGED" = false ]; then
+            test "$DESKTOP_BUILD_RESULT" = skipped
+          else
+            test "$DESKTOP_BUILD_RESULT" = success
+          fi
+          if [ "$EVENT_NAME" != pull_request ] || [ "$WEBSITE_CHANGED" = true ] || [ "$WEBSITE_MCP_CHANGED" = true ] || [ "$WEBSITE_ICON_CHANGED" = true ]; then
+            test "$WEBSITE_RESULT" = success
+          else
+            test "$WEBSITE_RESULT" = skipped
+          fi
+          # Mandatory for every PR (including docs/website-only): no skipped allowance.
+          test "$PUBLIC_BOUNDARY_RESULT" = success

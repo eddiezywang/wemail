@@ -1,0 +1,19 @@
+{
+  "fixtureId": "tags-multiple-categories",
+  "feature": "tags",
+  "llmResponse": {
+    "type": "tags",
+    "tags": [
+      { "name": "会议", "confidence": 0.85, "source": "ai" },
+      { "name": "待回复", "confidence": 0.6, "source": "ai" },
+      { "name": "需求", "confidence": 0.5, "source": "ai" }
+    ]
+  },
+  "inputTokens": 110,
+  "outputTokens": 40,
+  "assertions": {
+    "has-multiple-tags": "(result) => result?.tags?.length >= 2 ? null : 'too-few-tags';",
+    "all-have-source": "(result) => result?.tags?.every(t => t.source === 'ai') ? null : 'source-not-ai';"
+  },
+  "required": true
+}

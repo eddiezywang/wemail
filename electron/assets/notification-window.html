@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  /* ===== JetBrains Mono (本地打包，不依赖联网；CJK 自动回退系统字体) ===== */
+  @font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono/jb-400.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono/jb-500.woff2) format("woff2");font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono/jb-600.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap}
+  @font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono/jb-700.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap}
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: transparent; overflow: hidden; }
+  body {
+    /* JetBrains Mono 优先；中文/日文等无等宽字形时回退到系统无衬线 */
+    font-family: "JetBrains Mono", "Sarasa Mono SC", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 浏览器预览态壁纸（生产环境 body 保持透明，不影响浮层透出桌面） */
+  html.demo, html.demo body {
+    background:
+      radial-gradient(900px 420px at 78% -10%, #342a3c 0%, transparent 60%),
+      radial-gradient(720px 520px at 6% 112%, #233246 0%, transparent 55%),
+      linear-gradient(160deg, #1b1d24, #0f1016);
+  }
+
+  :root {
+    --brand-2: #DD682D;
+    --brand:   #D65A24;
+    --brand-3: #C94D20;
+    --amber-1: #E8A33D;
+    --amber-2: #D98324;
+    --ink:     #1c1917;
+    --ink-2:   #3f3a32;
+    --muted:   #8a8275;
+    --card:    #fcfaf5;
+    --ring:    #c94d20;
+  }
+
+  #card {
+    position: relative;
+    width: 340px;
+    display: flex;
+    flex-direction: column;
+    /* 暖白实底填满整个窗口；窗口不透明，交给 Windows 画原生阴影——彻底告别透明窗口的黑底问题 */
+    background: linear-gradient(180deg, #fdfbf6, #f9f4eb);
+    border: 1px solid rgba(120, 85, 50, 0.10);
+    border-radius: 12px;
+    padding: 13px 15px 12px 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    cursor: pointer;
+    overflow: hidden;
+    animation: enter 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #card:hover {
+    border-color: rgba(120, 85, 50, 0.16);
+  }
+  @keyframes enter {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes exit { to { opacity: 0; transform: scale(0.98); } }
+  #card.leaving { animation: exit 0.18s ease-in forwards; pointer-events: none; }
+
+  .head { display: flex; align-items: center; gap: 11px; }
+  /* 头像沿用生产实现（MessageSenderBar.tsx）：语义色 tint 底 + 同色字，圆形，无角标 */
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    font-size: 15px; font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .meta { flex: 1; min-width: 0; }
+  #title {
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    line-height: 1.3; letter-spacing: -0.005em;
+    /* 标题完整显示、允许换行；3 行兜底极端超长 subject，配合自适应高度不会留白。 */
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word;
+  }
+  .subline {
+    margin-top: 2px; font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; overflow: hidden;
+  }
+  .subline b { color: var(--ink-2); font-weight: 600; }
+  .subline .sep { width: 3px; height: 3px; border-radius: 50%; background: #c4bdb0; flex: none; }
+
+  #dismiss {
+    flex: none; width: 24px; height: 24px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 8px;
+    background: transparent; color: #a8a195; cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  #dismiss:hover { background: rgba(28,25,23,0.06); color: #5f584c; }
+  #dismiss svg { display: block; }
+
+  #body {
+    margin-top: 9px;
+    font-size: 12px; line-height: 1.5; color: #5c564c;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  #body:empty { display: none; }
+
+  /* ===== 按钮：shadcn/ui 风格（扁平 / focus ring / 克制 hover） ===== */
+  #actions { display: none; margin-top: 11px; justify-content: flex-end; gap: 8px; }
+  #actions.show { display: flex; }
+  #actions button {
+    height: 30px; padding: 0 13px;
+    border: 1px solid transparent; border-radius: 8px;
+    font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
+  }
+  #actions button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  }
+  #actions button:active { transform: translateY(0.5px) scale(0.985); }
+  #actions button.secondary {
+    background: #f1efe9; color: #44403c; border-color: rgba(28,25,23,0.08);
+  }
+  #actions button.secondary:hover { background: #e7e3da; }
+  #actions button.primary {
+    background: var(--brand-3); color: #fff;
+    box-shadow: 0 1px 2px rgba(201,77,32,0.30), inset 0 1px 0 rgba(255,255,255,0.18);
+  }
+  #actions button.primary:hover {
+    background: #b8431c;
+    box-shadow: 0 2px 5px rgba(201,77,32,0.40), inset 0 1px 0 rgba(255,255,255,0.22);
+  }
+
+  /* 浏览器预览态：卡片在壁纸上悬浮（加 CSS 阴影）；生产环境卡片填满窗口、靠 Windows 原生阴影 */
+  html.demo #card { position: absolute; right: 30px; bottom: 30px; width: 340px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 10px 28px rgba(28,25,23,0.18); }
+</style>
+</head>
+<body>
+  <div id="card">
+    <div class="head">
+      <div id="avatar" class="avatar"></div>
+      <div class="meta">
+        <div id="title"></div>
+        <div class="subline" id="subline"></div>
+      </div>
+      <button id="dismiss" title="关闭" aria-label="关闭通知">
+        <svg width="11" height="11" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 1L9 9M9 1L1 9"/></svg>
+      </button>
+    </div>
+    <div id="body"></div>
+    <div id="actions"></div>
+  </div>
+
+  <script>
+    // 头像严格沿用 app 生产实现（MessageSenderBar.tsx）：语义色 tint 底 + 同色文字。
+    const AVATAR_MAIL = { bg: "#f9e8e0", fg: "#a8462a" };  // coral-bg / coral
+    const AVATAR_AGENT = { bg: "#fdf3d9", fg: "#8a611a" }; // amber-bg / amber
+
+    const card = document.getElementById("card");
+    const avatarEl = document.getElementById("avatar");
+    const titleEl = document.getElementById("title");
+    const sublineEl = document.getElementById("subline");
+    const bodyEl = document.getElementById("body");
+    const actionsEl = document.getElementById("actions");
+    const dismissEl = document.getElementById("dismiss");
+
+    let exiting = false;
+    function exitThen(fn) {
+      if (exiting) return;
+      exiting = true;
+      card.classList.add("leaving");
+      setTimeout(fn, 180);
+    }
+
+    /* ===== IPC 桥接 =====
+     * 生产：preload 注入 window.notificationBridge（loadFile 无 query）。
+     * 预览：仅浏览器带 ?preview 打开才走 demo 数据，生产永不触发。
+     * 两者皆无：空操作桥，渲染空白——绝不回退到伪造通知数据。 */
+    const PREVIEW = new URLSearchParams(location.search).has("preview");
+    const bridge = window.notificationBridge
+      || (PREVIEW ? makeDemoBridge() : { onPayload() {}, onHide() {}, clicked() {}, action() {}, dismissed() {}, hidden() {}, measure() {} });
+
+    /* ===== 高度自适应 =====
+     * offsetHeight 是布局高度，不受入场/退场的 transform: scale() 影响；
+     * ResizeObserver 兜底字体延迟加载等异步尺寸变化。主进程据此收紧窗口，
+     * 右下角错定，消除底部留白。 */
+    function reportHeight() { bridge.measure(card.offsetHeight); }
+    new ResizeObserver(reportHeight).observe(card);
+
+    function renderAvatar(payload) {
+      avatarEl.innerHTML = "";
+      const palette = payload.accent === "amber" ? AVATAR_AGENT : AVATAR_MAIL;
+      avatarEl.style.background = palette.bg;
+      avatarEl.style.color = palette.fg;
+      const text = payload.avatarText;
+      if (text) {
+        avatarEl.textContent = text;
+      } else {
+        // 兜底：信封 glyph（currentColor 取头像色）
+        avatarEl.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg>';
+      }
+    }
+
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      exitThen(() => bridge.clicked());
+    });
+    dismissEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      exitThen(() => bridge.dismissed());
+    });
+
+    function applyPayload(payload) {
+      exiting = false;
+      card.classList.remove("leaving");
+      titleEl.textContent = payload.title || "WeMail";
+      bodyEl.textContent = payload.body || "";
+      // 副行：标题里若已含发件人信息则留空，否则用 body 首段。这里保持简洁，无独立副线数据时不渲染。
+      sublineEl.textContent = payload.subline || "";
+      sublineEl.style.display = payload.subline ? "flex" : "none";
+      renderAvatar(payload);
+      actionsEl.innerHTML = "";
+      const actions = payload.actions || [];
+      actionsEl.classList.toggle("show", actions.length > 0);
+      actions.forEach((action, index) => {
+        const button = document.createElement("button");
+        button.textContent = action.label;
+        button.className = index === 0 ? "primary" : "secondary";
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          exitThen(() => bridge.action(index));
+        });
+        actionsEl.appendChild(button);
+      });
+      card.style.animation = "none";
+      void card.offsetWidth;
+      card.style.animation = "";
+      requestAnimationFrame(reportHeight);
+    }
+
+    bridge.onPayload(applyPayload);
+    bridge.onHide(() => exitThen(() => bridge.hidden()));
+
+    function makeDemoBridge() {
+      document.documentElement.classList.add("demo");
+      const demos = [
+        {
+          title: "合同 v3 终稿请查收",
+          subline: "李静雯 · 法务合规部 · 刚刚",
+          body: "附件含终版合同及签字页，请于本周五前确认无误后回复，我们将安排用印。",
+          avatarText: "李", accent: "brand",
+          actions: [{ label: "标为已读" }, { label: "打开邮件" }],
+        },
+        {
+          title: "收到 3 封新邮件",
+          subline: "WeMail 收件箱 · 刚刚",
+          body: "王芳 · 周报-第2周 / 陈晨 · 关于下周排期的确认",
+          avatarText: "3", accent: "brand",
+          actions: [{ label: "查看邮件" }],
+        },
+        {
+          title: "Agent 已完成草稿，请确认",
+          subline: "回复给 周明远 · 2 分钟前",
+          body: "草稿已就绪，返回 WeMail 预览正文并确认发送。",
+          avatarText: "✓", accent: "amber",
+          actions: [{ label: "查看并确认" }],
+        },
+      ];
+      let i = 0, payloadCbs = [], hideCbs = [], timer;
+      function show() {
+        const p = demos[i % demos.length];
+        payloadCbs.forEach((cb) => cb(p));
+        i++;
+        timer = setTimeout(show, 4500);
+      }
+      return {
+        onPayload: (cb) => { payloadCbs.push(cb); if (payloadCbs.length === 1) setTimeout(show, 60); },
+        onHide: (cb) => hideCbs.push(cb),
+        clicked: () => { clearTimeout(timer); setTimeout(show, 400); },
+        action: () => { clearTimeout(timer); setTimeout(show, 400); },
+        dismissed: () => { clearTimeout(timer); setTimeout(show, 400); },
+        hidden: () => {},
+        measure: () => {},
+      };
+    }
+  </script>
+</body>
+</html>

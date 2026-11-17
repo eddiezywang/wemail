@@ -1,0 +1,27 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  label: string;
+}
+
+const { title, description, label } = Astro.props;
+---
+
+<figure class="feature-demo" data-feature-demo data-demo-state="complete" aria-label={label}>
+  <div class="feature-demo__toolbar">
+    <span class="feature-demo__eyebrow">产品演示</span>
+  </div>
+  <div class="feature-demo__stage" aria-hidden="true">
+    <slot />
+  </div>
+  <figcaption>
+    <h3>{title}</h3>
+    <p>{description}</p>
+  </figcaption>
+</figure>
+
+<script>
+  import { enhanceFeatureDemos } from "../../scripts/feature-demo.mjs";
+  enhanceFeatureDemos();
+</script>
