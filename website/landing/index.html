@@ -56,14 +56,17 @@ em{font-style:italic}
 #theme-btn:hover{color:var(--accent)}
 
 /* ---- hero ---- */
-header.hero .wrap{padding-top:96px;padding-bottom:72px}
-.logo-row{text-align:center}
+header.hero .wrap{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,0.8fr);
+  align-items:center;gap:32px;padding-top:72px;padding-bottom:56px;
+}
+.logo-row{text-align:center;overflow:hidden}
 #ascii-logo{
   display:inline-block;
   font-family:var(--mono);line-height:1;color:var(--ink);
-  font-size:clamp(9px,2.2vw,14px);
+  font-size:clamp(6px,1vw,12px);
   white-space:pre;overflow:hidden;user-select:none;cursor:crosshair;
-  min-height:1em;margin:0 0 44px;
+  min-height:1em;
 }
 #ascii-logo b{font-weight:400;color:var(--accent)}
 h1{margin-top:0;font-size:clamp(26px,4vw,38px);line-height:1.2;letter-spacing:-0.02em;font-weight:500;text-wrap:balance;max-width:900px}
@@ -141,10 +144,13 @@ h2{font-size:clamp(26px,3.4vw,40px);line-height:1.15;letter-spacing:-0.03em;font
 footer{border-top:1px solid var(--line);padding:36px 0 56px;font-family:var(--mono);font-size:12.5px;color:var(--faint)}
 footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 footer a:hover{color:var(--accent)}
+@media (max-width:900px){
+  header.hero .wrap{grid-template-columns:minmax(0,1fr);padding-top:48px;padding-bottom:40px}
+  #ascii-logo{font-size:clamp(6px,1.8vw,10px)}
+}
 @media (max-width:640px){
   :root{--gutter:16px}
-  header.hero .wrap{padding-top:64px;padding-bottom:48px}
-  .download-grid{grid-template-columns:1fr;row-gap:12px}
+  .download-grid{grid-template-columns:minmax(0,1fr);row-gap:12px}
   .fig .box-c{padding:16px 14px}
   section{padding:88px 0 24px}
 }
@@ -157,45 +163,47 @@ footer a:hover{color:var(--accent)}
     <span><a href="https://github.com/eddiezywang/wemail" class="new">[开源] Apache-2.0 →</a></span>
     <span style="display:flex;gap:1.5ch">
       <button id="theme-btn" aria-label="切换明暗主题">[明/暗]</button>
-      <a href="https://github.com/eddiezywang/wemail">github/eddiezywang/wemail</a>
+      <a href="https://github.com/eddiezywang/wemail">GitHub</a>
     </span>
   </div>
 </div>
 
 <header class="hero">
   <div class="wrap">
+    <div class="hero-content">
+      <h1>AI <em>读邮件</em>，数据 <em>由你掌控</em>。</h1>
+      <p class="lede">
+        WeMail 是一个支持 Windows 和 macOS 的桌面邮件客户端：IMAP/SMTP 收发、SQLite 本地存储，
+        配上 AI 摘要、智能标签与智能回复。邮件数据保存在本机；AI 请求会发送到你配置的模型端点，可能包含邮件正文。
+      </p>
+      <div class="downloads" id="download" aria-labelledby="download-title">
+        <div class="download-heading">
+          <h2 id="download-title">下载 WeMail</h2>
+          <a href="https://github.com/eddiezywang/wemail/releases/tag/v1.0.0">v1.0.0 预览版 ↗</a>
+        </div>
+        <div class="download-grid">
+          <div class="download-group" role="group" aria-label="macOS 下载">
+            <span class="download-platform">macOS · .dmg</span>
+            <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-macos-arm64.dmg"><span aria-hidden="true">↓</span> Apple Silicon</a>
+            <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-macos-x64.dmg"><span aria-hidden="true">↓</span> Intel</a>
+          </div>
+          <div class="download-group" role="group" aria-label="Windows 下载">
+            <span class="download-platform">Windows · .exe</span>
+            <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-windows-x64.exe"><span aria-hidden="true">↓</span> x64</a>
+            <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-windows-arm64.exe"><span aria-hidden="true">↓</span> ARM64</a>
+          </div>
+        </div>
+        <p class="download-note">预览安装包未签名，macOS 版未公证。</p>
+      </div>
+      <div class="cta">
+        <a class="btn" href="https://github.com/eddiezywang/wemail#readme">阅读文档</a>
+        <a class="btn" href="https://github.com/eddiezywang/wemail">GitHub 仓库</a>
+      </div>
+      <div class="chips">
+        <span>Electron 41</span><span>React Router</span><span>IMAP / SMTP</span><span>SQLite 本地存储</span><span>Windows / macOS</span>
+      </div>
+    </div>
     <div class="logo-row"><pre id="ascii-logo" aria-label="WeMail"></pre></div>
-    <h1>AI <em>读邮件</em>，数据 <em>由你掌控</em>。</h1>
-    <p class="lede">
-      WeMail 是一个支持 Windows 和 macOS 的桌面邮件客户端：IMAP/SMTP 收发、SQLite 本地存储，
-      配上 AI 摘要、智能标签与智能回复。邮件数据保存在本机；AI 请求会发送到你配置的模型端点，可能包含邮件正文。
-    </p>
-    <div class="downloads" id="download" aria-labelledby="download-title">
-      <div class="download-heading">
-        <h2 id="download-title">下载 WeMail</h2>
-        <a href="https://github.com/eddiezywang/wemail/releases/tag/v1.0.0">v1.0.0 预览版 ↗</a>
-      </div>
-      <div class="download-grid">
-        <div class="download-group" role="group" aria-label="macOS 下载">
-          <span class="download-platform">macOS · .dmg</span>
-          <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-macos-arm64.dmg"><span aria-hidden="true">↓</span> Apple Silicon</a>
-          <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-macos-x64.dmg"><span aria-hidden="true">↓</span> Intel</a>
-        </div>
-        <div class="download-group" role="group" aria-label="Windows 下载">
-          <span class="download-platform">Windows · .exe</span>
-          <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-windows-x64.exe"><span aria-hidden="true">↓</span> x64</a>
-          <a class="download-link" href="https://github.com/eddiezywang/wemail/releases/download/v1.0.0/WeMail-1.0.0-windows-arm64.exe"><span aria-hidden="true">↓</span> ARM64</a>
-        </div>
-      </div>
-      <p class="download-note">预览安装包未签名，macOS 版未公证。</p>
-    </div>
-    <div class="cta">
-      <a class="btn" href="https://github.com/eddiezywang/wemail#readme">阅读文档</a>
-      <a class="btn" href="https://github.com/eddiezywang/wemail">GitHub 仓库</a>
-    </div>
-    <div class="chips">
-      <span>Electron 41</span><span>React Router</span><span>IMAP / SMTP</span><span>SQLite 本地存储</span><span>Windows / macOS</span>
-    </div>
   </div>
 </header>
 
