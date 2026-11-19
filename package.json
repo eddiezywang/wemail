@@ -122,6 +122,8 @@
 		"check:canonical-mail-schema": "node scripts/check-canonical-mail-schema.mjs",
 		"check:public-boundary": "node scripts/check-public-boundary.mjs",
 		"build:desktop": "node scripts/check-production-login-env.mjs && node scripts/clean-desktop-output.mjs && npm run build:renderer && tsx scripts/write-edition-config.ts && tsc -p electron/tsconfig.build.json && tsx scripts/write-update-policy.ts",
+		"mcp:build": "tsc -p electron/tsconfig.build.json",
+		"mcp:start": "node dist-electron/server/wemail/headless/mcp-main.js",
 		"render:icon": "node scripts/render-wemail-icon.mjs",
 		"package:desktop": "npm run package:desktop:unpacked",
 		"package:desktop:unpacked": "node scripts/package-desktop-win-dir.mjs",

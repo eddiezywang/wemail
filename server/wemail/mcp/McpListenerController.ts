@@ -29,11 +29,18 @@ export class McpListenerController {
     options: {
       emergencyDisabled?: boolean;
       managedCredentials?: ManagedMcpCredentialVault;
+      /** Headless shells start the listener without the desktop's
+       *  per-account managed-credential vault; bearer-token auth still
+       *  gates every call. Defaults to true (desktop behavior). */
+      requireManagedCredential?: boolean;
     } = {},
   ) {
     this.emergencyDisabled = options.emergencyDisabled ?? process.env.WEMAIL_MCP_EMERGENCY_DISABLE === "1";
     this.managedCredentials = options.managedCredentials;
+    this.requireManagedCredential = options.requireManagedCredential ?? true;
   }
+
+  private readonly requireManagedCredential: boolean;
 
   async boot(): Promise<void> {
     if (this.emergencyDisabled) {
@@ -42,7 +49,7 @@ export class McpListenerController {
       this.mcp.sessions.closeAll("emergency-disabled");
       return;
     }
-    if (this.mcp.settings.get().enabled && this.ensureManagedCredential()) {
+    if (this.mcp.settings.get().enabled && (this.requireManagedCredential ? this.ensureManagedCredential() : true)) {
       await this.start();
     }
   }
@@ -118,7 +125,7 @@ export class McpListenerController {
     this.mcp.settings.save(input);
     if (!input.enabled) {
       await this.stop();
-    } else if (!this.ensureManagedCredential()) {
+    } else if (!this.requireManagedCredential || this.ensureManagedCredential()) {
       const credentialError = this.errorCode;
       await this.stop();
       this.state = "error";

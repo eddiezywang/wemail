@@ -2,6 +2,22 @@
 
 WeMail can expose the currently signed-in mailbox to local MCP clients. The feature is opt-in, listens only on `127.0.0.1`, and is disabled by default.
 
+## Headless server
+
+The same MCP surface can run without the desktop UI, driven by the same auth files and database as the desktop:
+
+```bash
+npm run build:desktop          # compiles server/ + electron/ into dist-electron/
+node dist-electron/server/wemail/headless/mcp-main.js --data-dir <dir> [--port 43129]
+```
+
+- `--data-dir` (or `WEMAIL_DATA_DIR`) selects the data directory. Point it at a directory the desktop has logged into — accounts, secrets, and MCP credentials are shared, because both shells read the same file-backed secret store (`WEMAIL_SECRET_STORE=file`, the default).
+- `--port` (or `WEMAIL_MCP_PORT`) selects the listener port; the MCP listener is always on in headless mode.
+- The listener serves the identical tool set and bearer-token safety model as the desktop. Credentials minted in desktop Settings (Settings → MCP → copy configuration) keep working against the headless server on the same data directory.
+- Run the desktop and the headless server on the same data directory at your own risk: both open the same SQLite database, and concurrent writers may see transient busy errors.
+
+`WEMAIL_SECRET_STORE=safeStorage` restores the desktop's OS-protected envelope if you prefer per-machine DPAPI/keychain encryption over the shared file store. First boot in file mode migrates an existing safeStorage envelope automatically and keeps the original aside for recovery.
+
 ## Enable and connect
 
 1. Open **Settings → MCP** and enable **Local MCP**.

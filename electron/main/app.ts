@@ -22,11 +22,8 @@ import { getRuntimeIconPath, resolveElectronAsset } from "./assets.js";
 import { createBootLogger } from "./boot-log.js";
 import { formatProcessLog } from "./process-log.js";
 import { safeStreamWrite } from "./safe-stream-write.js";
-import { ElectronSecretStore } from "./electron-secret-store.js";
-import {
-  FileSecretStore,
-  type SecretStore,
-} from "../../server/wemail/security/SecretStore.js";
+import { ElectronSecretStore, migrateElectronSecretsToFile } from "./electron-secret-store.js";
+import { FileSecretStore, type SecretStore } from "../../server/wemail/security/SecretStore.js";
 import {
   imapPasswordKey,
   smtpPasswordKey,
@@ -701,15 +698,18 @@ async function createMainWindow() {
     path.join(process.env.WEMAIL_DATA_DIR, "secrets"),
     safeStorage,
   );
-  // CI runners have no OS keyring, so Electron safeStorage is unavailable
-  // and throws "encrypted-secret-store-unavailable" during composeApp.
-  // E2E data dirs are disposable, so use the file-backed store there; real
-  // desktop launches keep the encrypted Electron store.
+  // One set of auth files serves every shell (desktop, headless MCP).
+  // FileSecretStore is the default; safeStorage remains opt-in for
+  // users who prefer DPAPI-encrypted envelopes. Existing safeStorage
+  // envelopes are migrated to the file store on first boot. E2E keeps
+  // its disposable file-backed dirs without migrating anything.
   const secretBaseDir = path.join(process.env.WEMAIL_DATA_DIR, "secrets");
+  const secretStoreMode = process.env.WEMAIL_SECRET_STORE ?? "file";
   const accountSecretStore: SecretStore =
-    process.env.WEMAIL_E2E_MODE === "1"
-      ? new FileSecretStore({ baseDir: secretBaseDir })
-      : new ElectronSecretStore(secretBaseDir, safeStorage);
+    secretStoreMode === "safeStorage"
+      ? new ElectronSecretStore(secretBaseDir, safeStorage)
+      : (migrateElectronSecretsToFile(secretBaseDir, safeStorage),
+        new FileSecretStore({ baseDir: secretBaseDir }));
   const configureMailCoreAccount = (account: AccountConfig | null) => {
     if (!account) {
       mailCoreSupervisor?.configureAccountCredential(null);
