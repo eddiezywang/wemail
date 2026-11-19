@@ -862,6 +862,7 @@ export class MailDatabaseQueryRepository {
     const attachments = this.attachments(row.id);
     const headers = this.headers(row.id);
     const delivery = parseDeliveryResult(row.delivery_json);
+    const archive = this.db.prepare(`SELECT state FROM mail_jobs WHERE job_kind = 'mail.sent.archive' AND subject_public_id = ? ORDER BY id DESC LIMIT 1`).get(publicId) as { state: string } | undefined;
     // A provider metadata upsert may leave a non-empty snippet while the
     // content row is still an empty `ready` placeholder. Do not expose that
     // impossible-to-render combination to the UI: it is a body hydration
@@ -931,6 +932,7 @@ export class MailDatabaseQueryRepository {
     return {
       message,
       bodyState,
+      ...(archive ? { sentArchiveState: archive.state === "succeeded" ? "succeeded" as const : ["pending", "leased"].includes(archive.state) ? "pending" as const : "failed" as const } : {}),
       ...(row.error_code ? { bodyErrorCode: row.error_code } : {}),
       bodyAttempts: Number(row.retry_count ?? 0n),
       ...(row.retry_at_ms !== null

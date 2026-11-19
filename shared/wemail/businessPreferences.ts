@@ -12,6 +12,7 @@ export interface BusinessPreferences {
   notificationContentMode: NotificationContentMode;
   dailyDigest: boolean;
   interfaceLanguage: "auto" | "zh-CN" | "en";
+  accountSignatures: Record<string, { enabled: boolean; customText: string }> | null;
 }
 
 export const DEFAULT_BUSINESS_PREFERENCES: BusinessPreferences = {
@@ -25,6 +26,7 @@ export const DEFAULT_BUSINESS_PREFERENCES: BusinessPreferences = {
   notificationContentMode: "full",
   dailyDigest: false,
   interfaceLanguage: "auto",
+  accountSignatures: null,
 };
 
 export function validateBusinessPreferences(value: unknown): BusinessPreferences {
@@ -55,6 +57,7 @@ export function validateBusinessPreferences(value: unknown): BusinessPreferences
     ),
     dailyDigest: bool("dailyDigest", false),
     interfaceLanguage: pick("interfaceLanguage", ["auto", "zh-CN", "en"], "auto"),
+    accountSignatures: z.record(z.string(), z.object({ enabled: z.boolean(), customText: z.string().max(10000) })).nullable().catch(null).parse(input.accountSignatures),
   };
 }
 
@@ -69,6 +72,7 @@ export const BusinessPreferencesPatchSchema = z.object({
   notificationContentMode: z.enum(["full", "sender-only", "count-only"]),
   dailyDigest: z.boolean(),
   interfaceLanguage: z.enum(["auto", "zh-CN", "en"]),
+  accountSignatures: z.record(z.string(), z.object({ enabled: z.boolean(), customText: z.string().max(10000) })).nullable(),
 }).partial().strict();
 
 export interface BusinessPreferencesSnapshot {

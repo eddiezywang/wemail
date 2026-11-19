@@ -284,6 +284,7 @@ export function useEmail(
 		},
 		enabled: !!mailboxId && !!emailId,
 		staleTime: 30_000,
+		refetchInterval: (query) => query.state.data?.sentArchiveState === "pending" ? 5_000 : false,
 		gcTime: MAIL_VIEW_CACHE_GC_MS,
 	});
 	useEffect(() => {

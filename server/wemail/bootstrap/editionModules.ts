@@ -59,6 +59,15 @@ export interface EditionDirectoryModules {
 
 /** Optional module bundle injected into the composition root. */
 export interface EditionModules {
+  /** Optional edition-specific post-send archival, executed outside SMTP. */
+  sentArchive?: {
+    supports(credential: import("../../../shared/wemail/mailCoreProtocol.js").MailboxCredentialEnvelope): boolean;
+    save(input: {
+      credential: import("../../../shared/wemail/mailCoreProtocol.js").MailboxCredentialEnvelope;
+      draft: import("../../../shared/wemail/mail.js").WemailDraftInput;
+      messageId: string;
+    }): Promise<void>;
+  };
   automationFormContributions?: ReadonlyArray<{
     requires: ReadonlyArray<keyof import("../../../shared/wemail/edition.js").EditionFeatures>;
     contributions: import("../../../shared/wemail/automation.js").AutomationFormContributions;

@@ -89,7 +89,7 @@ async function bootstrap(event: {
     // guard used when a caller has not supplied a shorter deadline. Writer
     // maintenance scans (notably reconcileAiJobs) can legitimately exceed
     // the interactive reader budget during cold startup.
-    requestTimeoutMs: label === "maintenance" ? 60_000 : label === "writer"
+    requestTimeoutMs: label === "maintenance" ? 300_000 : label === "writer"
       ? 15_000
       : label === "search"
         ? 5_000
@@ -337,7 +337,7 @@ function parseRequest(input: unknown): MailDatabaseRequest | null {
     typeof request.traceId !== "string" ||
     request.traceId.length > 200 ||
     typeof request.deadlineMs !== "number" ||
-    request.deadlineMs > Date.now() + MAX_REQUEST_DEADLINE_MS ||
+    request.deadlineMs > Date.now() + (request.method === "database.checkIntegrity" ? 300_000 : MAX_REQUEST_DEADLINE_MS) ||
     !payloadWithinBounds(
       request.params,
       MAX_REQUEST_PAYLOAD_BYTES,

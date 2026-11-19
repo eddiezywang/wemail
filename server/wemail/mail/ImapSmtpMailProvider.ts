@@ -195,6 +195,7 @@ export interface MailTransport {
     references?: string[];
     text: string;
     html?: string;
+    attachDataUrls?: boolean;
     attachments?: Array<{
       filename: string;
       content: Buffer | string;
@@ -1595,6 +1596,7 @@ export class ImapSmtpMailProvider implements MailProvider {
       references: input.smtpReferences,
       text: input.bodyText,
       html: input.bodyHtml || undefined,
+      attachDataUrls: true,
       attachments: input.attachments?.map((attachment) => ({
         filename: attachment.filename,
         // Pass the original base64 payload through explicitly so the

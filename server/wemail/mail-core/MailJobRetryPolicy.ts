@@ -14,6 +14,7 @@ export const MAIL_JOB_MAX_ATTEMPTS = {
 } as const;
 
 export function maxAttemptsForMailJob(kind: string): number {
+  if (kind === "mail.sent.archive") return 1;
   if (kind === "mail.body.ensure") return MAIL_JOB_MAX_ATTEMPTS.bodyEnsure;
   if (kind === "mail.metadata.sync") return MAIL_JOB_MAX_ATTEMPTS.metadataSync;
   if (kind === "mail.remote.mutation") return MAIL_JOB_MAX_ATTEMPTS.remoteMutation;

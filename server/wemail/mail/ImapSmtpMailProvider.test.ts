@@ -1439,6 +1439,30 @@ test("ImapSmtpMailProvider.sendDraft fails when every recipient is rejected", as
   );
 });
 
+test("ImapSmtpMailProvider sends HTML data images as inline MIME parts", async () => {
+  const { secrets, accountService } = setupAccount();
+  let rawMessage = "";
+  const transport = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: "unix" });
+  const provider = new ImapSmtpMailProvider({
+    accountService,
+    secrets,
+    imapFactory: () => new FakeImap([]),
+    smtpFactory: () => ({ sendMail: async (options) => {
+      const result = await transport.sendMail(options);
+      rawMessage = result.message.toString();
+      return { messageId: result.messageId };
+    } }),
+  });
+  await provider.sendDraft({
+    accountId: "acct-1", to: [{ email: "bob@example.com" }], subject: "image",
+    bodyText: "image", bodyHtml: '<img src="data:image/png;base64,aGVsbG8=">',
+  });
+  assert.match(rawMessage, /Content-Type: multipart\/related;/i);
+  assert.match(rawMessage, /Content-ID: <[^>]+>/i);
+  assert.match(rawMessage, /src(?:=|=3D)["']cid:/i);
+  assert.match(rawMessage, /aGVsbG8=/);
+});
+
 test("ImapSmtpMailProvider.sendDraft marks uploaded files as MIME attachments", async () => {
   const { secrets, accountService } = setupAccount();
   let rawMessage = "";

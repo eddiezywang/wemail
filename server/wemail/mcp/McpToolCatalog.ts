@@ -166,7 +166,7 @@ const mailContentInput = (attachmentItem: McpJsonSchema) => ({
   bcc: array(address, WEMAIL_MCP_MAX_RECIPIENTS),
   subject: string({ maxLength: 998 }),
   bodyText: string({ maxLength: 1_000_000 }),
-  bodyHtml: string({ maxLength: 1_000_000 }),
+  bodyHtml: string({ maxLength: 1_000_000, description: "HTML body. Inline images can use img src data URLs with Base64 image content; the complete HTML is limited to 1,000,000 characters." }),
   attachments: {
     ...array(attachmentItem, 20),
     description: "The complete ordered attachment set, using staged uploadRef values and, for an existing draft, its attachmentId values.",
