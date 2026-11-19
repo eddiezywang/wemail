@@ -1,4 +1,5 @@
 import { parentPort, threadId, workerData } from "node:worker_threads";
+import { EDITION_MODULES } from "../../server/wemail/bootstrap/editionModules.js";
 import type { AccountService } from "../../server/wemail/account/AccountService.js";
 import { imapPasswordKey, smtpPasswordKey } from "../../server/wemail/account/AccountTypes.js";
 import { BackgroundTransferMailProvider } from "../../server/wemail/mail/BackgroundTransferMailProvider.js";
@@ -178,7 +179,9 @@ accountPort.on("message", (command: AccountWorkerCommand) => {
     ? activeInteractiveWorkId !== null
     : activeBackgroundWorkId !== null;
   if (busy) {
-    if (command.type === "account-worker.fetch-body") {
+    if (command.type === "account-worker.archive-sent") {
+      accountPort.postMessage({ type: "account-worker.archive-sent-result", accountId: data.accountId, jobId: command.jobId, ok: false, errorCode: "account-worker-busy" } satisfies AccountWorkerEvent);
+    } else if (command.type === "account-worker.fetch-body") {
       accountPort.postMessage({
         type: "account-worker.body-result",
         accountId: data.accountId,
@@ -256,7 +259,9 @@ accountPort.on("message", (command: AccountWorkerCommand) => {
   if (attachmentController && command.type === "account-worker.fetch-attachment") {
     attachmentControllers.set(command.requestId, attachmentController);
   }
-  const work = command.type === "account-worker.fetch-body"
+  const work = command.type === "account-worker.archive-sent"
+    ? archiveSent(command)
+    : command.type === "account-worker.fetch-body"
     ? fetchBody(command)
     : command.type === "account-worker.fetch-attachment"
       ? fetchAttachment(command, attachmentController!.signal)
@@ -284,6 +289,16 @@ accountPort.on("message", (command: AccountWorkerCommand) => {
     }
   });
 });
+
+async function archiveSent(command: Extract<AccountWorkerCommand, { type: "account-worker.archive-sent" }>): Promise<void> {
+  try {
+    if (!EDITION_MODULES.sentArchive) throw new Error("sent-archive-unavailable");
+    await EDITION_MODULES.sentArchive.save({ credential: data.credential, draft: command.draft, messageId: command.messageId });
+    accountPort.postMessage({ type: "account-worker.archive-sent-result", accountId: data.accountId, jobId: command.jobId, ok: true } satisfies AccountWorkerEvent);
+  } catch {
+    accountPort.postMessage({ type: "account-worker.archive-sent-result", accountId: data.accountId, jobId: command.jobId, ok: false, errorCode: "sent-archive-failed-or-unknown" } satisfies AccountWorkerEvent);
+  }
+}
 
 accountPort.postMessage({
   type: "account-worker.ready",

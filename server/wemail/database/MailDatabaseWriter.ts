@@ -1231,7 +1231,7 @@ export class MailDatabaseWriter {
   }
 
   nextMailDue(accountId: string): number | null {
-    return this.nextQueueDue(["mail.body.ensure", "mail.metadata.sync"], accountId);
+    return this.nextQueueDue(["mail.body.ensure", "mail.metadata.sync", "mail.sent.archive"], accountId);
   }
 
   nextJobDue(kinds: readonly string[]): number | null {
@@ -2087,11 +2087,18 @@ export class MailDatabaseWriter {
       const recipients = this.outboxRecipients(row.id);
       const now = Date.now();
       const sentAt = new Date(now).toISOString();
+      const sentFolder = this.db.prepare(`
+        SELECT remote_path FROM mail_folders
+        WHERE account_id = ? AND deleted_at_ms IS NULL AND is_selectable = 1
+          AND (remote_path = '已发送' OR role = 'sent')
+        ORDER BY CASE WHEN remote_path = '已发送' THEN 0 ELSE 1 END, id
+        LIMIT 1
+      `).get(row.account_id) as { remote_path: string } | undefined;
       const message: MailMessage = {
         id: `sent:${row.public_id}`,
         source: "local",
         accountId: row.account_public_id,
-        folder: "Sent",
+        folder: sentFolder?.remote_path ?? "Sent",
         messageId: input.messageId || row.message_id_header,
         threadId: input.messageId || row.message_id_header,
         ...(row.reply_message_id ? {
@@ -2125,6 +2132,25 @@ export class MailDatabaseWriter {
         },
       };
       const persisted = this.upsertMessage(row.account_id, message, true, row.reply_thread_id);
+      if (input.archiveSent) {
+        this.enqueueJob({
+          kind: "mail.sent.archive",
+          accountId: row.account_public_id,
+          payload: {
+            emailId: persisted.publicId,
+            messageId: input.messageId || row.message_id_header,
+            draft: {
+              accountId: row.account_public_id, to: recipients.to, cc: recipients.cc, bcc: recipients.bcc,
+              subject: row.frozen_subject, bodyText: row.frozen_body_text ?? "", bodyHtml: row.frozen_body_html ?? "",
+              ...(row.reply_message_id ? { smtpInReplyTo: row.reply_message_id } : {}),
+              ...(row.reply_references_json ? { smtpReferences: JSON.parse(row.reply_references_json) as string[] } : {}),
+            },
+          },
+          priority: 1,
+          maxAttempts: 1,
+          idempotencyKey: `sent-archive:${row.public_id}`,
+        });
+      }
       if (input.delivery) {
         this.db.prepare(`
           INSERT INTO mail_message_delivery (message_id, result_json) VALUES (?, ?)

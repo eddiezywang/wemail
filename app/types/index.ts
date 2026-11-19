@@ -39,6 +39,7 @@ export interface Email {
 	ccAddresses?: WemailAddress[];
 	bccAddresses?: WemailAddress[];
 	delivery?: WemailDeliveryResult;
+	sentArchiveState?: "pending" | "succeeded" | "failed";
 	date: string;
 	read: boolean;
 	starred: boolean;

@@ -329,6 +329,46 @@ test("deleting a sent scheduled record does not restore its draft", () => {
   }
 });
 
+test("sent messages use the account's existing 已发送 folder", () => {
+  const db = createMailDatabase(":memory:");
+  try {
+    const writer = new MailDatabaseWriter(db);
+    configureTestAccount(writer);
+    writer.persistMetadata({ accountId: "account-1", origin: "bootstrap", messages: [
+      { ...message(), id: "existing-sent", folder: "Sent" },
+      { ...message(), id: "existing-chinese-sent", folder: "已发送", messageId: "<chinese@example.test>", sync: { ...message().sync, uid: 2 } },
+    ] });
+    writer.enqueueSend({ accountId: "account-1", idempotencyKey: "sent-folder", to: [{ email: "to@example.test" }], subject: "Subject", bodyText: "Body", bodyHtml: "" });
+    const claimed = writer.claimSend("account-1", "worker");
+    assert.ok(claimed);
+    const sent = writer.completeSend({ id: claimed.id, owner: "worker", messageId: "<folder-test@example.test>" });
+    assert.equal(new MailDatabaseQueryRepository(db).getSnapshot(sent.value.messageId).message?.folder, "已发送");
+  } finally {
+    db.close();
+  }
+});
+
+test("sent archival is a separate one-attempt job recorded with SMTP completion", () => {
+  const db = createMailDatabase(":memory:");
+  try {
+    const writer = new MailDatabaseWriter(db);
+    configureTestAccount(writer);
+    writer.enqueueSend({ accountId: "account-1", idempotencyKey: "archive-send", to: [{ email: "to@example.test" }], subject: "Subject", bodyText: "Body", bodyHtml: "" });
+    const claimed = writer.claimSend("account-1", "smtp-worker");
+    assert.ok(claimed);
+    const sent = writer.completeSend({ id: claimed.id, owner: "smtp-worker", messageId: "<archive@example.test>", archiveSent: true });
+    const queries = new MailDatabaseQueryRepository(db);
+    assert.equal(queries.getSnapshot(sent.value.messageId).sentArchiveState, "pending");
+    const job = writer.claimJob({ owner: "archive-worker", leaseMs: 0, filter: { accountId: "account-1", kinds: ["mail.sent.archive"] } });
+    assert.ok(job);
+    assert.equal(job.maxAttempts, 1);
+    writer.recoverExpiredJobLeases(Date.now() + 1);
+    assert.equal(queries.getSnapshot(sent.value.messageId).sentArchiveState, "failed");
+    assert.equal(writer.claimJob({ owner: "other", filter: { accountId: "account-1", kinds: ["mail.sent.archive"] } }), null);
+    assert.throws(() => writer.enqueueSend({ accountId: "account-1", idempotencyKey: "archive-send", to: [{ email: "to@example.test" }], subject: "Subject", bodyText: "Body", bodyHtml: "" }), /send-already-completed/);
+  } finally { db.close(); }
+});
+
 test("SMTP partial delivery survives reading the sent message", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-partial-delivery-"));
   const db = createMailDatabase(path.join(directory, "wemail.sqlite"));

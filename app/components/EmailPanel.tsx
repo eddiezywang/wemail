@@ -699,6 +699,9 @@ function EmailPanel({
 					onOpenSummaryCenter={onOpenSummaryCenter}
 				/>
 
+				{email.sentArchiveState === "failed" && (
+					<div role="status" className="mx-4 my-2 rounded border border-edge bg-paper-2 p-3 text-sm text-ink-2">邮件已发送，但服务器“已发送”存档失败或结果不明；请在其他邮件客户端核查。</div>
+				)}
 				{hasThread ? (
 					allMessages.map((msg, idx) => {
 						const isDraft = draftMessageIds.has(msg.id);

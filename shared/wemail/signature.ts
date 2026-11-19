@@ -69,7 +69,7 @@ export function buildSignatureHtml(identity?: string, brandUrl?: string): string
   const brand = safeUrl
     ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="color: ${SIGNATURE_BRAND_COLOR}; text-decoration: none;"><strong><span style="color: ${SIGNATURE_BRAND_COLOR};">${SIGNATURE_BRAND}</span></strong></a>`
     : `<strong><span style="color: ${SIGNATURE_BRAND_COLOR};">${SIGNATURE_BRAND}</span></strong>`;
-  return `<div data-wemail-signature="true" style="margin-top: 18px; text-align: left; color: #44403c; font-size: 14px; font-weight: 400; line-height: 1.45;"><div style="font-weight: 400;">--<br><br>${escapeHtml(normalizedIdentity)}<br></div><p data-wemail-signature-brand="true" style="margin: 5px 0 0; color: #a8a29e; font-size: 11px; font-weight: 400;">Sent with ${brand}</p></div>`;
+  return `<div data-wemail-signature="true" style="margin-top: 18px; text-align: left; color: #44403c; font-size: 14px; font-weight: 400; line-height: 1.45;"><div style="font-weight: 400;">--<br><br>${escapeHtml(normalizedIdentity).replace(/\r?\n/g, "<br>")}<br></div><p data-wemail-signature-brand="true" style="margin: 5px 0 0; color: #a8a29e; font-size: 11px; font-weight: 400;">Sent with ${brand}</p></div>`;
 }
 
 function hasSignatureFooter(value: string): boolean {

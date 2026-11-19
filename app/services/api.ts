@@ -1866,7 +1866,7 @@ const api = {
 			data.bodyNextRetryAt,
 			data.bodyRetryable,
 		);
-		return data.invoiceDetected ? { ...email, invoiceDetected: true } : email;
+		return { ...email, ...(data.sentArchiveState ? { sentArchiveState: data.sentArchiveState } : {}), ...(data.invoiceDetected ? { invoiceDetected: true } : {}) };
 	},
 	ensureEmailBody: (accountId: string, id: string, traceId?: string) => {
 		const mailCore = window.wemailDesktop?.mailCore;

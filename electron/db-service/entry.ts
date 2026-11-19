@@ -90,7 +90,7 @@ async function bootstrap(event: {
     // guard used when a caller has not supplied a shorter deadline. Writer
     // maintenance scans (notably reconcileAiJobs) can legitimately exceed
     // the interactive reader budget during cold startup.
-    requestTimeoutMs: label === "maintenance" ? 60_000 : label === "writer"
+    requestTimeoutMs: label === "maintenance" ? 300_000 : label === "writer"
       ? 15_000
       : label === "search"
         ? 5_000
@@ -205,7 +205,7 @@ async function handleClientRequest(
   // Different processes may observe slightly different wall-clock times on
   // Windows. Bound the deadline at receipt instead of rejecting a valid
   // maximum-length request that appears a few milliseconds too far ahead.
-  request.deadlineMs = clampDeadline(request.deadlineMs, receivedAt, MAX_REQUEST_DEADLINE_MS);
+  request.deadlineMs = clampDeadline(request.deadlineMs, receivedAt, request.method === "database.checkIntegrity" ? 300_000 : MAX_REQUEST_DEADLINE_MS);
   if (request.deadlineMs <= receivedAt) {
     respondFailure(client, request.requestId, "DEADLINE_EXPIRED", "Request deadline expired");
     traceRequest(request, receivedAt, {

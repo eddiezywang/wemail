@@ -192,6 +192,7 @@ export interface MailSnapshotResult {
   bodyAttempts?: number;
   bodyNextRetryAt?: string;
   bodyRetryable?: boolean;
+  sentArchiveState?: "pending" | "succeeded" | "failed";
   invoiceDetected: boolean;
   invoiceStatus: InvoiceMailStatusSummary | null;
 }
@@ -203,6 +204,7 @@ export const MailSnapshotResultSchema = z.object({
   bodyAttempts: z.number().int().nonnegative().optional(),
   bodyNextRetryAt: z.string().datetime().optional(),
   bodyRetryable: z.boolean().optional(),
+  sentArchiveState: z.enum(["pending", "succeeded", "failed"]).optional(),
   invoiceDetected: z.boolean(),
   invoiceStatus: z.unknown().nullable(),
 });

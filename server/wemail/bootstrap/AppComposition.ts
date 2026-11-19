@@ -956,6 +956,7 @@ export async function composeApp(
     accounts: accountService,
     mailDatabase: options.mailDatabase,
     mail: mail.public.mailRepository,
+    signatureBrandUrl: edition.signature.brandUrl || undefined,
     todos: intel.todos,
     pendingActions: agentDomain.pendingActions,
     attachmentCache: mailAttachmentCache,
