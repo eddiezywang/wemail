@@ -1,5 +1,5 @@
 import { parentPort, threadId, workerData } from "node:worker_threads";
-import { EDITION_MODULES } from "../../server/wemail/bootstrap/editionModules.js";
+import { SENT_ARCHIVE } from "#edition-sent-archive";
 import type { AccountService } from "../../server/wemail/account/AccountService.js";
 import { imapPasswordKey, smtpPasswordKey } from "../../server/wemail/account/AccountTypes.js";
 import { BackgroundTransferMailProvider } from "../../server/wemail/mail/BackgroundTransferMailProvider.js";
@@ -292,8 +292,8 @@ accountPort.on("message", (command: AccountWorkerCommand) => {
 
 async function archiveSent(command: Extract<AccountWorkerCommand, { type: "account-worker.archive-sent" }>): Promise<void> {
   try {
-    if (!EDITION_MODULES.sentArchive) throw new Error("sent-archive-unavailable");
-    await EDITION_MODULES.sentArchive.save({ credential: data.credential, draft: command.draft, messageId: command.messageId });
+    if (!SENT_ARCHIVE) throw new Error("sent-archive-unavailable");
+    await SENT_ARCHIVE.save({ credential: data.credential, draft: command.draft, messageId: command.messageId });
     accountPort.postMessage({ type: "account-worker.archive-sent-result", accountId: data.accountId, jobId: command.jobId, ok: true } satisfies AccountWorkerEvent);
   } catch {
     accountPort.postMessage({ type: "account-worker.archive-sent-result", accountId: data.accountId, jobId: command.jobId, ok: false, errorCode: "sent-archive-failed-or-unknown" } satisfies AccountWorkerEvent);

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { EDITION_MODULES } from "../bootstrap/editionModules.js";
+import { SENT_ARCHIVE } from "#edition-sent-archive";
 import { Worker } from "node:worker_threads";
 import {
   isMailBodyCached,
@@ -775,7 +775,7 @@ export class MailCoreAccountRuntime {
 
   private async claimBackground(): Promise<void> {
     if (!this.worker || this.state !== "ready" || this.stopping) return;
-    if (EDITION_MODULES.sentArchive) {
+    if (SENT_ARCHIVE) {
       const owner = `account:${this.options.accountId}:sent-archive:${randomUUID()}`;
       const job = await this.claimWorkerJob(owner, 120_000, { accountId: this.options.accountId, kinds: ["mail.sent.archive"] });
       if (job) {
@@ -1210,7 +1210,7 @@ export class MailCoreAccountRuntime {
           id: send.id,
           owner: send.leaseOwner,
           messageId: event.messageId,
-          ...(this.options.credential && EDITION_MODULES.sentArchive?.supports(this.options.credential) ? { archiveSent: true } : {}),
+          ...(this.options.credential && SENT_ARCHIVE?.supports(this.options.credential) ? { archiveSent: true } : {}),
           ...(event.delivery ? { delivery: event.delivery } : {}),
         });
         this.options.log?.("account-worker-send-complete", {
