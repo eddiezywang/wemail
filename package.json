@@ -9,7 +9,8 @@
 	"type": "module",
 	"main": "dist-electron/electron/main/app.js",
 	"imports": {
-		"#edition-modules": "./dist-electron/server/wemail/bootstrap/editionModules.noop.js"
+		"#edition-modules": "./dist-electron/server/wemail/bootstrap/editionModules.noop.js",
+		"#edition-sent-archive": "./dist-electron/server/wemail/mail-core/sentArchive.noop.js"
 	},
 	"build": {
 		"appId": "com.wemail.app",

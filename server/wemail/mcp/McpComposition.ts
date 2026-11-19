@@ -21,7 +21,7 @@ import { createHash } from "node:crypto";
 import { McpAuditRepository } from "./McpAuditRepository.js";
 import { McpIdempotencyRepository } from "./McpIdempotencyRepository.js";
 import { randomUUID } from "node:crypto";
-import type { MailAttachment, MailDraftRecord, MailMessage, WemailAddress } from "../../../shared/wemail/mail.js";
+import type { MailAttachment, MailDraftRecord, MailMessage, WemailAddress, WemailDraftInput } from "../../../shared/wemail/mail.js";
 import type { MailCoreMessageSummary, MailRefreshResult } from "../../../shared/wemail/mailCoreProtocol.js";
 import type { MailReceiptHealth } from "../../../shared/wemail/mailSync.js";
 import {
@@ -51,8 +51,16 @@ import type {
 import type { DirectoryContactSummary } from "../../../shared/wemail/directory.js";
 import type { ConversationState } from "../../../shared/wemail/conversationState.js";
 import type { PersistedAgentRun } from "../../../shared/wemail/agentProtocol.js";
+import { BusinessPreferenceService } from "../settings/BusinessPreferenceService.js";
+import { ensureSignatureHtml, ensureSignatureText, resolveSignatureIdentity } from "../../../shared/wemail/signature.js";
 
 const MCP_THREAD_STRUCTURED_BUDGET_BYTES = 15 * 1024 * 1024;
+
+export function applyMcpSignature(draft: WemailDraftInput, identity: string, brandUrl?: string): WemailDraftInput {
+  if (!identity) return draft;
+  const bodyHtml = draft.bodyHtml || draft.bodyText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\r?\n/g, "<br>");
+  return { ...draft, bodyText: ensureSignatureText(draft.bodyText, identity), bodyHtml: ensureSignatureHtml(bodyHtml, identity, brandUrl) };
+}
 
 export interface McpComposition {
   tokens: McpAccessTokenService;
@@ -438,6 +446,7 @@ export function createMcpComposition(options: {
   semanticSearchService?: SemanticSearchService;
   mailQaService?: MailQaService;
   directoryService?: DirectoryService;
+  signatureBrandUrl?: string;
   agentRuns?: AgentRunRepository;
   limits?: {
     sessionConcurrentCalls?: number;
@@ -562,6 +571,19 @@ export function createMcpComposition(options: {
         mailDatabase: options.mailDatabase,
         todos: options.todos,
         getProvider: options.getProvider,
+        addSignature: async (draft) => {
+          const preference = new BusinessPreferenceService(options.db).get().accountSignatures?.[draft.accountId];
+          if (preference?.enabled === false) return draft;
+          const account = options.accounts.listAccounts().find((item) => item.id === draft.accountId);
+          let directoryName: string | undefined;
+          try {
+            if (account?.emailAddress) directoryName = (await options.directoryService?.getContact(draft.accountId, account.emailAddress))?.name;
+          } catch { /* Directory data is optional. */ }
+          const identity = preference?.customText.trim() || resolveSignatureIdentity({
+            directoryName, displayName: account?.displayName, emailAddress: account?.emailAddress,
+          });
+          return applyMcpSignature(draft, identity, options.signatureBrandUrl);
+        },
         uploads,
         maxAttachmentBytes: options.limits?.maxAttachmentBytes,
         maxTotalAttachmentBytes: options.limits?.maxTotalAttachmentBytes,

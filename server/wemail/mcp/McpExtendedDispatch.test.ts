@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMcpComposition } from "./McpComposition.js";
+import { applyMcpSignature, createMcpComposition } from "./McpComposition.js";
 import type { McpToolInvocationContext } from "./McpDomainAdapters.js";
 import type { MailDatabase } from "../database/Database.js";
 import type { MailSnapshotResult } from "../../../shared/wemail/mailCoreProtocol.js";
@@ -30,6 +30,15 @@ const context: McpToolInvocationContext = {
   sessionHash: "session-1",
   signal: new AbortController().signal,
 };
+
+test("MCP signatures preserve HTML, escape text and do not duplicate existing footers", () => {
+  const draft = { accountId: "acct-1", to: [], subject: "", bodyText: "<hello>", bodyHtml: "" };
+  const signed = applyMcpSignature(draft, "Alice\nTeam");
+  assert.match(signed.bodyText, /Alice\nTeam\n\nSent with Wemail/);
+  assert.match(signed.bodyHtml, /&lt;hello&gt;/);
+  assert.match(signed.bodyHtml, /Alice<br>Team/);
+  assert.deepEqual(applyMcpSignature(signed, "Alice\nTeam"), signed);
+});
 
 function buildComposition(overrides: Record<string, unknown> = {}) {
   return createMcpComposition({

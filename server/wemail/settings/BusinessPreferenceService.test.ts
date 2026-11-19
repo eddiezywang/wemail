@@ -26,6 +26,19 @@ test("business preference writes commit with a change event and roll back on com
   }
 });
 
+test("account signature preferences survive unrelated settings updates", () => {
+  const db = openOrCreateMailDatabase(":memory:");
+  try {
+    const writer = new MailDatabaseWriter(db);
+    const accountSignatures = { "account-a": { enabled: false, customText: "Alice\nTeam" } };
+    writer.saveBusinessPreferences({ accountSignatures });
+    writer.saveBusinessPreferences({ threading: false });
+    assert.deepEqual(new BusinessPreferenceService(db).get().accountSignatures, accountSignatures);
+  } finally {
+    db.close();
+  }
+});
+
 test("notification preferences default to enabled mail and action-required alerts", () => {
   const db = openOrCreateMailDatabase(":memory:");
   try {

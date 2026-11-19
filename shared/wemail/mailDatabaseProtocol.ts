@@ -298,6 +298,7 @@ export const MailDatabaseCompleteSendParamsSchema = z.object({
   owner: z.string().min(1),
   messageId: z.string(),
   delivery: MailDatabaseDeliveryResultSchema.optional(),
+  archiveSent: z.boolean().optional(),
 });
 
 export interface MailDatabaseCompleteSendParams {
@@ -305,6 +306,7 @@ export interface MailDatabaseCompleteSendParams {
   owner: string;
   messageId: string;
   delivery?: WemailDeliveryResult;
+  archiveSent?: boolean;
 }
 
 export type MailDatabaseSaveDraftResult = MailDatabaseWriteResult<MailDraftRecord>;

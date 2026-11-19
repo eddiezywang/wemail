@@ -69,6 +69,7 @@ export class McpOperationService {
     mailDatabase: MailDatabaseClient;
     todos: TodoRepository;
     getProvider(): MailProvider | undefined;
+    addSignature?: (draft: WemailDraftInput) => Promise<WemailDraftInput>;
     uploads: McpAttachmentUploadStore;
     now?: () => Date;
     maxAttachmentBytes?: number;
@@ -272,7 +273,10 @@ export class McpOperationService {
   private async execute(operation: McpPreparedOperationRecord): Promise<Record<string, unknown>> {
     const payload = operation.payload;
     if (operation.operationType === "send") {
-      const draft = payload as unknown as (WemailDraftInput & { draftId?: string });
+      const prepared = payload as unknown as (WemailDraftInput & { draftId?: string });
+      const draft = this.options.addSignature
+        ? await this.options.addSignature(prepared)
+        : prepared;
       // The prepare and commit guards reject attachment-bearing operations
       // until the outbox can persist and deliver attachment bytes.
       const committed = await this.options.mailDatabase.enqueueSend({
@@ -288,7 +292,7 @@ export class McpOperationService {
         bodyHtml: draft.bodyHtml,
         attachments: [],
         idempotencyKey: `mcp-send:${operation.id}`,
-        ...(typeof draft.draftId === "string" ? { draftId: draft.draftId } : {}),
+        ...(typeof prepared.draftId === "string" ? { draftId: prepared.draftId } : {}),
       });
       return { successCount: 1, outboxId: committed.value.outboxId, messageIdHeader: committed.value.messageIdHeader };
     }

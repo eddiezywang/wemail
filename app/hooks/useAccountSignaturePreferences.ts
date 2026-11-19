@@ -3,6 +3,7 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import { useCallback, useSyncExternalStore } from "react";
+import api from "~/services/api";
 
 export interface AccountSignaturePreference {
 	enabled: boolean;
@@ -12,6 +13,7 @@ export interface AccountSignaturePreference {
 type SignaturePreferenceStore = Record<string, AccountSignaturePreference>;
 
 const STORAGE_KEY = "wemail.signaturePreferences.v1";
+const DIRTY_KEY = "wemail.signaturePreferences.pending";
 const DEFAULT_PREFERENCE: AccountSignaturePreference = {
 	enabled: true,
 	customText: "",
@@ -45,6 +47,40 @@ function readFromStorage(): SignaturePreferenceStore {
 
 let state: SignaturePreferenceStore = readFromStorage();
 const listeners = new Set<() => void>();
+let hydration: Promise<void> | undefined;
+let hydrated = false;
+let revision = 0;
+let writes = Promise.resolve();
+
+function syncToServer() {
+	const snapshot = state;
+	const savedRevision = revision;
+	writes = writes.then(async () => {
+		await api.saveBusinessPreferences({ accountSignatures: snapshot });
+		if (revision === savedRevision) window.localStorage.removeItem(DIRTY_KEY);
+	}).catch(() => { hydrated = false; });
+}
+
+function hydrate() {
+	if (hydrated || hydration || typeof window === "undefined") return;
+	const startRevision = revision;
+	hydration = (async () => {
+		try {
+			const result = await api.getBusinessPreferences() as {
+				preferences?: { accountSignatures?: SignaturePreferenceStore | null };
+			};
+			const remote = result.preferences?.accountSignatures;
+			const dirty = window.localStorage.getItem(DIRTY_KEY) === "true";
+			if (remote && !dirty && revision === startRevision) persist(remote);
+			if (!remote || dirty || revision !== startRevision) syncToServer();
+			hydrated = true;
+		} catch {
+			// Keep the local copy until the service is available.
+		} finally {
+			hydration = undefined;
+		}
+	})();
+}
 
 function notify() {
 	for (const listener of listeners) listener();
@@ -64,6 +100,7 @@ function persist(next: SignaturePreferenceStore) {
 
 function subscribe(listener: () => void) {
 	listeners.add(listener);
+	hydrate();
 	return () => listeners.delete(listener);
 }
 
@@ -89,11 +126,15 @@ export function setAccountSignaturePreference(
 	patch: Partial<AccountSignaturePreference>,
 ) {
 	if (!accountId) return;
+	revision++;
+	try { window.localStorage.setItem(DIRTY_KEY, "true"); } catch { /* Local storage may be unavailable. */ }
 	const current = getAccountSignaturePreference(accountId);
 	persist({
 		...state,
 		[accountId]: { ...current, ...patch },
 	});
+	if (hydrated) syncToServer();
+	else hydrate();
 }
 
 export function useAccountSignaturePreference(accountId: string | undefined) {
@@ -113,5 +154,8 @@ export function useAccountSignaturePreference(accountId: string | undefined) {
 
 export function resetAccountSignaturePreferencesForTests() {
 	state = readFromStorage();
+	hydrated = false;
+	hydration = undefined;
+	revision = 0;
 	notify();
 }

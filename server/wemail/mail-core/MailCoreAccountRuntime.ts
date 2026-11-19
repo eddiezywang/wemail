@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { SENT_ARCHIVE } from "#edition-sent-archive";
 import { Worker } from "node:worker_threads";
 import {
   isMailBodyCached,
@@ -774,6 +775,20 @@ export class MailCoreAccountRuntime {
 
   private async claimBackground(): Promise<void> {
     if (!this.worker || this.state !== "ready" || this.stopping) return;
+    if (SENT_ARCHIVE) {
+      const owner = `account:${this.options.accountId}:sent-archive:${randomUUID()}`;
+      const job = await this.claimWorkerJob(owner, 120_000, { accountId: this.options.accountId, kinds: ["mail.sent.archive"] });
+      if (job) {
+        const payload = job.payload as { draft?: import("../../../shared/wemail/mail.js").WemailDraftInput; messageId?: string };
+        if (!payload?.draft || !payload.messageId || !this.worker) {
+          await this.options.dbWriter.failJob(job.id, owner, "invalid-sent-archive", 0);
+        } else {
+          this.currentBackgroundJob = job;
+          this.worker.postMessage({ type: "account-worker.archive-sent", jobId: job.id, draft: payload.draft, messageId: payload.messageId });
+        }
+        return;
+      }
+    }
     if (this.providerRetryAt > Date.now()) {
       this.scheduleWake(this.providerRetryAt - Date.now());
       return;
@@ -1068,6 +1083,19 @@ export class MailCoreAccountRuntime {
       void this.handleSendResult(event);
       return;
     }
+    if (event.type === "account-worker.archive-sent-result") {
+      const job = this.currentBackgroundJob;
+      if (job?.id === event.jobId && job.leaseOwner) {
+        this.currentBackgroundJob = null;
+        void (event.ok
+          ? this.options.dbWriter.completeJob(job.id, job.leaseOwner)
+          : this.options.dbWriter.failJob(job.id, job.leaseOwner, event.errorCode ?? "sent-archive-failed", 0)
+        ).catch(() => {
+          this.options.log?.("sent-archive-result-commit-failed", { accountId: this.options.accountId, jobId: job.id });
+        }).finally(() => this.wake());
+      }
+      return;
+    }
     if (event.type === "account-worker.sync-request") {
       this.requestAutomaticSync(event.origin);
       return;
@@ -1182,6 +1210,7 @@ export class MailCoreAccountRuntime {
           id: send.id,
           owner: send.leaseOwner,
           messageId: event.messageId,
+          ...(this.options.credential && SENT_ARCHIVE?.supports(this.options.credential) ? { archiveSent: true } : {}),
           ...(event.delivery ? { delivery: event.delivery } : {}),
         });
         this.options.log?.("account-worker-send-complete", {

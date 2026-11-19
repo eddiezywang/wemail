@@ -12,7 +12,8 @@
     "noEmit": true,
     "types": [],
     "paths": {
-      "#edition-modules": ["./server/wemail/bootstrap/editionModules.noop.ts"]
+      "#edition-modules": ["./server/wemail/bootstrap/editionModules.noop.ts"],
+      "#edition-sent-archive": ["./server/wemail/mail-core/sentArchive.noop.ts"]
     }
   }
 }

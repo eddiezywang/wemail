@@ -65,6 +65,7 @@ export default defineConfig({
         configDirectory,
         "./server/wemail/bootstrap/editionModules.noop.ts",
       ),
+      "#edition-sent-archive": path.resolve(configDirectory, "./server/wemail/mail-core/sentArchive.noop.ts"),
     },
   },
   test: {

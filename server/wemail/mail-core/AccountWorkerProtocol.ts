@@ -20,6 +20,7 @@ export interface AccountWorkerData {
 }
 
 export type AccountWorkerCommand =
+  | { type: "account-worker.archive-sent"; jobId: number; draft: WemailDraftInput; messageId: string }
   | {
       type: "account-worker.fetch-body";
       jobId: number;
@@ -69,6 +70,7 @@ export type AccountWorkerCommand =
   | { type: "account-worker.shutdown" };
 
 export type AccountWorkerEvent =
+  | { type: "account-worker.archive-sent-result"; accountId: string; jobId: number; ok: boolean; errorCode?: string }
   | { type: "account-worker.ready"; accountId: string; threadId: number; metrics?: WorkerHeartbeatMetrics }
   | { type: "account-worker.heartbeat"; accountId: string; threadId: number; at: number; metrics?: WorkerHeartbeatMetrics }
   | {

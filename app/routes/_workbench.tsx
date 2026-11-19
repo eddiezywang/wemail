@@ -14,6 +14,7 @@
  */
 
 import { hasPendingMailReceiptTrace, recordMailReceiptPaint } from "~/lib/mailReceiptTrace";
+import { useAccountSignaturePreference } from "~/hooks/useAccountSignaturePreferences";
 import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react/ArrowCounterClockwise";
 import { ArchiveIcon } from "@phosphor-icons/react/Archive";
 import { ArticleIcon } from "@phosphor-icons/react/Article";
@@ -188,6 +189,7 @@ function AgentConversationAutoOpener() {
 }
 
 function WorkbenchFrame({ list, detail }: { list: ReactNode; detail: ReactNode }) {
+	useAccountSignaturePreference(undefined);
 	const isAgentPanelOpen = useUIStore((state) => state.isAgentPanelOpen);
 	const isAgentPanelExpanded = useUIStore((state) => state.isAgentPanelExpanded);
 	// Boolean selector. Zustand v5 bails out of re-rendering via Object.is on

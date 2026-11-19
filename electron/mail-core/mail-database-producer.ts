@@ -282,7 +282,7 @@ export class MailDatabaseProducer implements MailDatabaseClient {
     return this.call("settings.saveBusinessPreferences", patch, timeoutMs);
   }
 
-  checkIntegrity(timeoutMs = 60_000): Promise<MailDatabaseIntegrityResult> {
+  checkIntegrity(timeoutMs = 300_000): Promise<MailDatabaseIntegrityResult> {
     return this.call("database.checkIntegrity", {}, timeoutMs);
   }
 
