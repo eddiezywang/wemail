@@ -2,14 +2,93 @@ import DOMPurify from "dompurify";
 import { SIGNATURE_BRAND_COLOR } from "../../shared/wemail/signature";
 import { resolveApiUrl } from "~/services/api";
 
-const DOCUMENT_TEMPLATE_VERSION = "8";
+const DOCUMENT_TEMPLATE_VERSION = "10";
 const MAX_CACHE_ENTRIES = 20;
 const MAX_CACHE_CHARS = 8 * 1024 * 1024;
+
+/**
+ * Resolved surface colors for the email iframe document, read from the host
+ * theme at build time (not runtime) — the sandboxed iframe has no access to
+ * host CSS custom properties, so concrete values are inlined into the
+ * template. `scheme: "dark"` renders the mail inverted on the dark canvas
+ * (EMAIL_DARK pre-inversion values).
+ */
+export interface EmailPalette {
+	canvas: string;
+	scheme: "light" | "dark";
+	ink: string;
+	muted: string;
+	edge: string;
+	link: string;
+	codeBg: string;
+}
+
+/**
+ * Dark theme: sender HTML is inverted onto the dark canvas (Gmail/Outlook
+ * style) instead of painted on a white sheet — a plain dark canvas keeps
+ * hardcoded-white sender layouts as glaring white slabs.
+ *
+ * The mail content lives in a `[data-wemail-mail-root]` wrapper carrying
+ * `filter: invert(1) hue-rotate(180deg)`: colors flip luminance but keep
+ * their hue, and media elements are double-flipped back to natural. Colors
+ * injected below are PRE-inversion values — they land on screen as their
+ * complement (e.g. dark ink → light text).
+ *
+ * ponytail: heuristic inversion, brand colors shift luminance; per-element
+ * smart dark (Outlook-style) if that ever bothers anyone.
+ */
+const EMAIL_DARK = {
+	canvas: "#0e0e10",
+	ink: "#17171a",
+	muted: "#56565c",
+	edge: "#2a2a2f",
+	link: "#1c3a5e",
+	codeBg: "#e6e6e2",
+};
+
+/** Fallback when host tokens are unreadable (SSR, jsdom): paper theme values. */
+const FALLBACK_EMAIL_PALETTE: EmailPalette = {
+	canvas: "#fafaf9",
+	scheme: "light",
+	ink: "#1c1917",
+	muted: "#625c57",
+	edge: "#d6d3d1",
+	link: "#4a6b88",
+	codeBg: "#efece5",
+};
+
+export function readEmailPalette(): EmailPalette {
+	if (typeof window === "undefined") return FALLBACK_EMAIL_PALETTE;
+	const styles = getComputedStyle(document.documentElement);
+	const token = (name: string, fallback: string) =>
+		styles.getPropertyValue(name).trim() || fallback;
+	if (document.documentElement.dataset.theme === "dark") {
+		return {
+			canvas: EMAIL_DARK.canvas,
+			scheme: "dark",
+			ink: EMAIL_DARK.ink,
+			muted: EMAIL_DARK.muted,
+			edge: EMAIL_DARK.edge,
+			link: EMAIL_DARK.link,
+			codeBg: EMAIL_DARK.codeBg,
+		};
+	}
+	return {
+		canvas: token("--color-canvas", FALLBACK_EMAIL_PALETTE.canvas),
+		scheme: "light",
+		ink: token("--color-ink", FALLBACK_EMAIL_PALETTE.ink),
+		muted: token("--color-ink-3", FALLBACK_EMAIL_PALETTE.muted),
+		edge: token("--color-edge-2", FALLBACK_EMAIL_PALETTE.edge),
+		link: token("--color-blue", FALLBACK_EMAIL_PALETTE.link),
+		codeBg: token("--color-muted", FALLBACK_EMAIL_PALETTE.codeBg),
+	};
+}
 
 interface PrepareEmailDocumentInput {
 	body: string;
 	highlightTerms?: string[];
 	autoSize?: boolean;
+	palette?: EmailPalette;
 }
 
 interface CacheEntry {
@@ -26,10 +105,12 @@ function buildCacheKey({
 	body,
 	highlightTerms,
 	autoSize,
+	palette,
 }: PrepareEmailDocumentInput): string | null {
 	if (!body) return null;
 	const terms = normalizeTerms(highlightTerms);
-	return `${DOCUMENT_TEMPLATE_VERSION}\u0000${resolveApiUrl("/api/mail/remote-images")}\u0000${autoSize ? "1" : "0"}\u0000${JSON.stringify(terms)}\u0000${body}`;
+	const resolvedPalette = palette ?? FALLBACK_EMAIL_PALETTE;
+	return `${DOCUMENT_TEMPLATE_VERSION}\u0000${resolveApiUrl("/api/mail/remote-images")}\u0000${autoSize ? "1" : "0"}\u0000${JSON.stringify(terms)}\u0000${resolvedPalette.scheme}\u0000${resolvedPalette.canvas}\u0000${body}`;
 }
 
 /**
@@ -225,7 +306,21 @@ function buildHeightScript(autoSize: boolean, nonce: string): string {
 	<\/script>`;
 }
 
-function buildDocument(body: string, autoSize: boolean): string {
+function buildDocument(
+	body: string,
+	autoSize: boolean,
+	palette: EmailPalette,
+): string {
+	// Dark theme: mail content is inverted onto the dark canvas (colors in
+	// EMAIL_DARK are pre-inversion values); light themes merge the body into
+	// the canvas so no detached "fake white" slab appears around the content.
+	const dark = palette.scheme === "dark";
+	const htmlBg = dark ? EMAIL_DARK.canvas : palette.canvas;
+	const ink = dark ? EMAIL_DARK.ink : palette.ink;
+	const muted = dark ? EMAIL_DARK.muted : palette.muted;
+	const edge = dark ? EMAIL_DARK.edge : palette.edge;
+	const link = dark ? EMAIL_DARK.link : palette.link;
+	const codeBg = dark ? EMAIL_DARK.codeBg : palette.codeBg;
 	const padding = autoSize ? "0" : "24px";
 	const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
 		byte.toString(16).padStart(2, "0"),
@@ -275,31 +370,35 @@ function buildDocument(body: string, autoSize: boolean): string {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src ${imageSources}; script-src 'nonce-${nonce}';">
 <style>
 * { box-sizing: border-box; }
-html { background: #ffffff; color-scheme: light; }
+html { background: ${htmlBg}; color-scheme: ${palette.scheme}; }
 body {
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-	font-size: 14px;
-	line-height: 1.6;
-	color: #1a1a1a;
-	background: #ffffff;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+	font-size: 15px;
+	line-height: 1.65;
+	color: ${ink};
+	background: transparent;
 	padding: ${padding};
 	margin: 0;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
-	${autoSize ? "overflow: hidden;" : ""}
+	${autoSize ? "max-width: 72ch; margin-inline: auto; overflow: hidden;" : ""}
 }
+${dark ? `[data-wemail-mail-root] { filter: invert(1) hue-rotate(180deg); }
+[data-wemail-mail-root] img,
+[data-wemail-mail-root] video,
+[data-wemail-mail-root] picture { filter: invert(1) hue-rotate(180deg); }` : ""}
 [style*="position: fixed"], [style*="position:fixed"], [style*="position: absolute"], [style*="position:absolute"] { position: relative !important; }
-a { color: #2563eb; }
-[data-wemail-signature-brand="true"] a,
+a { color: ${link}; }
+${dark ? "" : `[data-wemail-signature-brand="true"] a,
 [data-wemail-signature-brand="true"] strong,
 [data-wemail-signature-brand="true"] span {
 	color: ${SIGNATURE_BRAND_COLOR} !important;
 	text-decoration: none;
-}
+}`}
 img { max-width: 100%; height: auto; }
-img[data-wemail-image-failed="true"] { min-width: 80px; min-height: 24px; border: 1px dashed #d1d5db; color: #6b7280; }
-blockquote { border-left: 3px solid #d1d5db; padding-left: 1em; margin-left: 0; color: #6b7280; }
-pre { background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+img[data-wemail-image-failed="true"] { min-width: 80px; min-height: 24px; border: 1px dashed ${edge}; color: ${muted}; }
+blockquote { border-left: 3px solid ${edge}; padding-left: 1em; margin-left: 0; color: ${muted}; }
+pre { background: ${codeBg}; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
 table { border-collapse: collapse; max-width: 100%; }
 td, th { padding: 4px 8px; }
 p { margin: 4px 0; }
@@ -308,7 +407,7 @@ ul, ol { padding-left: 20px; margin: 4px 0; }
 mark.wemail-search-highlight { background: rgba(245, 158, 11, 0.28); color: inherit; padding: 0 1px; border-radius: 2px; }
 </style>
 </head>
-<body>${body}${buildHeightScript(autoSize, nonce)}${linkScript}</body>
+<body>${dark ? `<div data-wemail-mail-root>${body}</div>` : body}${buildHeightScript(autoSize, nonce)}${linkScript}</body>
 </html>`;
 }
 
@@ -316,10 +415,11 @@ export function prepareEmailDocument({
 	body,
 	highlightTerms,
 	autoSize = false,
+	palette = FALLBACK_EMAIL_PALETTE,
 }: PrepareEmailDocumentInput): string {
 	if (!body) return "";
 	const terms = normalizeTerms(highlightTerms);
-	const key = buildCacheKey({ body, highlightTerms, autoSize });
+	const key = buildCacheKey({ body, highlightTerms, autoSize, palette });
 	if (!key) return "";
 	const cached = documentCache.get(key);
 	if (cached) {
@@ -339,7 +439,7 @@ export function prepareEmailDocument({
 	const tSanitize = import.meta.env.DEV ? performance.now() : 0;
 	const transformed = transformBody(cleanBody, terms);
 	const tTransform = import.meta.env.DEV ? performance.now() : 0;
-	const prepared = buildDocument(transformed, autoSize);
+	const prepared = buildDocument(transformed, autoSize, palette);
 	if (import.meta.env.DEV) {
 		console.debug(
 			`[prepare-email-document] body=${(body.length / 1024).toFixed(1)}KB` +

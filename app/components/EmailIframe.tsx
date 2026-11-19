@@ -9,7 +9,9 @@ import { openExternalUrlWithFeedback } from "~/lib/external-links";
 import {
 	getCachedEmailDocument,
 	prepareEmailDocument,
+	readEmailPalette,
 } from "~/lib/email-document";
+import { useTheme } from "~/hooks/useTheme";
 
 interface EmailIframeProps {
 	body: string;
@@ -41,15 +43,19 @@ export default function EmailIframe({ body, highlightTerms, autoSize, onPaint }:
 	const [height, setHeight] = useState(autoSize ? 100 : 0);
 	const [srcDoc, setSrcDoc] = useState("");
 	const apiGeneration = useSyncExternalStore(subscribeApiEndpointRuntimeState, getApiEndpointGeneration, () => 0);
+	// Re-resolved on every render; theme changes rebuild the srcdoc with the
+	// new palette (colors are inlined at build time — see readEmailPalette).
+	const { resolvedTheme } = useTheme();
 
 	useEffect(() => {
 		let cancelled = false;
+		const palette = readEmailPalette();
 		// Fast path: if this body was already prepared (same mail revisited,
-		// or an identical body/highlight/autoSize combo), restore the cached
+		// or an identical body/highlight/autoSize/palette combo), restore the cached
 		// document synchronously instead of clearing the iframe and waiting
 		// a frame for the async rebuild. Avoids the loading flash and the
 		// reparse cost when navigating back to a previously opened mail.
-		const cached = getCachedEmailDocument({ body, highlightTerms, autoSize });
+		const cached = getCachedEmailDocument({ body, highlightTerms, autoSize, palette });
 		if (cached !== undefined) {
 			setSrcDoc(cached);
 			return () => {
@@ -59,13 +65,13 @@ export default function EmailIframe({ body, highlightTerms, autoSize, onPaint }:
 		setSrcDoc("");
 		const timer = window.setTimeout(() => {
 			if (cancelled) return;
-			setSrcDoc(prepareEmailDocument({ body, highlightTerms, autoSize }));
+			setSrcDoc(prepareEmailDocument({ body, highlightTerms, autoSize, palette }));
 		}, 0);
 		return () => {
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [body, highlightTerms, autoSize, apiGeneration]);
+	}, [body, highlightTerms, autoSize, apiGeneration, resolvedTheme]);
 
 	const handleMessage = useCallback(
 		(event: MessageEvent) => {

@@ -36,6 +36,70 @@ describe("prepareEmailDocument", () => {
 		expect(getPreparedEmailDocumentCacheStats().misses).toBe(0);
 	});
 
+	const DARK_PALETTE = {
+		canvas: "#0e0e10",
+		scheme: "dark" as const,
+		ink: "#17171a",
+		muted: "#56565c",
+		edge: "#2a2a2f",
+		link: "#1c3a5e",
+		codeBg: "#e6e6e2",
+	};
+
+	test("dark reading view inverts mail content onto the dark canvas", () => {
+		const result = prepareEmailDocument({
+			body: "<p>Hello</p>",
+			autoSize: true,
+			palette: DARK_PALETTE,
+		});
+
+		expect(result).toContain("html { background: #0e0e10; color-scheme: dark; }");
+		expect(result).toContain("filter: invert(1) hue-rotate(180deg)");
+		expect(result).toContain('<div data-wemail-mail-root>');
+		expect(result).not.toContain("border-radius: 10px");
+	});
+
+	test("dark non-reading view keeps the same inverted treatment", () => {
+		const result = prepareEmailDocument({
+			body: "<p>Hello</p>",
+			autoSize: false,
+			palette: DARK_PALETTE,
+		});
+
+		expect(result).toContain("html { background: #0e0e10; color-scheme: dark; }");
+		expect(result).toContain("filter: invert(1) hue-rotate(180deg)");
+		expect(result).not.toContain("border-radius: 10px");
+	});
+
+	test("light palette merges the body into the host canvas", () => {
+		const result = prepareEmailDocument({
+			body: "<p>Hello</p>",
+			autoSize: true,
+			palette: {
+				canvas: "#f6f3ec",
+				scheme: "light",
+				ink: "#2a1f14",
+				muted: "#6b5d4a",
+				edge: "#ddd5c7",
+				link: "#4a6b88",
+				codeBg: "#efece5",
+			},
+		});
+
+		expect(result).toContain("html { background: #f6f3ec; color-scheme: light; }");
+		expect(result).toContain("max-width: 72ch");
+		expect(result).not.toContain("border-radius: 10px");
+	});
+
+	test("palette participates in the document cache key", () => {
+		const body = "<p>Hello</p>";
+		const light = prepareEmailDocument({ body, autoSize: true });
+		const dark = prepareEmailDocument({ body, autoSize: true, palette: DARK_PALETTE });
+
+		expect(dark).not.toBe(light);
+		expect(getPreparedEmailDocumentCacheStats().entries).toBe(2);
+	});
+
 	test("sanitizes and transforms images, links, and highlights in one result", () => {
 		const result = prepareEmailDocument({
 			body: '<script>bad()</script><a href="https://example.com">Hello</a><img src="http://img.example.com/a.png"><img src="http://127.0.0.1:8787/a.png">',

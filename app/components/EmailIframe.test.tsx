@@ -13,16 +13,18 @@ import { resolveApiUrl } from "~/services/api";
  *
  * Email content is sender-controlled HTML rendered through `srcdoc` inside
  * a sandboxed iframe (no `allow-same-origin`). The host theme MUST NOT
- * propagate into that document. In practice that means:
+ * propagate into that document at runtime. In practice that means:
  *
  *   1. The iframe document's `<html>` carries no `data-theme` attribute,
  *      regardless of what the host has set.
  *   2. The host's CSS custom properties (e.g. `--color-paper`) do NOT
- *      cascade into the iframe — the iframe paints on `#ffffff` per its
- *      own inline `<style>`.
+ *      cascade into the iframe — the iframe paints on concrete color values
+ *      inlined into its own inline `<style>` by `readEmailPalette()` at
+ *      document-build time (static constants, no runtime channel back to
+ *      the host).
  *
- * If either assertion regresses, the email body has started inheriting the
- * app palette and DARK MODE WILL BREAK MAIL READABILITY.
+ * If assertion 1 regresses, the email body has started inheriting the app
+ * palette through the DOM and DARK MODE WILL BREAK MAIL READABILITY.
  */
 describe("EmailIframe theme isolation", () => {
 	beforeEach(() => {
@@ -156,7 +158,7 @@ describe("EmailIframe theme isolation", () => {
 		expect(iframe.srcdoc).not.toContain("allow-top-navigation");
 	});
 
-	it("iframe srcdoc carries no host token references and forces a white background", async () => {
+	it("iframe srcdoc carries only concrete colors, never host token references", async () => {
 		const { container } = render(
 			<EmailIframe body="<p>sender body</p>" />,
 		);
@@ -168,16 +170,20 @@ describe("EmailIframe theme isolation", () => {
 		expect(iframe.srcdoc).not.toMatch(/--color-paper/);
 		expect(iframe.srcdoc).not.toMatch(/--color-ink/);
 		expect(iframe.srcdoc).not.toMatch(/data-theme/);
+		// No runtime token channel at all: every color is a concrete value.
+		expect(iframe.srcdoc).not.toMatch(/var\(--/);
 
 		// Body has no inline style referencing host tokens.
 		const body = doc.body;
 		const inlineStyle = body.getAttribute("style") ?? "";
 		expect(inlineStyle).not.toMatch(/--color-/);
 
-		// And the iframe explicitly opts into a light color-scheme — its
-		// <html> style block hard-codes `background: #ffffff`.
-		expect(iframe.srcdoc).toContain("background: #ffffff");
-		expect(iframe.srcdoc).toContain("color-scheme: light");
+		// jsdom resolves no host tokens, so the fallback palette applies:
+		// host is dark in beforeEach → inverted mail content on the dark
+		// canvas, explicit color-scheme, no token references.
+		expect(iframe.srcdoc).toContain("html { background: #0e0e10; color-scheme: dark; }");
+		expect(iframe.srcdoc).toContain("color: #17171a");
+		expect(iframe.srcdoc).toContain("invert(1) hue-rotate(180deg)");
 	});
 
 	it("switching the host theme after mount does not propagate into the iframe", async () => {
