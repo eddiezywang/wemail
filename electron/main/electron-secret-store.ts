@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { SecretStore } from "../../server/wemail/security/SecretStore.js";
+import { FileSecretStore } from "../../server/wemail/security/SecretStore.js";
 
 export interface ElectronSecretEncryption {
   isEncryptionAvailable(): boolean;
@@ -9,9 +10,43 @@ export interface ElectronSecretEncryption {
 }
 
 interface SecretEnvelope {
-  version: 1;
+  version: number;
   entries: Record<string, string>;
   generations: Record<string, number>;
+}
+
+/**
+ * One-time migration: decrypt the safeStorage envelope and copy every
+ * secret into the shared file-backed store, so the desktop and the
+ * headless MCP server read one set of auth files. The envelope is
+ * renamed aside (kept for manual recovery); safeStorage-encrypted data
+ * is never deleted. Runs only when safeStorage is available and the
+ * envelope exists; already-migrated stores are a no-op.
+ */
+export function migrateElectronSecretsToFile(
+  baseDir: string,
+  encryption: ElectronSecretEncryption,
+): void {
+  const envelopePath = path.join(baseDir, "encrypted-secrets.json");
+  if (!fs.existsSync(envelopePath)) return;
+  if (!encryption.isEncryptionAvailable()) return;
+  const store = new ElectronSecretStore(baseDir, encryption);
+  const snapshot = store.snapshotEntries();
+  const fileStore = new FileSecretStore({ baseDir });
+  let migrated = 0;
+  for (const [key, ciphertext] of Object.entries(snapshot.entries)) {
+    if (fileStore.getSecret(key) !== undefined) continue;
+    try {
+      fileStore.saveSecret(key, encryption.decryptString(Buffer.from(ciphertext, "base64")));
+      migrated += 1;
+    } catch {
+      // Undecryptable entries stay in the envelope; the account will
+      // surface its normal credential-required flow.
+    }
+  }
+  if (migrated > 0) {
+    fs.renameSync(envelopePath, `${envelopePath}.migrated.${Date.now()}`);
+  }
 }
 
 export class ElectronSecretStore implements SecretStore {
@@ -43,6 +78,12 @@ export class ElectronSecretStore implements SecretStore {
 
   getSecretGeneration(key: string): number {
     return this.read().generations[key] ?? 0;
+  }
+
+  /** Full envelope snapshot — used by the one-time file-store migration. */
+  snapshotEntries(): { entries: Record<string, string>; generations: Record<string, number> } {
+    const envelope = this.read();
+    return { entries: { ...envelope.entries }, generations: { ...envelope.generations } };
   }
 
   getSecret(key: string): string | undefined {

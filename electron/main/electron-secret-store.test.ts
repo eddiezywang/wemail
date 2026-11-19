@@ -94,3 +94,29 @@ test("ElectronSecretStore quarantines undecryptable entries without blocking sta
     ),
   ).toBe(true);
 });
+
+test("migrateElectronSecretsToFile copies the envelope into the file store", async () => {
+  const { migrateElectronSecretsToFile } = await import("./electron-secret-store.js");
+  const { FileSecretStore } = await import("../../server/wemail/security/SecretStore.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-migrate-"));
+  const encryption = {
+    isEncryptionAvailable: () => true,
+    encryptString: (value: string) => Buffer.from(`enc:${value}`),
+    decryptString: (value: Buffer) => value.toString().replace(/^enc:/, ""),
+  };
+  const safeStore = new ElectronSecretStore(dir, encryption);
+  safeStore.saveSecret("imap:key", "imap-pw");
+  safeStore.saveSecret("smtp:key", "smtp-pw");
+
+  migrateElectronSecretsToFile(dir, encryption);
+
+  const fileStore = new FileSecretStore({ baseDir: dir });
+  expect(fileStore.getSecret("imap:key")).toBe("imap-pw");
+  expect(fileStore.getSecret("smtp:key")).toBe("smtp-pw");
+  expect(fileStore.getSecretGeneration("imap:key")).toBeGreaterThan(0);
+  // Envelope is kept aside for manual recovery, not deleted.
+  expect(fs.readdirSync(dir).some((name) => name.startsWith("encrypted-secrets.json.migrated."))).toBe(true);
+  // Migrating twice must not double-apply or fail.
+  migrateElectronSecretsToFile(dir, encryption);
+  expect(fileStore.getSecret("imap:key")).toBe("imap-pw");
+});
