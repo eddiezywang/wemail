@@ -37,6 +37,7 @@ import { buildTodoRoutes } from "./routes/todoRoutes.js";
 import { buildSmartTagRoutes } from "./routes/smartTagRoutes.js";
 import { buildSummaryRoutes } from "./routes/summaryRoutes.js";
 import { buildRemoteImageRoutes } from "./routes/remoteImageRoutes.js";
+import { RemoteImageProxy } from "../wemail/mail/RemoteImageProxy.js";
 import { closeNodeHttpServer } from "./close-node-http-server.js";
 
 export interface LocalApiServer {
@@ -114,7 +115,16 @@ export function createLocalApiApp(options: CreateLocalApiAppOptions = {}) {
       { status: c.res.status, headers },
     );
   });
-  app.route("/api/mail", buildRemoteImageRoutes());
+  const remoteImageModules = options.composition?.editionModules?.remoteImage;
+  app.route(
+    "/api/mail",
+    buildRemoteImageRoutes(
+      new RemoteImageProxy({
+        allowInsecureTLS: remoteImageModules?.allowInsecureTLS,
+        trustedHostSuffixes: remoteImageModules?.trustedHostSuffixes,
+      }),
+    ),
+  );
   app.route("/api/system", systemRoutes);
   app.notFound((c) => c.json({ ok: false, code: "ROUTE_NOT_FOUND" }, 404));
 

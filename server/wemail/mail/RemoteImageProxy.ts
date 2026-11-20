@@ -55,6 +55,15 @@ export interface RemoteImageProxyOptions {
   resolveHostname?: (hostname: string) => Promise<string[]>;
   trustedHostSuffixes?: string[];
   timeoutMs?: number;
+  /**
+   * Skip TLS certificate verification for proxied image fetches. Intended
+   * for enterprise-internal image hosts whose certificates are issued by a
+   * corporate CA that is not in the process trust store. Scope: only the
+   * outbound image-proxy connection; never applied to IMAP/SMTP or any
+   * other TLS usage. Hosts are still constrained by `trustedHostSuffixes`
+   * and the private-address blocklist.
+   */
+  allowInsecureTLS?: boolean;
 }
 
 export class RemoteImageProxy {
@@ -62,6 +71,7 @@ export class RemoteImageProxy {
   private readonly resolveHostname: (hostname: string) => Promise<string[]>;
   private readonly trustedHostSuffixes: string[];
   private readonly timeoutMs: number;
+  private readonly allowInsecureTLS: boolean;
   private readonly cache = new Map<string, CacheEntry>();
   private readonly pending = new Map<string, Promise<RemoteImageResult>>();
   private cachedBytes = 0;
@@ -70,6 +80,7 @@ export class RemoteImageProxy {
     this.fetcher = options.fetcher;
     this.resolveHostname = options.resolveHostname ?? resolvePublicAddresses;
     this.timeoutMs = options.timeoutMs ?? FETCH_TIMEOUT_MS;
+    this.allowInsecureTLS = options.allowInsecureTLS ?? false;
     this.trustedHostSuffixes = (
       options.trustedHostSuffixes ?? configuredTrustedHostSuffixes()
     ).map((value) => value.trim().toLowerCase()).filter(Boolean);
@@ -113,7 +124,7 @@ export class RemoteImageProxy {
           };
           response = this.fetcher
             ? await this.fetcher(currentUrl, init)
-            : await fetchPinnedImage(currentUrl, addresses[0]!, init);
+            : await fetchPinnedImage(currentUrl, addresses[0]!, init, this.allowInsecureTLS);
         } catch (error) {
           if (controller.signal.aborted) {
             throw new RemoteImageError("REMOTE_IMAGE_TIMEOUT", 504, "远程图片加载超时");
@@ -215,7 +226,12 @@ function abortableResolve(pending: Promise<string[]>, signal: AbortSignal): Prom
 
 /** Connect to the validated address without a second DNS lookup. URL hostname
  * remains unchanged for Host and TLS certificate verification. */
-function fetchPinnedImage(url: string, address: string, init: RequestInit): Promise<Response> {
+function fetchPinnedImage(
+  url: string,
+  address: string,
+  init: RequestInit,
+  allowInsecureTLS = false,
+): Promise<Response> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const transport = parsed.protocol === "https:" ? https : http;
@@ -223,6 +239,7 @@ function fetchPinnedImage(url: string, address: string, init: RequestInit): Prom
       method: "GET",
       // A pooled socket could bypass this request's pinned lookup.
       agent: false,
+      rejectUnauthorized: allowInsecureTLS ? false : undefined,
       headers: init.headers as Record<string, string>,
       signal: init.signal ?? undefined,
       family: isIP(address),

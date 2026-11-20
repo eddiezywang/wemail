@@ -24,4 +24,7 @@ export const EDITION_MODULES: EditionModules = Object.freeze({
   // status store exist — every allowance seam falls back to its generic
   // "not wired" behavior.
   allowance: undefined,
+  // P3: the open edition has no remote-image proxy tuning. RemoteImageProxy
+  // keeps its stock policy (system trust store, private-address blocklist).
+  remoteImage: undefined,
 });
