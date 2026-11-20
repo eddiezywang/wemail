@@ -1,16 +1,21 @@
 import type { EditionModules } from "./editionModules.js";
+import { SENT_ARCHIVE_IMAP } from "../mail-core/sentArchiveImap.js";
 
 /**
  * Open-edition implementation of the `#edition-modules` registration entry:
- * no edition modules are registered, so every module-backed seam falls back
- * to its generic open behavior.
+ * generic open behavior for every module-backed seam.
  *
- * Edition builds never edit this file. They compile their own registration
- * module (e.g. wemail-int `internal/src/register.ts`) and rebind
- * `#edition-modules` to it at build time via a generated
- * `dist-electron/package.json` imports map — see `editionModules.ts`.
+ * Sent-archive is a native open capability: after SMTP send the message is
+ * APPENDed back to the account's IMAP Sent folder (folder auto-detected via
+ * RFC 6154 special-use, overridable with WEMAIL_SENT_FOLDER, skipped when
+ * the server has none). Internal editions may rebind `#edition-modules` to
+ * override it (e.g. provider-specific folder conventions) — see
+ * `editionModules.ts`. Edition builds never edit this file directly.
  */
 export const EDITION_MODULES: EditionModules = Object.freeze({
+  // Generic IMAP write-back of sent mail (see sentArchiveImap.ts). Internal
+  // editions can override with their own registration module.
+  sentArchive: SENT_ARCHIVE_IMAP,
   // P2.4: no enterprise directory client factory and no pinyin port in the
   // open edition. DirectoryService keeps its P1 "directory-not-configured"
   // fallback and domain gate; DirectoryRepository uses the no-op pinyin port.
