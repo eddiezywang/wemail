@@ -94,7 +94,13 @@ function subscribe(listener: () => void): () => void {
 	if (!stopSystemThemeListener && typeof window !== "undefined" && window.matchMedia) {
 		const media = window.matchMedia("(prefers-color-scheme: dark)");
 		const handleChange = () => {
-			if (getSnapshot() === "system") applyThemeAttribute("system");
+			if (getSnapshot() === "system") {
+				applyThemeAttribute("system");
+				// Re-emit on OS scheme flips while "system" is selected:
+				// consumers depending on `resolvedTheme` (e.g. the email
+				// iframe palette) must rebuild their rendered output.
+				emit();
+			}
 		};
 		media.addEventListener?.("change", handleChange);
 		stopSystemThemeListener = () => media.removeEventListener?.("change", handleChange);
