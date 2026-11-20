@@ -32,11 +32,52 @@ import { openOrCreateMailDatabase, type MailDatabase } from "../database/Databas
 import { MailDatabaseWriter } from "../database/MailDatabaseWriter.js";
 import { MailCoreAccountRuntime } from "../mail-core/MailCoreAccountRuntime.js";
 import { imapPasswordKey, smtpPasswordKey } from "../account/AccountTypes.js";
+import { loadEditionRuntimeConfig, validateEditionRuntimeConfig, type EditionRuntimeConfig } from "../../../shared/wemail/edition.js";
 import { fileURLToPath } from "node:url";
 
 export interface HeadlessMcpOptions {
   dataDir: string;
   port: number;
+}
+
+/**
+ * Edition overlay loader — same semantics as the desktop's build-time
+ * `write-edition-config.ts` (int repo: `internal/config/build-overlay.json`).
+ * Discovery (non-required config, first match wins):
+ *   1. `WEMAIL_EDITION_OVERLAY` env (exact path);
+ *   2. `<dataDir>/edition-overlay.json` (deploy-local copy).
+ * No overlay → open edition defaults (no brand link, no directory).
+ */
+function loadEditionOverlay(dataDir: string): EditionRuntimeConfig | null {
+  const candidates: string[] = [
+    process.env.WEMAIL_EDITION_OVERLAY?.trim(),
+    path.join(dataDir, "edition-overlay.json"),
+  ].filter((p): p is string => Boolean(p));
+  for (const overlayPath of candidates) {
+    try {
+      if (!fs.existsSync(overlayPath)) continue;
+      const overlay = JSON.parse(fs.readFileSync(overlayPath, "utf8"));
+      const directory = overlay.enterpriseDirectory;
+      const config = validateEditionRuntimeConfig({
+        profile: overlay.profile === "internal" ? "internal" : "open",
+        providerPresets: overlay.providerPresets?.add ?? [],
+        onboarding: {
+          ...(overlay.onboarding?.preferredPresetId ? { preferredPresetId: overlay.onboarding.preferredPresetId } : {}),
+          bootToCredentials: overlay.onboarding?.bootToCredentials ?? false,
+        },
+        signature: { brandUrl: overlay.signature?.brandUrl ?? "" },
+        ...(directory?.autoInitDomain && directory?.coremailBaseUrl
+          ? { enterpriseDirectory: { autoInitDomain: directory.autoInitDomain, coremailBaseUrl: directory.coremailBaseUrl } }
+          : {}),
+        ...(overlay.features ? { features: overlay.features } : {}),
+      });
+      console.log(JSON.stringify({ phase: "wemail-mcp-edition-loaded", profile: config.profile, overlayPath }));
+      return config;
+    } catch (error) {
+      console.error(JSON.stringify({ phase: "wemail-mcp-edition-overlay-error", overlayPath, error: String(error).slice(0, 200) }));
+    }
+  }
+  return null;
 }
 
 export interface HeadlessMcpHandle {
@@ -53,14 +94,13 @@ export async function startHeadlessMcp(options: HeadlessMcpOptions): Promise<Hea
   const db: MailDatabase = openOrCreateMailDatabase(path.join(dataDir, "wemail.sqlite"));
   const mailDatabase = new InProcessMailDatabaseClient(db);
   const secrets = new FileSecretStore({ baseDir: path.join(dataDir, "secrets") });
+  const edition = loadEditionOverlay(dataDir) ?? undefined;
 
   const composition = await composeApp({
     dataDir,
     logsDir,
     mailDatabase: mailDatabase.asClient(),
-    // The desktop opts into the same file-backed store (WEMAIL_SECRET_STORE
-    // defaults to "file" now), so accounts and MCP tokens configured on the
-    // desktop resolve identically here.
+    ...(edition ? { edition } : {}),
     overrides: {
       secretStore: secrets,
     },
