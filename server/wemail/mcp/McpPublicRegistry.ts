@@ -46,7 +46,11 @@ export class McpPublicRegistry {
     }
     const inputIssues = validateMcpSchema(definition.inputSchema, input);
     if (inputIssues.length > 0) {
-      return this.errorResult(mapMcpError(new McpDomainError("invalid_arguments", "Invalid arguments.")));
+      // Surface the concrete violations — callers previously only saw a bare
+      // "invalid arguments" and could not tell a missing required field
+      // (e.g. search_directory_contacts.accountId) from anything else.
+      const detail = inputIssues.map((issue) => `${issue.path} ${issue.message}`).join("; ");
+      return this.errorResult(mapMcpError(new McpDomainError("invalid_arguments", `Invalid arguments: ${detail}`)));
     }
     try {
       const output = await handler(input as Record<string, unknown>, context);
