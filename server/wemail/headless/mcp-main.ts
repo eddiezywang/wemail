@@ -29,6 +29,10 @@ import { McpListenerController } from "../mcp/McpListenerController.js";
 import { FileSecretStore } from "../security/SecretStore.js";
 import { InProcessMailDatabaseClient } from "../database/InProcessMailDatabaseClient.js";
 import { openOrCreateMailDatabase, type MailDatabase } from "../database/Database.js";
+import { MailDatabaseWriter } from "../database/MailDatabaseWriter.js";
+import { MailCoreAccountRuntime } from "../mail-core/MailCoreAccountRuntime.js";
+import { imapPasswordKey, smtpPasswordKey } from "../account/AccountTypes.js";
+import { fileURLToPath } from "node:url";
 
 export interface HeadlessMcpOptions {
   dataDir: string;
@@ -48,6 +52,7 @@ export async function startHeadlessMcp(options: HeadlessMcpOptions): Promise<Hea
 
   const db: MailDatabase = openOrCreateMailDatabase(path.join(dataDir, "wemail.sqlite"));
   const mailDatabase = new InProcessMailDatabaseClient(db);
+  const secrets = new FileSecretStore({ baseDir: path.join(dataDir, "secrets") });
 
   const composition = await composeApp({
     dataDir,
@@ -57,9 +62,100 @@ export async function startHeadlessMcp(options: HeadlessMcpOptions): Promise<Hea
     // defaults to "file" now), so accounts and MCP tokens configured on the
     // desktop resolve identically here.
     overrides: {
-      secretStore: new FileSecretStore({ baseDir: path.join(dataDir, "secrets") }),
+      secretStore: secrets,
     },
   });
+
+  // Mail Core account runtime: drains the outbox (real SMTP send) and syncs
+  // IMAP inside this process via a worker_threads account worker — the same
+  // worker the desktop's Mail Core utility process runs.
+  let mailCore: MailCoreAccountRuntime | null = null;
+  const currentAccount = composition.accountService.getCurrentAccount();
+  if (currentAccount) {
+    const imapKey = imapPasswordKey(currentAccount.id);
+    const imapPassword = secrets.getSecret(imapKey);
+    if (imapPassword) {
+      const smtpPassword = secrets.getSecret(smtpPasswordKey(currentAccount.id));
+      const generation = secrets.getSecretGeneration?.(imapKey) ?? 0;
+      const entryPath = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../../../electron/mail-core/account-worker-entry.js",
+      );
+      const writer = mailDatabase.writer;
+      const dbWriter = {
+        enqueueJob: (input: Parameters<MailDatabaseWriter["enqueueJob"]>[0]) =>
+          Promise.resolve(writer.enqueueJob(input)),
+        claimJob: (owner: string, leaseMs?: number, filter?: unknown) =>
+          Promise.resolve(writer.claimJob({ owner, leaseMs, filter } as never)),
+        completeJob: (id: number, owner: string) =>
+          Promise.resolve(writer.completeJob(id, owner)),
+        failJob: (id: number, owner: string, error: string, retryDelayMs?: number) =>
+          Promise.resolve(writer.failJob(id, owner, error, retryDelayMs)),
+        terminalJob: (id: number, owner: string, error: string) =>
+          Promise.resolve(writer.terminalJob(id, owner, error)),
+        deferJob: (id: number, owner: string, reason: string, delayMs: number) =>
+          Promise.resolve(writer.deferJob(id, owner, reason, delayMs)),
+        claimSend: (owner: string, leaseMs?: number) =>
+          Promise.resolve(writer.claimSend(currentAccount.id, owner, leaseMs)),
+        completeSend: (input: Parameters<MailDatabaseWriter["completeSend"]>[0]) =>
+          Promise.resolve(writer.completeSend(input)),
+        failSend: (id: number, owner: string, error: string, retryDelayMs?: number) =>
+          Promise.resolve(writer.failSend(id, owner, error, retryDelayMs)),
+        // Remote operations (bot channels) are not part of the headless
+        // deployment; claimOutbox always null keeps that branch unreachable.
+        claimOutbox: () => Promise.resolve(null),
+        failOutbox: () => Promise.resolve(false),
+        nextMailDue: () => writer.nextMailDue(currentAccount.id),
+        persistMailMetadata: (input: Parameters<MailDatabaseWriter["persistMetadata"]>[0]) =>
+          Promise.resolve(writer.persistMetadata(input)),
+        resolveRemoteOperation: async () => {
+          throw new Error("remote operations are not supported in headless mode");
+        },
+        completeRemoteOperation: async () => {
+          throw new Error("remote operations are not supported in headless mode");
+        },
+      };
+      mailCore = new MailCoreAccountRuntime({
+        entryPath,
+        dataDir,
+        accountId: currentAccount.id,
+        credential: {
+          version: 1,
+          generation,
+          account: currentAccount,
+          imapPassword,
+          ...(smtpPassword !== undefined ? { smtpPassword } : {}),
+        },
+        persistBody: async (message, job) => {
+          const result = writer.persistBody({
+            message,
+            completedAt: new Date().toISOString(),
+            jobId: job.id,
+            jobOwner: job.owner,
+          });
+          return { jobCompleted: result.value.jobCompleted };
+        },
+        persistBodyFailure: async (failure) => {
+          const inner = writer.failBody({
+            accountId: failure.accountId,
+            emailId: failure.emailId,
+            errorCode: failure.errorCode,
+            failedAt: failure.failedAt,
+            ...(failure.retryAt !== undefined ? { retryAt: failure.retryAt } : {}),
+            retryable: failure.retryable,
+            jobId: failure.job.id,
+            jobOwner: failure.job.owner,
+          });
+          return { attempts: inner.value.attempts, nextRetryAt: inner.value.nextRetryAt ?? "", jobCompleted: inner.value.jobCompleted };
+        },
+        dbWriter: dbWriter as never,
+      });
+      await mailCore.start();
+      console.log(JSON.stringify({ phase: "wemail-mcp-mailcore-started", accountId: currentAccount.id }));
+    } else {
+      console.log(JSON.stringify({ phase: "wemail-mcp-no-mail-credentials" }));
+    }
+  }
 
   const controller = new McpListenerController(composition.mcp, composition.accountService, {
     // Headless has no per-account managed-credential vault; bearer tokens
@@ -75,6 +171,7 @@ export async function startHeadlessMcp(options: HeadlessMcpOptions): Promise<Hea
 
   const close = async () => {
     await controller.close();
+    if (mailCore) await mailCore.stop();
     await composition.stop();
     db.close();
   };
