@@ -57,6 +57,25 @@ export interface EditionDirectoryModules {
   pinyin?: DirectoryPinyinPort;
 }
 
+/**
+ * Remote-image proxy tuning for enterprise-internal image hosts (P3).
+ * The open edition registers nothing: `RemoteImageProxy` runs with its
+ * default policy (system trust store, private-address blocklist active).
+ */
+export interface EditionRemoteImageModules {
+  /**
+   * Skip TLS certificate verification for proxied image fetches — for
+   * internal hosts whose certificates are issued by a corporate CA absent
+   * from the process trust store. Scope is limited to the outbound
+   * image-proxy connection; IMAP/SMTP and every other TLS usage are
+   * unaffected. Pair with `trustedHostSuffixes` so only sanctioned internal
+   * hosts can be fetched.
+   */
+  allowInsecureTLS?: boolean;
+  /** Enterprise host suffixes exempt from the private-address blocklist. */
+  trustedHostSuffixes?: string[];
+}
+
 /** Optional module bundle injected into the composition root. */
 export interface EditionModules {
   /** Optional edition-specific post-send archival, executed outside SMTP. */
@@ -113,6 +132,12 @@ export interface EditionModules {
    * `edition.features.enterpriseDirectory` is on (see composeAgent).
    */
   directory?: EditionDirectoryModules;
+  /**
+   * Remote-image proxy tuning (P3). Registering this slot replaces the
+   * default `RemoteImageProxy` options for the `/api/mail/remote-images`
+   * route; absent registration keeps the stock policy.
+   */
+  remoteImage?: EditionRemoteImageModules;
   /**
    * WeCLI runtime pieces (P2.5). The open edition registers nothing here:
    * no `/api/system/wecli/*` or `/api/skills/wecli/*` routes, no wecli_*
