@@ -1,6 +1,19 @@
 /*
- * The desktop renderer intentionally makes no runtime font requests.
- * Font variables in tokens.css use the best installed family and then fall
- * back to the Windows/system stacks. Licensed font assets can be introduced
- * here later with local @font-face declarations and `font-display: swap`.
+ * Local font assets for the renderer. Fonts are bundled with the app
+ * (public/fonts/opensi/), so the desktop renderer makes no runtime
+ * network font requests; `font-display: swap` keeps first paint text
+ * visible while the local faces finish loading.
+ *
+ * OpenSI Serif / OpenSI Mono are Latin-only faces that lead the
+ * serif-display and mono-meta layers (see tokens.css). CJK characters
+ * fall through to the installed/system stacks declared there.
+ *
+ * OpenSI Serif & Mono — Copyright (c) The OpenSI Project Authors,
+ * auraunii. Licensed under the SIL Open Font License 1.1 with
+ * Reserved Font Name "OpenSI" — see public/fonts/opensi/OFL-*.txt.
  */
+@font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Semibold.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "OpenSI Mono"; src: url("/fonts/opensi/OpenSIMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "OpenSI Mono"; src: url("/fonts/opensi/OpenSIMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
