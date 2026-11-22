@@ -150,6 +150,22 @@ in the distribution together. No separate assets rule is needed.
 "JetBrains Mono" and JetBrains are trademarks of JetBrains s.r.o. This project
 is not affiliated with or endorsed by JetBrains.
 
+| Field | Value |
+| --- | --- |
+| Font | OpenSI Serif, weights 400 / 600 / 400-italic; OpenSI Mono, weights 400 / 700 |
+| Source | <https://github.com/auraunii/opensi-fonts>; copyright The OpenSI Project Authors, designer auraunii |
+| License | SIL Open Font License, Version 1.1 (OFL-1.1) with Reserved Font Name "OpenSI" |
+| Bundled files | `public/fonts/opensi/OpenSISerif-{Regular,Semibold,Italic}.ttf`, `OpenSIMono-{Regular,Bold}.ttf` |
+| Copyright notice and full license text | `public/fonts/opensi/OFL-Serif.txt`, `public/fonts/opensi/OFL-Mono.txt` |
+| Used by | `app/styles/fonts.css` (`@font-face`) and `app/styles/tokens.css` (`--font-serif-display`, `--font-mono-meta`) |
+
+The five TTF files are bundled locally so the renderer makes no runtime
+network font requests; the OFL-1.1 requirement to accompany redistributed
+files with the copyright notice and license text is met by shipping both
+`OFL-*.txt` files in the same directory. If the outlines are modified in a
+derivative, the family must be renamed away from the Reserved Font Name
+"OpenSI" per the license.
+
 ## Trademarks
 
 "Cloudflare" and the upstream project name are trademarks of Cloudflare,
