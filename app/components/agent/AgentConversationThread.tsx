@@ -542,14 +542,14 @@ function AgentArtifactCard({
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="min-w-0 flex-1 truncate text-control font-semibold text-ink" title={artifact.title}>
+              <p className="min-w-0 flex-1 text-control font-semibold text-ink [overflow-wrap:anywhere]">
                 {artifact.title}
               </p>
               <span className="shrink-0 rounded-full border border-edge bg-paper px-1.5 py-px font-mono-meta text-meta text-ink-3">
                 v{artifact.version}
               </span>
             </div>
-            <p className="mt-1 truncate text-meta text-ink-3">
+            <p className="mt-1 text-meta text-ink-3 [overflow-wrap:anywhere]">
               {kindMeta.label}
               {artifact.dataSummary
                 ? ` · 来源 ${artifact.dataSummary.sourceEmailCount} 封邮件 · ${artifact.dataSummary.timePointCount} 个时间点`
@@ -567,14 +567,14 @@ function AgentArtifactCard({
             <CheckIcon size={11} weight="bold" className="shrink-0 text-green" aria-hidden />
             <span className="hidden @[240px]:inline">已保存到应用消息</span>
           </span>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
             <a
               href={browserUrl}
               target="_blank"
               rel="noopener noreferrer"
               title="浏览器打开"
               aria-label="浏览器打开"
-              className="inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2.5 text-meta font-medium text-ink-2 transition-colors hover:bg-paper-4 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2.5 text-meta font-medium text-ink-2 transition-colors hover:bg-paper-4 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ArrowSquareOutIcon size={11} />
               <span className="hidden @[240px]:inline">浏览器打开</span>
@@ -582,7 +582,7 @@ function AgentArtifactCard({
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-coral-2 px-3.5 text-meta font-medium text-paper-2 transition-colors hover:bg-coral-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-coral-2 px-3.5 text-meta font-medium text-paper-2 transition-colors hover:bg-coral-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               打开报告
               <CaretDownIcon size={10} weight="bold" className="-rotate-90" aria-hidden />
@@ -635,8 +635,10 @@ function AnswerCitations({
     if (showAllMail) {
       setShowAllMail(false);
       if (collapseTimerRef.current !== null) window.clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = window.setTimeout(() => setRenderAllMail(false), 260);
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) setRenderAllMail(false);
+      else collapseTimerRef.current = window.setTimeout(() => setRenderAllMail(false), 260);
     } else {
+      if (collapseTimerRef.current !== null) window.clearTimeout(collapseTimerRef.current);
       setRenderAllMail(true);
       setShowAllMail(true);
     }
@@ -769,21 +771,21 @@ function CitationChip({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-caption transition-colors ${available ? "bg-paper-3 text-ink-2 hover:bg-paper-4" : "bg-red-bg text-red"} ${entrance === "pop" ? "chip-pop-in" : entrance === "exit" ? "chip-pop-out" : ""}`}
+          className={`inline-flex min-h-7 max-w-full items-center gap-1 rounded-full px-2 py-1 text-left text-caption transition-colors motion-reduce:transition-none [@media(pointer:coarse)]:min-h-11 ${available ? "bg-paper-3 text-ink-2 hover:bg-paper-4" : "bg-red-bg text-red"} ${entrance === "pop" ? "chip-pop-in" : entrance === "exit" ? "chip-pop-out" : ""}`}
           style={entrance && entranceDelay > 0 ? { animationDelay: `${entranceDelay}ms` } : undefined}
           aria-label={`引用 ${index + 1}: ${label}`}
         >
           {source.kind === "mail" ? <EnvelopeSimpleIcon size={10} /> : source.kind === "attachment" ? <FileIcon size={10} /> : <WarningCircleIcon size={10} />}
-          [{index + 1}] {label}
+          <span className="min-w-0 [overflow-wrap:anywhere]">[{index + 1}] {label}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-64 p-3">
-        <div className="space-y-2">
+      <PopoverContent side="top" align="start" className="max-h-[var(--radix-popover-content-available-height)] w-64 max-w-[calc(100vw-1rem)] overflow-y-auto p-3">
+        <div className="space-y-2 [overflow-wrap:anywhere]">
           <div className="text-xs font-semibold text-ink">{label}</div>
           {"excerpt" in source && source.excerpt ? <p className="text-meta leading-5 text-ink-2">{source.excerpt}</p> : null}
           {source.kind === "attachment" && source.page ? <p className="text-caption text-ink-3">第 {source.page} 页</p> : null}
           {available && (source.kind === "mail" || onOpenAttachment) ? (
-            <button type="button" onClick={openSource} className="min-h-8 text-meta font-medium text-coral-2 hover:underline">
+            <button type="button" onClick={openSource} className="min-h-11 text-meta font-medium text-coral-2 hover:underline">
               {source.kind === "mail" ? "打开邮件" : "打开附件"}
             </button>
           ) : (

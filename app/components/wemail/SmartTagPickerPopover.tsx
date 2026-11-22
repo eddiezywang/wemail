@@ -12,7 +12,7 @@
  * learning in the action center.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PlusIcon } from "@phosphor-icons/react/Plus";
 import { TagIcon } from "@phosphor-icons/react/Tag";
 import { toast } from "sonner";
@@ -45,7 +45,11 @@ export interface SmartTagPickerPopoverProps {
 	/** Tag names already applied to this email, drawn from the latest
 	 *  intelligence result. Used to split rows into "移入" / "移出". */
 	appliedTags: ReadonlySet<string>;
-	children: React.ReactNode;
+	appliedTagsStatus?: "loading" | "error";
+	onRetryAppliedTags?: () => void;
+	children?: React.ReactNode;
+	/** Embed the picker inside another surface instead of opening a nested popover. */
+	onBack?: () => void;
 }
 
 function tagDotColor(name: string): string {
@@ -62,9 +66,12 @@ export default function SmartTagPickerPopover({
 	emailId,
 	accountId,
 	appliedTags,
+	appliedTagsStatus,
+	onRetryAppliedTags,
 	children,
+	onBack,
 }: SmartTagPickerPopoverProps) {
-	const { data: library = [] } = useUserTags(accountId);
+	const { data: library = [], isLoading, isError, refetch } = useUserTags(accountId);
 	const applyMut = useApplyMessageTag(emailId);
 	const unapplyMut = useUnapplyMessageTag(emailId);
 	const openCreateTagDialog = useUIStore((state) => state.openCreateTagDialog);
@@ -74,6 +81,9 @@ export default function SmartTagPickerPopover({
 		action: "apply" | "remove";
 	} | null>(null);
 	const [reason, setReason] = useState("");
+	const actionTrigger = useRef<HTMLButtonElement | null>(null);
+	const backRef = useRef<HTMLButtonElement>(null);
+	const cancelRef = useRef<HTMLButtonElement>(null);
 
 	const { appliedNames, availableNames } = useMemo(() => {
 		const unique = [...library]
@@ -85,7 +95,8 @@ export default function SmartTagPickerPopover({
 		};
 	}, [library, appliedTags]);
 
-	const handleToggle = (tag: UserTag, currentlyOn: boolean) => {
+	const handleToggle = (tag: UserTag, currentlyOn: boolean, trigger: HTMLButtonElement) => {
+		actionTrigger.current = trigger;
 		setReason("");
 		setPendingAction({ tag, action: currentlyOn ? "remove" : "apply" });
 	};
@@ -113,17 +124,10 @@ export default function SmartTagPickerPopover({
 	};
 	const actionPending = applyMut.isPending || unapplyMut.isPending;
 
-	return (
-		<>
-		<Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-			<PopoverTrigger asChild>{children}</PopoverTrigger>
-			<PopoverContent
-				align="end"
-				sideOffset={6}
-				className="w-80 p-0 overflow-hidden"
-				data-testid="smart-tag-picker"
-			>
-				<div className="flex items-center justify-between px-3.5 py-3 border-b border-edge">
+	const picker = (
+		<div data-testid="smart-tag-picker">
+			{onBack ? <button ref={backRef} type="button" autoFocus onClick={onBack} className="min-h-11 w-full border-b border-edge px-3.5 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">‹ 返回邮件操作</button> : null}
+			<div className="flex items-center justify-between gap-2 border-b border-edge px-3.5 py-3">
 					<div>
 						<div className="text-sm font-semibold text-ink">标签处理</div>
 						<div className="text-xs text-ink-3 mt-0.5">
@@ -134,7 +138,7 @@ export default function SmartTagPickerPopover({
 						type="button"
 						onClick={openCreateTagDialog}
 						aria-label="创建新标签"
-						className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-ink text-paper hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-paper hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						data-testid="smart-tag-picker-create"
 					>
 						<PlusIcon size={14} weight="bold" />
@@ -144,7 +148,15 @@ export default function SmartTagPickerPopover({
 					className="max-h-80 overflow-y-auto py-2"
 					data-testid="smart-tag-picker-list"
 				>
-					{library.length === 0 ? (
+					{isLoading || appliedTagsStatus === "loading" ? <p role="status" className="px-4 py-4 text-xs text-ink-3">正在加载智能标签…</p>
+						: isError || appliedTagsStatus === "error" ? <div className="px-4 py-2 text-xs text-ink-2">
+							<p role="alert">智能标签暂时无法加载。</p>
+							<button type="button" className="min-h-11 font-medium underline" onClick={() => {
+								if (isError) void refetch();
+								if (appliedTagsStatus === "error") onRetryAppliedTags?.();
+							}}>重试</button>
+						</div>
+						: library.length === 0 ? (
 						<div className="px-4 py-6 text-center text-xs text-ink-3">
 							暂无智能标签 — 点击 + 创建第一个
 						</div>
@@ -159,7 +171,7 @@ export default function SmartTagPickerPopover({
 								isPending={(tag) =>
 									unapplyMut.isPending && unapplyMut.variables?.tagId === tag.id
 								}
-								onAction={(tag) => handleToggle(tag, true)}
+								onAction={(tag, trigger) => handleToggle(tag, true, trigger)}
 							/>
 							<TagSection
 								title="可移入标签"
@@ -170,20 +182,43 @@ export default function SmartTagPickerPopover({
 								isPending={(tag) =>
 									applyMut.isPending && applyMut.variables?.tagId === tag.id
 								}
-								onAction={(tag) => handleToggle(tag, false)}
+								onAction={(tag, trigger) => handleToggle(tag, false, trigger)}
 							/>
 						</>
 					)}
 				</div>
-			</PopoverContent>
-		</Popover>
+		</div>
+	);
+	return (
+		<>
+		{onBack ? picker : (
+			<Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+				<PopoverTrigger asChild>{children}</PopoverTrigger>
+				<PopoverContent align="end" sideOffset={6} className="max-h-[var(--radix-popover-content-available-height)] w-80 max-w-[calc(100vw-1rem)] overflow-y-auto p-0">
+					{picker}
+				</PopoverContent>
+			</Popover>
+		)}
 		<Dialog
 			open={pendingAction !== null}
 			onOpenChange={(open) => {
 				if (!open && !actionPending) setPendingAction(null);
 			}}
 		>
-			<DialogContent className="max-w-md" data-testid="smart-tag-action-dialog">
+			<DialogContent
+				className="max-h-[min(70dvh,30rem)] max-w-md overflow-y-auto"
+				data-testid="smart-tag-action-dialog"
+				onOpenAutoFocus={(event) => {
+					event.preventDefault();
+					cancelRef.current?.focus({ preventScroll: true });
+				}}
+				onCloseAutoFocus={(event) => {
+					const target = actionTrigger.current?.isConnected ? actionTrigger.current : backRef.current;
+					if (!target || (document.activeElement && document.activeElement !== document.body)) return;
+					event.preventDefault();
+					target.focus({ preventScroll: true });
+				}}
+			>
 				<DialogHeader>
 					<DialogTitle>
 						{pendingAction?.action === "remove" ? "移出智能标签" : "移入智能标签"}
@@ -200,17 +235,20 @@ export default function SmartTagPickerPopover({
 					aria-label="智能标签操作备注"
 					placeholder="备注（可选）"
 					rows={3}
-					className="w-full resize-none rounded-lg border border-edge bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-coral"
+					className="w-full resize-none rounded-lg border border-edge bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-coral [@media(pointer:coarse)]:text-base"
 				/>
 				<DialogFooter>
 					<Button
+						ref={cancelRef}
 						variant="secondary"
+						className="min-h-11"
 						onClick={() => setPendingAction(null)}
 						disabled={actionPending}
 					>
 						取消
 					</Button>
 					<Button
+						className="min-h-11"
 						onClick={() => void submitAction()}
 						disabled={actionPending}
 						data-testid="smart-tag-action-confirm"
@@ -239,7 +277,7 @@ function TagSection({
 	actionLabel: string;
 	actionTone: "apply" | "remove";
 	isPending: (tag: UserTag) => boolean;
-	onAction: (tag: UserTag) => void;
+	onAction: (tag: UserTag, trigger: HTMLButtonElement) => void;
 }) {
 	return (
 		<section className="py-1">
@@ -265,10 +303,10 @@ function TagSection({
 								<span className="min-w-0 flex-1 truncate">{tag.name}</span>
 								<button
 									type="button"
-									onClick={() => onAction(tag)}
+									onClick={(event) => onAction(tag, event.currentTarget)}
 									disabled={isPending(tag)}
 									data-testid={`smart-tag-picker-${actionTone}-${tag.name}`}
-									className={`h-9 shrink-0 rounded-md px-2.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+									className={`min-h-11 shrink-0 rounded-md px-2.5 text-xs font-medium transition-colors disabled:opacity-50 ${
 										actionTone === "apply"
 											? "bg-coral text-paper hover:opacity-90"
 											: "border border-edge bg-paper text-ink-2 hover:bg-paper-3"

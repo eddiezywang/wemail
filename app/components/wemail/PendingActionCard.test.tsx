@@ -36,6 +36,80 @@ function makeAction(
 }
 
 describe("PendingActionCard", () => {
+	it("expires at the original deadline, including after a suspended tab resumes", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-11-03T00:00:00Z"));
+		try {
+			const onConfirm = vi.fn();
+			const { unmount } = render(<PendingActionCard action={makeAction({
+				status: "pending", expiresAt: "2026-11-03T00:00:02Z",
+			})} onConfirm={onConfirm} onReject={vi.fn()} />);
+			expect(screen.getByRole("timer")).toHaveTextContent("0:02");
+			act(() => vi.advanceTimersByTime(1000));
+			expect(screen.getByRole("timer")).toHaveTextContent("0:01");
+			vi.setSystemTime(new Date("2026-11-03T00:01:00Z"));
+			act(() => screen.getByRole("button", { name: "确认" }).click());
+			expect(onConfirm).not.toHaveBeenCalled();
+			act(() => document.dispatchEvent(new Event("visibilitychange")));
+			expect(screen.getByRole("status")).toHaveTextContent("已过期");
+			expect(screen.queryByRole("timer")).toBeNull();
+			expect(screen.queryByRole("button", { name: /确认|拒绝/ })).toBeNull();
+			unmount();
+		} finally { vi.useRealTimers(); }
+	});
+
+	it("treats a succeeded MCP approval without execution as authorization only", () => {
+		render(<PendingActionCard action={makeAction({ origin: "mcp", status: "confirmed", executionState: "succeeded",
+			executionResult: { state: "approved", executed: false },
+		})} onConfirm={vi.fn()} onReject={vi.fn()} />);
+		expect(screen.getByTestId("pending-action-risk-badge")).toHaveTextContent("已授权");
+		expect(screen.getByText(/等待外部客户端提交/)).toBeInTheDocument();
+		expect(screen.queryByText("已处理")).toBeNull();
+	});
+
+	it("shows the actual outbox receipt without claiming delivery", () => {
+		const summary = "邮件已进入规范发件队列：预算 review";
+		render(<PendingActionCard action={makeAction({ actionType: "send", status: "confirmed", executionState: "succeeded",
+			executionResult: { ok: true, summary },
+		})} onConfirm={vi.fn()} onReject={vi.fn()} />);
+		expect(screen.getByText(summary)).toBeVisible();
+		expect(screen.queryByText(/已送达/)).toBeNull();
+	});
+
+	it("shows outbound review fields without expanding technical details or leaking nested secrets", () => {
+		render(<PendingActionCard action={makeAction({ actionType: "schedule_send", parameters: {
+			accountId: "account", sendAt: "2030-11-03T09:00:00Z",
+			draft: { to: [{ email: "recipient@example.test", name: "Test" }], bcc: ["audit@example.test"], subject: "预算 review" },
+			extra: { apiKey: "secret-value" },
+		} })} mailbox={{ id: "account", email: "sender@example.test" }} onConfirm={vi.fn()} onReject={vi.fn()} />);
+		for (const text of ["sender@example.test", "recipient@example.test", "audit@example.test", "预算 review"]) {
+			expect(screen.getByText(text)).toBeVisible();
+		}
+		expect(screen.getByText("发送时间")).toBeVisible();
+		expect(screen.getByTestId("pending-action-parameters")).not.toHaveAttribute("open");
+		expect(screen.getByTestId("pending-action-card")).not.toHaveTextContent("secret-value");
+	});
+
+	it("shows permanent deletion scope without borrowing another account address", () => {
+		render(<PendingActionCard action={makeAction({ actionType: "bulk_mail_operation", parameters: {
+			operation: "permanent_delete", accountId: "target-account", emailIds: ["first", "second"],
+		} })} mailbox={{ id: "other-account", email: "other@example.test" }} onConfirm={vi.fn()} onReject={vi.fn()} />);
+		expect(screen.getByText("2 封邮件")).toBeVisible();
+		expect(screen.getByText(/此操作无法恢复/)).toBeVisible();
+		expect(screen.getByText("target-account")).toBeVisible();
+		expect(screen.queryByText("other@example.test")).toBeNull();
+	});
+
+	it("keeps partial results and unknown outcomes read-only", () => {
+		const { rerender } = render(<PendingActionCard action={makeAction({ status: "confirmed", executionState: "failed",
+			executionResult: { summary: "成功 1 封，失败 1 封", successCount: 1, failureCount: 1 },
+		})} onConfirm={vi.fn()} onReject={vi.fn()} />);
+		expect(screen.getByText("部分成功")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
+		rerender(<PendingActionCard action={makeAction({ executionState: "outcome_unknown" })} onConfirm={vi.fn()} onReject={vi.fn()} />);
+		expect(screen.getByText("结果待核实")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
+	});
 	it("keeps elapsed time across task updates and freezes it when finished", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-11-03T00:00:10Z"));

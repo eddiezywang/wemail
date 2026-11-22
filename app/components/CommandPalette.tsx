@@ -179,6 +179,7 @@ export default function CommandPalette() {
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const closeRef = useRef<HTMLButtonElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
 	// Reset the query each time the palette opens so users start fresh.
@@ -230,6 +231,7 @@ export default function CommandPalette() {
 	};
 
 	const handleKeyDown = (event: React.KeyboardEvent) => {
+		if (event.nativeEvent.isComposing || event.keyCode === 229) return;
 		if (event.key === "ArrowDown") {
 			event.preventDefault();
 			moveActive(1);
@@ -255,7 +257,7 @@ export default function CommandPalette() {
 			`[data-cmd-index="${activeIndex}"]`,
 		);
 		if (activeEl) {
-			activeEl.scrollIntoView({ block: "nearest" });
+			activeEl.scrollIntoView?.({ block: "nearest" });
 		}
 	}, [activeIndex]);
 
@@ -279,12 +281,13 @@ export default function CommandPalette() {
 				<DialogPrimitive.Content
 					onOpenAutoFocus={(e) => {
 						e.preventDefault();
-						inputRef.current?.focus();
+						(window.matchMedia?.("(pointer: coarse)").matches
+							? closeRef.current
+							: inputRef.current)?.focus({ preventScroll: true });
 					}}
 					className={cn(
-						"fixed left-1/2 top-[20%] z-50 w-full max-w-xl -translate-x-1/2",
-						"bg-paper-2 text-ink border border-edge rounded-xl shadow-[var(--shadow-3)]",
-						"overflow-hidden",
+						"fixed left-1/2 top-[max(0.5rem,env(safe-area-inset-top))] z-50 flex max-h-[min(60dvh,30rem)] w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 flex-col sm:top-[20%] sm:max-h-[70dvh]",
+						"overflow-hidden rounded-xl border border-edge bg-paper-2 text-ink shadow-[var(--shadow-3)] motion-reduce:transition-none",
 						"transition-opacity duration-150",
 						"data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
 					)}
@@ -296,7 +299,7 @@ export default function CommandPalette() {
 						搜索并运行 WeMail 命令。使用上下方向键导航，回车执行。
 					</DialogPrimitive.Description>
 
-					<div className="flex items-center gap-2 px-4 py-3 border-b border-edge">
+					<div className="flex shrink-0 items-center gap-2 border-b border-edge px-4 py-1.5">
 						<MagnifyingGlassIcon size={16} className="text-ink-3" />
 						<input
 							ref={inputRef}
@@ -309,6 +312,7 @@ export default function CommandPalette() {
 							onKeyDown={handleKeyDown}
 							placeholder="搜索命令…"
 							role="combobox"
+							aria-label="搜索命令"
 							aria-autocomplete="list"
 							aria-expanded={isCommandPaletteOpen}
 							aria-controls="command-palette-options"
@@ -317,9 +321,10 @@ export default function CommandPalette() {
 									? `command-option-${flatItems[activeIndex].command.id}`
 									: undefined
 							}
-							className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 focus:outline-none"
+							className="min-h-11 min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-ink-3 focus:outline-none sm:text-sm [@media(pointer:coarse)]:text-base"
 							data-testid="command-palette-input"
 						/>
+						<DialogPrimitive.Close ref={closeRef} className="min-h-11 rounded-md px-2 text-sm text-ink-3 hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-ring sm:[@media(pointer:fine)]:hidden">关闭</DialogPrimitive.Close>
 					</div>
 
 					<div
@@ -327,12 +332,12 @@ export default function CommandPalette() {
 						ref={listRef}
 						role="listbox"
 						aria-label="命令搜索结果"
-						className="max-h-[60vh] overflow-y-auto py-1"
+						className="min-h-0 overflow-y-auto overscroll-contain py-1"
 						data-testid="command-palette-list"
 					>
 						{flatItems.length === 0 ? (
 							<div className="px-3 py-3" data-testid="command-palette-empty">
-								<p className="px-1 pb-2 text-sm text-ink-3">
+								<p className="px-1 pb-2 text-sm text-ink-3 [overflow-wrap:anywhere]">
 									未找到「{query.trim()}」相关的命令，试试这些：
 								</p>
 								<div className="grid grid-cols-2 gap-2">
@@ -377,7 +382,7 @@ export default function CommandPalette() {
 													runItem(item);
 												}}
 												className={cn(
-													"flex items-center justify-between w-full px-4 py-2 text-left text-sm transition-colors",
+													"flex min-h-11 w-full items-center justify-between gap-2 px-4 py-2 text-left text-sm transition-colors motion-reduce:transition-none sm:min-h-0",
 													isActive
 														? "bg-paper-3 text-ink"
 														: "text-ink-2 hover:bg-paper-3",

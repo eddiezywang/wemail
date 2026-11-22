@@ -325,9 +325,28 @@ export function Workbench({
 	);
 
 	const isNarrow = mode === "narrow";
-	const drawerOpen = isNarrow && active === "agent";
 	const hasAgentContent = agent !== undefined && agent !== null;
 	const hasAgent = (agentOpen ?? hasAgentContent) && hasAgentContent;
+	const drawerOpen = isNarrow && active === "agent";
+	const drawerRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!drawerOpen || !hasAgent || !window.visualViewport) return;
+		const viewport = window.visualViewport;
+		const update = () => {
+			const drawer = drawerRef.current;
+			if (!drawer) return;
+			drawer.style.setProperty("--agent-viewport-height", viewport.scale === 1 ? `${viewport.height}px` : "100dvh");
+			drawer.style.setProperty("--agent-viewport-top", viewport.scale === 1 ? `${viewport.offsetTop}px` : "0px");
+		};
+		const frame = window.requestAnimationFrame(update);
+		viewport.addEventListener("resize", update);
+		viewport.addEventListener("scroll", update);
+		return () => {
+			window.cancelAnimationFrame(frame);
+			viewport.removeEventListener("resize", update);
+			viewport.removeEventListener("scroll", update);
+		};
+	}, [drawerOpen, hasAgent]);
 	const agentPlacement: AgentPlacement = !hasAgent
 		? "closed"
 		: isNarrow
@@ -794,14 +813,21 @@ export function Workbench({
 					onOpenChange={(nextOpen) => (nextOpen ? open("agent") : close())}
 				>
 					<DialogContent
+						ref={drawerRef}
 						data-testid="workbench-agent-drawer"
-						className="fixed right-0 top-0 left-auto translate-x-0 translate-y-0 h-full max-w-[400px] w-[90vw] rounded-none rounded-l-lg p-0 grid-rows-[auto_1fr]"
+						className="right-0 top-[var(--agent-viewport-top,0px)] left-auto h-[var(--agent-viewport-height,100dvh)] w-full max-w-[400px] translate-x-0 translate-y-0 grid-rows-[auto_minmax(0,1fr)] gap-0 rounded-none p-0 pb-[env(safe-area-inset-bottom)]"
+						showClose={false}
+						onOpenAutoFocus={(event) => {
+							event.preventDefault();
+							drawerRef.current?.querySelector("button")?.focus({ preventScroll: true });
+						}}
 					>
-						<DialogTitle className="sr-only">Agent</DialogTitle>
-						<DialogDescription className="sr-only">
-							Agent panel
-						</DialogDescription>
-						<div ref={attachAgentHost} className="overflow-hidden h-full" />
+						<div className="flex items-center justify-between gap-2 border-b border-edge px-3 pt-[env(safe-area-inset-top)]">
+							<DialogTitle className="text-sm">WeMail AI</DialogTitle>
+							<DialogDescription className="sr-only">邮件助手对话与操作确认</DialogDescription>
+							<button type="button" onClick={close} aria-label="关闭助手" className="min-h-11 rounded-md px-3 text-sm text-ink-2 hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-ring">关闭</button>
+						</div>
+						<div ref={attachAgentHost} className="min-h-0 overflow-hidden" />
 					</DialogContent>
 				</Dialog>
 				) : null}

@@ -3,7 +3,7 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { MemoryRouter, useLocation } from "react-router";
@@ -232,6 +232,44 @@ describe("MessageListView", () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it("opens the same mail actions from the row button, keyboard shortcut and right click", async () => {
+		const user = userEvent.setup();
+		vi.spyOn(api, "getIntelligence").mockResolvedValue({} as never);
+		vi.spyOn(api, "listUserTags").mockResolvedValue({ ok: true, tags: [] });
+		renderMessageList([makeEmail("msg-1")]);
+		const row = screen.getByTestId("mail-item");
+		const more = screen.getByRole("button", { name: "更多邮件操作" });
+		await user.click(more);
+		expect(screen.getByRole("dialog", { name: "邮件操作" })).toBeInTheDocument();
+		expect(useUIStore.getState().selectedEmailId).toBeNull();
+		await user.click(screen.getByRole("button", { name: "智能标签" }));
+		expect(await screen.findByText(/暂无智能标签/)).toBeInTheDocument();
+		await user.click(screen.getByRole("button", { name: /返回邮件操作/ }));
+		expect(screen.getByRole("button", { name: "智能标签" })).toHaveFocus();
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(more).toHaveFocus());
+
+		const openMail = screen.getByRole("button", { name: /打开邮件：Subject msg-1/ });
+		openMail.focus();
+		fireEvent.keyDown(openMail, { key: "F10", shiftKey: true });
+		expect(screen.getByRole("dialog", { name: "邮件操作" })).toBeInTheDocument();
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(openMail).toHaveFocus());
+
+		fireEvent.contextMenu(row, { clientX: 20, clientY: 30 });
+		expect(screen.getByRole("dialog", { name: "邮件操作" })).toBeInTheDocument();
+		fireEvent.scroll(screen.getByTestId("mail-list-scroll"));
+		expect(screen.queryByRole("dialog", { name: "邮件操作" })).not.toBeInTheDocument();
+	});
+
+	it("keeps a mail load failure distinct from an empty folder", async () => {
+		const refetch = vi.fn();
+		renderMessageList([], "/", {}, { isError: true, error: new Error("服务暂时不可用"), refetch });
+		expect(screen.getByRole("alert")).toHaveTextContent("邮件暂时无法加载");
+		await userEvent.click(screen.getByRole("button", { name: "重新加载" }));
+		expect(refetch).toHaveBeenCalledTimes(1);
 	});
 
 	it("offers a stop button while collecting unread mail", async () => {

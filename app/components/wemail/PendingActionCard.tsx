@@ -23,8 +23,15 @@ import type {
 } from "~/services/api";
 import type { ActionExecutionSnapshot } from "../../../shared/wemail/actionExecution";
 import { useEditionFeatures } from "~/hooks/useEditionFeatures";
+import type { Mailbox } from "~/types";
 
+const PRIVATE_PARAMETER = /password|secret|token|api.?key|private.?key|credential|authorization|cookie|idempotency/i;
+const PROTECTED_VALUE = "已保护，不在界面中显示";
+const RECIPIENT_FIELDS = ["to", "recipients", "cc", "bcc"];
 const PARAMETER_LABELS: Record<string, string> = {
+	accountId: "邮箱账户",
+	draftId: "草稿",
+	messageIds: "邮件",
 	command: "命令",
 	args: "参数",
 	emailId: "邮件",
@@ -39,21 +46,37 @@ const PARAMETER_LABELS: Record<string, string> = {
 	folder: "目标文件夹",
 	targetFolder: "目标文件夹",
 	scheduledAt: "执行时间",
+	sendAt: "发送时间",
 };
 
 function parameterValue(key: string, value: unknown): string {
-	if (/password|secret|token|api.?key|authorization|cookie/i.test(key)) {
-		return "已保护，不在界面中显示";
-	}
+	if (PRIVATE_PARAMETER.test(key)) return PROTECTED_VALUE;
 	if (value === null || value === undefined || value === "") return "未设置";
 	if (typeof value === "boolean") return value ? "是" : "否";
 	if (typeof value === "string" || typeof value === "number") return String(value);
 	try {
-		const serialized = JSON.stringify(value);
+		const serialized = JSON.stringify(value, (nestedKey, nestedValue) =>
+			PRIVATE_PARAMETER.test(nestedKey) ? PROTECTED_VALUE : nestedValue,
+		);
 		return serialized.length > 180 ? `${serialized.slice(0, 177)}...` : serialized;
 	} catch {
 		return "复杂参数";
 	}
+}
+
+function reviewValue(key: string, value: unknown, mailbox?: Pick<Mailbox, "id" | "email">): string {
+	if (key === "accountId" && mailbox && value === mailbox.id && mailbox.email) return mailbox.email;
+	if ((key === "sendAt" || key === "scheduledAt") && typeof value === "string") {
+		const timestamp = Date.parse(value);
+		if (Number.isFinite(timestamp)) return new Date(timestamp).toLocaleString(undefined, { timeZoneName: "short" });
+	}
+	if (RECIPIENT_FIELDS.includes(key) && Array.isArray(value)) {
+		return value.map((item: unknown) => {
+			if (item && typeof item === "object" && "email" in item && typeof item.email === "string") return item.email;
+			return parameterValue(key, item);
+		}).join("、");
+	}
+	return parameterValue(key, value);
 }
 
 const RISK_STYLES: Record<
@@ -157,6 +180,7 @@ export interface PendingActionCardProps {
 	isResolving?: boolean;
 	error?: string;
 	onRefresh?: () => void;
+	mailbox?: Pick<Mailbox, "id" | "email">;
 }
 
 export function PendingActionCard({
@@ -166,6 +190,7 @@ export function PendingActionCard({
 	isResolving,
 	error,
 	onRefresh,
+	mailbox,
 }: PendingActionCardProps) {
 	// P2.6 round 8: the execution snapshot (progress phases, per-item upload
 	// results, the platform login/expense hints) is produced by the allowance
@@ -193,24 +218,55 @@ export function PendingActionCard({
 	const elapsedSeconds = Math.max(0, Math.floor(((task?.completedAt ?? clock.now) - (task?.acceptedAt ?? clock.started)) / 1000));
 	const elapsedText = elapsedSeconds >= 60 ? `${Math.floor(elapsedSeconds / 60)} 分 ${elapsedSeconds % 60} 秒` : `${elapsedSeconds} 秒`;
 	const currentItem = task?.items.find((item) => ["preparing", "submitting", "verifying"].includes(item.phase));
-	const expired = !failed && (action.status === "expired" ||
-		(action.status === "pending" && !!action.expiresAt && Date.parse(action.expiresAt) <= Date.now()));
 	const resolved = action.status !== undefined && action.status !== "pending";
+	const expiresAt = Date.parse(action.expiresAt ?? "");
+	const hasDeadline = !resolved && !failed && !unknown && !executing && Number.isFinite(expiresAt);
+	const [reviewTime, setReviewTime] = useState(Date.now);
+	useEffect(() => {
+		if (!hasDeadline) return;
+		let timer = 0;
+		const update = () => {
+			window.clearTimeout(timer);
+			const now = Date.now();
+			setReviewTime(now);
+			const ms = expiresAt - now;
+			if (ms > 0) timer = window.setTimeout(update, ms % 1000 || 1000);
+		};
+		update();
+		document.addEventListener("visibilitychange", update);
+		window.addEventListener("focus", update);
+		return () => {
+			window.clearTimeout(timer);
+			document.removeEventListener("visibilitychange", update);
+			window.removeEventListener("focus", update);
+		};
+	}, [action.id, expiresAt, hasDeadline]);
+	const remaining = Math.max(0, Math.ceil((expiresAt - reviewTime) / 1000));
+	const expired = !failed && (action.status === "expired" || (hasDeadline && expiresAt <= Date.now()));
+	// A successful MCP approval is persisted as succeeded with executed: false.
+	const awaitingSubmission = action.origin === "mcp" && action.status === "confirmed"
+		&& !busy && !failed && !unknown && action.executionResult?.executed !== true;
+	const partial = failed && typeof action.executionResult?.successCount === "number"
+		&& action.executionResult.successCount > 0 && typeof action.executionResult?.failureCount === "number"
+		&& action.executionResult.failureCount > 0;
+	const successSummary = typeof action.executionResult?.summary === "string" ? action.executionResult.summary : undefined;
 	const hint = action.origin === "mcp"
 		? "确认只会授权这组精确参数，不会立即执行；外部客户端仍需使用幂等键提交。"
 		: allowanceInvoice && action.actionType === "upload_allowance_invoices" && action.parameters?.retryUnverified === true
 			? "历史上传没有明确回执，尚不能确认是否入库。确认将再次提交，存在重复风险；已成功或正在处理的附件不会重传。"
 		: (allowanceInvoice ? ALLOWANCE_ACTION_HINTS[action.actionType] : undefined)
 			?? ACTION_HINTS[action.actionType] ?? "确认后会执行该操作。";
-	const resolvedText = unknown ? "上次提交结果待核实，请先核对平台中的实际结果，避免重复上传。" : expired
+	const resolvedText = unknown ? "操作结果待核实，请先检查实际结果，避免重复执行。" : expired
 		? "该确认已过期，参数不再可执行。请在对话中重新提出操作以生成新的确认。"
 		: action.status === "rejected"
 			? "已拒绝，未执行任何操作。"
 			: failed
 				? executionFailureText(action, allowanceInvoice)
-				: action.status === "confirmed"
-					? "已确认并处理。此记录保留用于回溯。"
-					: hint;
+				: awaitingSubmission
+					? "已授权，等待外部客户端提交。WeMail 尚未收到执行回执。"
+					: action.status === "confirmed"
+						? action.executionState === "succeeded" ? successSummary || "操作已处理。此记录保留用于回溯。" : "已确认，尚无执行结果。"
+						: hint;
 	const taskLabels: Record<ActionExecutionSnapshot["state"], string> = {
 		queued: "已确认，等待执行", running: "正在处理", succeeded: "已处理完成",
 		partially_succeeded: "部分成功", failed: needsLogin ? "需要登录发票平台" : "执行失败", outcome_unknown: "结果待核实",
@@ -224,16 +280,38 @@ export function PendingActionCard({
 		: expired
 			? "已过期"
 			: failed
-				? "执行失败"
+				? (partial ? "部分成功" : "执行失败")
 			: action.status === "rejected"
 				? "已拒绝"
-				: action.status === "confirmed"
-					? (action.executionState === "failed" ? "执行失败" : "已处理")
-					: style.label;
-	const parameters = Object.entries(action.parameters ?? {});
+				: awaitingSubmission ? "已授权"
+					: action.status === "confirmed"
+						? action.executionState === "succeeded" ? "已处理" : "已确认"
+						: style.label;
+	const values = action.parameters ?? {};
+	const isSend = action.actionType === "send" || action.actionType === "schedule_send";
+	const irreversible = action.actionType === "permanent_delete" || action.actionType === "delete_draft"
+		|| (action.actionType === "bulk_mail_operation" && values.operation === "permanent_delete");
+	const reviewKeys = isSend ? ["accountId", ...RECIPIENT_FIELDS, "subject", "sendAt", "scheduledAt"] : irreversible ? ["accountId", "draftId", "emailId"] : [];
+	const draft = action.actionType === "schedule_send" && values.draft && typeof values.draft === "object" && !Array.isArray(values.draft)
+		? values.draft as Record<string, unknown> : undefined;
+	const displayValues = draft ? { ...draft, ...values } : values;
+	const parameters = Object.entries(values);
+	const isReviewField = ([key, value]: [string, unknown]) => reviewKeys.includes(key)
+		&& value != null && value !== "" && (!Array.isArray(value) || value.length > 0);
+	const review = reviewKeys.flatMap((key) => isReviewField([key, displayValues[key]]) ? [{
+		label: PARAMETER_LABELS[key] ?? key, value: reviewValue(key, displayValues[key], mailbox),
+	}] : []);
+	const deletionIds = values.emailIds ?? values.messageIds;
+	if (irreversible && Array.isArray(deletionIds)) review.push({ label: "删除范围", value: `${deletionIds.length} 封邮件` });
+	const details = parameters.filter((entry) => !isReviewField(entry));
+	const canResolve = !task && !resolved && !expired && !failed && !unknown && !executing;
+	const submit = (callback: (id: string) => void) => {
+		if (!canResolve || busy || (hasDeadline && expiresAt <= Date.now())) return;
+		callback(action.id);
+	};
 	return (
 		<div
-			className={`rounded-lg border ${style.border} bg-paper-2 p-3 text-sm flex flex-col gap-2`}
+			className={`flex min-w-0 flex-col gap-3 rounded-xl border ${resolved || expired ? "border-edge" : style.border} bg-paper-2 p-3 text-sm`}
 			role="group"
 			aria-label={`待确认操作：${action.description}`}
 			data-testid="pending-action-card"
@@ -242,7 +320,7 @@ export function PendingActionCard({
 			data-action-id={action.id}
 			aria-busy={busy}
 		>
-			<div className="flex items-center gap-2">
+			<div className="flex flex-wrap items-center gap-2">
 				{action.origin === "mcp" ? <span className="inline-flex items-center rounded-full bg-coral/10 px-2 py-0.5 text-xs font-semibold text-coral" data-testid="pending-action-mcp-badge">MCP 请求</span> : null}
 				<span
 					className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${style.badge}`}
@@ -251,9 +329,20 @@ export function PendingActionCard({
 					{badgeText}
 				</span>
 			</div>
-			<div className="text-ink" data-testid="pending-action-description">
+			<div className="font-medium text-ink [overflow-wrap:anywhere]" data-testid="pending-action-description">
 				{action.description}
 			</div>
+			{review.length > 0 ? (
+				<dl className="grid gap-1.5 rounded-lg bg-paper-3 p-3 text-meta" aria-label="关键执行参数">
+					{review.map(({ label, value }, index) => (
+						<div key={`${label}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+							<dt className="text-ink-3">{label}</dt>
+							<dd className="text-ink [overflow-wrap:anywhere]">{value}</dd>
+						</div>
+					))}
+				</dl>
+			) : null}
+			{canResolve && irreversible ? <p className="text-meta font-medium text-red">此操作无法恢复，请核对删除范围后再决定。</p> : null}
 			{busy ? <div role="status" data-testid="pending-action-risk-reason" className="flex items-center gap-3 rounded-lg border border-edge bg-paper px-3 py-3">
 				<CircleNotchIcon size={22} className="shrink-0 animate-spin text-coral motion-reduce:animate-none" aria-hidden="true" />
 				<div className="min-w-0 flex-1">
@@ -263,7 +352,8 @@ export function PendingActionCard({
 				</div>
 				<span className="shrink-0 text-xs tabular-nums text-ink-3" aria-live="off">已用时 {elapsedText}</span>
 			</div> : <div
-				className="text-xs text-ink-2"
+				className="text-xs text-ink-2 [overflow-wrap:anywhere]"
+				role={expired ? "status" : undefined}
 				data-testid="pending-action-risk-reason"
 			>
 				{statusText}
@@ -271,7 +361,7 @@ export function PendingActionCard({
 			</div>}
 			{error ? <div role="alert" className="text-xs text-red">{error}</div> : null}
 			{needsLogin ? <div className="text-xs text-coral">请先在浏览器登录补贴平台，再重试失败项。</div> : null}
-			{error && onRefresh ? <button type="button" onClick={onRefresh} className="min-h-10 rounded-md border border-edge px-3 text-meta">刷新任务状态</button> : null}
+			{(error || unknown) && onRefresh ? <button type="button" onClick={onRefresh} className="min-h-11 rounded-md border border-edge px-3 text-meta">刷新任务状态</button> : null}
 			{task ? <ul className="flex flex-col gap-2 text-xs" aria-live="polite">
 				{task.items.map((item) => <li key={item.index} className="rounded-md bg-paper-3 px-3 py-2">
 					<div className="break-words text-ink">{item.filename || `附件 ${item.index + 1}`}</div>
@@ -280,12 +370,12 @@ export function PendingActionCard({
 					{item.error ? <div className="text-ink-2">{item.error}</div> : null}
 				</li>)}
 			</ul> : null}
-			{parameters.length > 0 ? (
+			{details.length > 0 ? (
 				<details className="rounded-md bg-paper-3 text-meta" data-testid="pending-action-parameters">
-					<summary className="cursor-pointer px-3 py-2 text-ink-3">查看执行参数（{parameters.length}）</summary>
+					<summary className="min-h-11 cursor-pointer px-3 py-3 text-ink-3">查看其余执行参数（{details.length}）</summary>
 					<dl className="grid gap-1.5 px-3 pb-2">
-						{parameters.map(([key, value]) => (
-							<div key={key} className="grid grid-cols-[minmax(72px,0.35fr)_minmax(0,1fr)] gap-3">
+						{details.map(([key, value]) => (
+							<div key={key} className="grid grid-cols-[minmax(72px,0.35fr)_minmax(0,1fr)] gap-3 [overflow-wrap:anywhere]">
 								<dt className="text-ink-3">{PARAMETER_LABELS[key] ?? key}</dt>
 								<dd className="min-w-0 break-words text-ink-2">{parameterValue(key, value)}</dd>
 							</div>
@@ -293,24 +383,27 @@ export function PendingActionCard({
 					</dl>
 				</details>
 			) : null}
-			{!task && !resolved && !expired && !failed && action.executionState !== "executing" ? <div className="flex justify-end gap-2 pt-1">
+			{canResolve && hasDeadline && !busy ? <p role="timer" className="text-meta tabular-nums text-ink-3">
+				还可确认 {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}
+			</p> : null}
+			{canResolve ? <div className="flex flex-wrap justify-end gap-2 pt-1">
 				<button
 					type="button"
 					disabled={isResolving}
-					onClick={() => onReject(action.id)}
+					onClick={() => submit(onReject)}
 					data-testid="pending-action-reject"
-					className="min-h-10 rounded-md border border-edge px-3 text-meta hover:bg-paper-3 disabled:opacity-50"
+					className="min-h-11 rounded-md border border-edge px-3 text-meta hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				>
 					拒绝
 				</button>
 				<button
 					type="button"
 					disabled={isResolving}
-					onClick={() => onConfirm(action.id)}
+					onClick={() => submit(onConfirm)}
 					data-testid="pending-action-confirm"
-					className="min-h-10 rounded-md bg-coral-2 px-3 text-meta font-medium text-paper-2 hover:bg-coral-strong disabled:opacity-50"
+					className="min-h-11 rounded-md bg-coral-2 px-3 text-meta font-medium text-paper-2 hover:bg-coral-strong focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				>
-						{isResolving ? "提交确认中" : (action.origin === "mcp" ? "授权" : "确认")}
+					{isResolving ? "提交确认中" : (action.origin === "mcp" ? "授权" : "确认")}
 				</button>
 			</div> : null}
 		</div>

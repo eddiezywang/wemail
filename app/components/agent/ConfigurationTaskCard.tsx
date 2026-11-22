@@ -14,26 +14,27 @@ export function ConfigurationTaskCard({
 }) {
 	const issue = task.issues.find((item) => !item.resolvedAt);
 	const interaction = task.interaction ?? fallbackInteraction(task);
-	const terminal =
-		task.status === "completed" || task.status === "completed_with_warnings";
+	const terminal = task.status === "completed";
+	const warning = !!issue || ["completed_with_warnings", "blocked", "retryable_failure", "failed", "outcome_unknown"].includes(task.status);
+	const actions = interaction.actions.filter((action) => action.type !== "open_preview");
 
 	return (
 		<section
-			className="border-l-2 border-edge px-3 py-1"
+			className="min-w-0 rounded-xl border border-edge bg-paper-2 p-3 [overflow-wrap:anywhere]"
 			data-configuration-task-id={task.id}
 			aria-live="polite"
 		>
-			<div className="flex items-center gap-2 text-xs text-ink-3">
+			<div className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-2">
 				{terminal ? (
 					<CheckCircleIcon size={14} weight="fill" className="text-green" />
-				) : issue ? (
+				) : warning ? (
 					<WarningCircleIcon size={14} className="text-amber" />
 				) : (
 					<span className="h-2 w-2 rounded-full bg-coral" />
 				)}
 				<span>{interaction.stage}</span>
 			</div>
-			<p className="mt-1.5 text-sm leading-6 text-ink">{interaction.message}</p>
+			<p className="mt-2 text-sm font-medium leading-6 text-ink">{interaction.message}</p>
 			{interaction.impact ? (
 				<p className="mt-1 text-xs leading-5 text-ink-3">{interaction.impact}</p>
 			) : null}
@@ -46,7 +47,7 @@ export function ConfigurationTaskCard({
 							href={preview.url}
 							target="_blank"
 							rel="noreferrer"
-							className="rounded-full border border-edge bg-paper px-3 py-1.5 text-xs font-medium text-ink hover:bg-paper-2"
+							className="inline-flex min-h-11 items-center rounded-full border border-edge bg-paper px-3 py-1.5 text-xs font-medium text-ink hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							{preview.label} · v{preview.version}
 						</a>
@@ -54,24 +55,22 @@ export function ConfigurationTaskCard({
 				</div>
 			) : null}
 
-			{interaction.actions.length > 0 ? (
-				<div className="mt-2 flex flex-wrap gap-2">
-					{interaction.actions
-						.filter((action) => action.type !== "open_preview")
-						.map((action) => (
-							<button
-								key={action.id}
-								type="button"
-								onClick={() => onAction?.(action)}
-								className={`rounded-full px-3 py-1.5 text-xs ${
-									action.preferred
-										? "bg-ink text-paper hover:opacity-90"
-										: "border border-edge text-ink-2 hover:bg-paper-2"
-								}`}
-							>
-								{action.label}
-							</button>
-						))}
+			{actions.length > 0 ? (
+				<div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="配置下一步">
+					{actions.map((action) => (
+						<button
+							key={action.id}
+							type="button"
+							onClick={() => onAction?.(action)}
+							className={`min-h-11 rounded-full px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:ring-ring ${
+								action.preferred
+									? "bg-ink text-paper hover:opacity-90"
+									: "border border-edge text-ink-2 hover:bg-paper-3"
+							}`}
+						>
+							{action.label}
+						</button>
+					))}
 				</div>
 			) : null}
 

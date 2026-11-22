@@ -2,6 +2,7 @@
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
+import { DotsThreeIcon } from "@phosphor-icons/react/DotsThree";
 import { PaperclipIcon } from "@phosphor-icons/react/Paperclip";
 import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
 import { StarIcon } from "@phosphor-icons/react/Star";
@@ -9,9 +10,10 @@ import { ArchiveIcon } from "@phosphor-icons/react/Archive";
 import { EnvelopeOpenIcon } from "@phosphor-icons/react/EnvelopeOpen";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/EnvelopeSimple";
 import { TrashIcon } from "@phosphor-icons/react/Trash";
-import { memo, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { memo, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "~/lib/cn";
 import { Checkbox } from "~/components/ui/checkbox";
+import type { MailMenuAnchor } from "./MailContextMenu";
 import { TagPin, type TagPinVariant } from "./TagPin";
 
 export type MailItemAIStatus = "summarized" | "pending" | "none";
@@ -45,7 +47,8 @@ export interface MailItemProps {
 	onArchive?: (id: string) => void;
 	onDelete?: (id: string) => void;
 	onToggleRead?: (id: string, next: boolean) => void;
-	onContextMenu?: (id: string, event: MouseEvent<HTMLDivElement>) => void;
+	onContextMenu?: (id: string, anchor: MailMenuAnchor) => void;
+	menuOpen?: boolean;
 	/** Optional left-edge importance/category accent stripe. */
 	accent?: MailItemAccent;
 	/**
@@ -141,6 +144,7 @@ function MailItemBase({
 	onDelete,
 	onToggleRead,
 	onContextMenu,
+	menuOpen,
 	accent,
 	actionError,
 	onClick,
@@ -188,22 +192,27 @@ function MailItemBase({
 			data-unread={unread ? "true" : "false"}
 			data-selected={selected || isCheckboxSelected ? "true" : "false"}
 			data-accent={accent ?? "none"}
-			role="button"
-			tabIndex={0}
+			role="group"
+			tabIndex={-1}
 			onClick={handleActivate}
-			onContextMenu={(event) => {
+			onContextMenu={onContextMenu ? (event) => {
 				event.preventDefault();
 				event.stopPropagation();
-				onContextMenu?.(id, event);
-			}}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					handleActivate();
+				onContextMenu(id, {
+					element: event.currentTarget,
+					point: event.clientX || event.clientY ? { x: event.clientX, y: event.clientY } : undefined,
+				});
+			} : undefined}
+			onKeyDown={(event) => {
+				const target = event.target;
+				if (!(target instanceof HTMLElement) || (target !== event.currentTarget && target.dataset.openMail === undefined)) return;
+				if (onContextMenu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+					event.preventDefault();
+					onContextMenu(id, { element: target });
 				}
 			}}
 			className={cn(
-				"relative flex cursor-pointer items-stretch overflow-hidden border-b border-edge-2 transition-colors",
+				"relative flex cursor-pointer items-stretch overflow-hidden border-b border-edge-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
 				selected
 					? "bg-paper-3/80"
 					: isCheckboxSelected
@@ -215,14 +224,17 @@ function MailItemBase({
 			onMouseEnter={() => setIsHovered(true)}
 			onMouseLeave={() => setIsHovered(false)}
 		>
+			<button type="button" data-open-mail aria-label={`打开邮件：${subject || "（无主题）"}，${sender}`} title={subject}
+				className="absolute inset-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+			/>
 			{accent && !selected ? (
 				<span
 					aria-hidden
-					className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r ${ACCENT_CLASS[accent]}`}
+					className={`pointer-events-none absolute left-0 top-2 bottom-2 w-[3px] rounded-r ${ACCENT_CLASS[accent]}`}
 				/>
 			) : null}
 			{selectable ? (
-				<div className="flex w-5 shrink-0 items-center justify-center">
+				<div className="relative flex w-5 shrink-0 items-center justify-center">
 					<Checkbox
 						checked={isCheckboxSelected}
 						onChange={(next) => onToggleSelect?.(id, next)}
@@ -260,12 +272,12 @@ function MailItemBase({
 								{renderHighlightedText(subject, highlightTerms)}
 						</span>
 						<span className="mail-item-signals-inline contents">{renderSignals()}</span>
-						<div className="relative shrink-0">
+						<div className="pointer-events-none relative shrink-0">
 							<span className={`text-meta tabular-nums transition-opacity ${unread ? "text-ink-2" : "text-ink-3"} ${onToggleStar || onArchive || onDelete || onToggleRead ? isHovered ? "opacity-0" : "" : ""}`}>
 								{formatDate(date)}
 							</span>
 							{onToggleStar || onArchive || onDelete || onToggleRead ? (
-								<div className={`absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-opacity ${isHovered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}>
+								<div className={`absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-opacity ${isHovered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0 focus-within:opacity-100"}`}>
 									{onToggleStar ? (
 										<button type="button" data-testid="mail-item-star" className={`inline-flex h-7 w-7 items-center justify-center rounded-md bg-transparent transition-colors hover:bg-transparent ${starred ? "text-amber" : "text-ink-3"}`} onClick={(event) => { event.stopPropagation(); onToggleStar(id, !starred); }} aria-label={starred ? "取消星标" : "加星标"} title={starred ? "取消星标" : "加星标"}>
 											<StarIcon size={14} weight={starred ? "fill" : "regular"} />
@@ -297,6 +309,18 @@ function MailItemBase({
 					</div>
 				</div>
 			</div>
+			{onContextMenu ? (
+				<button type="button" aria-label="更多邮件操作" aria-haspopup="dialog"
+					aria-expanded={!!menuOpen} aria-controls={menuOpen ? "mail-actions-menu" : undefined}
+					onClick={(event) => {
+						event.stopPropagation();
+						onContextMenu(id, { element: event.currentTarget });
+					}}
+					className="relative my-auto mr-0.5 inline-flex h-11 w-9 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [@media(pointer:coarse)]:w-11"
+				>
+					<DotsThreeIcon size={19} weight="bold" aria-hidden />
+				</button>
+			) : null}
 			{actionError ? (
 				<div
 					data-testid="mail-item-error"
@@ -353,6 +377,8 @@ function mailItemPropsEqual(prev: MailItemProps, next: MailItemProps): boolean {
 		prev.aiStatus === next.aiStatus &&
 		prev.accent === next.accent &&
 		prev.selectable === next.selectable &&
+		prev.onContextMenu === next.onContextMenu &&
+		prev.menuOpen === next.menuOpen &&
 		prev.className === next.className &&
 		prev.sender === next.sender &&
 		prev.subject === next.subject &&
