@@ -23,7 +23,8 @@ function changedFiles() {
 function run(script, extra = []) {
   console.log(`\n[verify:changed] npm run ${script}${extra.length ? ` -- ${extra.join(" ")}` : ""}`);
   const command = process.platform === "win32" ? "npm.cmd" : "npm";
-  const result = spawnSync(command, ["run", script, ...(extra.length ? ["--", ...extra] : [])], { cwd: root, stdio: "inherit" });
+  // Node >= 20.12 refuses to spawn .cmd/.bat without a shell (EINVAL).
+  const result = spawnSync(command, ["run", script, ...(extra.length ? ["--", ...extra] : [])], { cwd: root, stdio: "inherit", ...(process.platform === "win32" ? { shell: true } : {}) });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
