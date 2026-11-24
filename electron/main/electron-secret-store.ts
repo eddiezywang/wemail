@@ -47,6 +47,48 @@ export function migrateElectronSecretsToFile(
   if (migrated > 0) {
     fs.renameSync(envelopePath, `${envelopePath}.migrated.${Date.now()}`);
   }
+  // Generations must ride along with the values: Mail Core compares the
+  // secret store's generation with the canonical DB's credential_generation
+  // and rejects a lower one ("stale-credential-generation"), so a migration
+  // that renumbers secrets bricks account configuration after an upgrade.
+  for (const [key, generation] of Object.entries(snapshot.generations)) {
+    fileStore.restoreSecretGeneration(key, generation);
+  }
+}
+
+/**
+ * Repair pass for clients whose migration already ran with a build that
+ * dropped the envelope's generations (everything renumbered to 1): the
+ * renamed-aside envelope still holds the true per-secret generations, and
+ * its JSON needs no decryption to read. Idempotent — generations only
+ * ever move up, so this is safe on every boot.
+ */
+export function restoreMigratedSecretGenerations(baseDir: string): void {
+  let backups: string[];
+  try {
+    backups = fs.readdirSync(baseDir).filter((entry) =>
+      entry.startsWith("encrypted-secrets.json.migrated."),
+    );
+  } catch {
+    return;
+  }
+  if (backups.length === 0) return;
+  const fileStore = new FileSecretStore({ baseDir });
+  for (const entry of backups) {
+    try {
+      const parsed = JSON.parse(
+        fs.readFileSync(path.join(baseDir, entry), "utf8"),
+      ) as Partial<SecretEnvelope>;
+      for (const [key, generation] of Object.entries(parsed.generations ?? {})) {
+        if (typeof generation === "number" && generation >= 1) {
+          fileStore.restoreSecretGeneration(key, generation);
+        }
+      }
+    } catch {
+      // Unreadable backup: skip it; the live envelope (if any) still gets
+      // its generations carried by the regular migration.
+    }
+  }
 }
 
 export class ElectronSecretStore implements SecretStore {

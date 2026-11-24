@@ -22,7 +22,11 @@ import { getRuntimeIconPath, resolveElectronAsset } from "./assets.js";
 import { createBootLogger } from "./boot-log.js";
 import { formatProcessLog } from "./process-log.js";
 import { safeStreamWrite } from "./safe-stream-write.js";
-import { ElectronSecretStore, migrateElectronSecretsToFile } from "./electron-secret-store.js";
+import {
+  ElectronSecretStore,
+  migrateElectronSecretsToFile,
+  restoreMigratedSecretGenerations,
+} from "./electron-secret-store.js";
 import { FileSecretStore, type SecretStore } from "../../server/wemail/security/SecretStore.js";
 import {
   imapPasswordKey,
@@ -723,11 +727,17 @@ async function createMainWindow() {
   // its disposable file-backed dirs without migrating anything.
   const secretBaseDir = path.join(process.env.WEMAIL_DATA_DIR, "secrets");
   const secretStoreMode = process.env.WEMAIL_SECRET_STORE ?? "file";
-  const accountSecretStore: SecretStore =
-    secretStoreMode === "safeStorage"
-      ? new ElectronSecretStore(secretBaseDir, safeStorage)
-      : (migrateElectronSecretsToFile(secretBaseDir, safeStorage),
-        new FileSecretStore({ baseDir: secretBaseDir }));
+  const accountSecretStore: SecretStore = (() => {
+    if (secretStoreMode === "safeStorage") {
+      return new ElectronSecretStore(secretBaseDir, safeStorage);
+    }
+    migrateElectronSecretsToFile(secretBaseDir, safeStorage);
+    // A prior release's migration flattened generations to 1; restore the
+    // true ones from the renamed-aside envelope backups or Mail Core will
+    // reject the account with stale-credential-generation forever.
+    restoreMigratedSecretGenerations(secretBaseDir);
+    return new FileSecretStore({ baseDir: secretBaseDir });
+  })();
   const configureMailCoreAccount = (account: AccountConfig | null) => {
     if (!account) {
       mailCoreSupervisor?.configureAccountCredential(null);

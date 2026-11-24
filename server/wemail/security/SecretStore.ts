@@ -104,6 +104,29 @@ export class FileSecretStore implements SecretStore {
     return this.generations[key] ?? 0;
   }
 
+  /** Raise a key's generation to `generation` (never lower it) and persist.
+   *  Used by migrations that must carry the pre-migration generation across:
+   *  Mail Core compares the secret store's generation with the canonical
+   *  DB's credential_generation and rejects a lower one
+   *  ("stale-credential-generation"), so a migration that renumbers secrets
+   *  bricks account configuration after an upgrade. */
+  restoreSecretGeneration(key: string, generation: number): void {
+    if (!Number.isInteger(generation) || generation <= this.getSecretGeneration(key)) {
+      return;
+    }
+    this.generations[key] = generation;
+    try {
+      fs.writeFileSync(
+        this.generationsPath,
+        `${JSON.stringify(this.generations, null, 2)}\n`,
+        { mode: 0o600 },
+      );
+    } catch {
+      // Best-effort: the in-memory generation still serves this process.
+      this.logger("WARN could not persist secret generations");
+    }
+  }
+
   getSecret(key: string): string | undefined {
     const store = this.read();
     const entry = store[key];
