@@ -122,6 +122,7 @@ export function createLocalApiApp(options: CreateLocalApiAppOptions = {}) {
       new RemoteImageProxy({
         allowInsecureTLS: remoteImageModules?.allowInsecureTLS,
         trustedHostSuffixes: remoteImageModules?.trustedHostSuffixes,
+        fetcher: remoteImageModules?.fetcher,
       }),
     ),
   );
