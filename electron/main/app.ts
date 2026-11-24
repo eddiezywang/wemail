@@ -108,6 +108,24 @@ import {
   TelemetryClient,
 } from "./telemetry/TelemetryClient.js";
 
+// Stray async failures must never take the app down with Electron's fatal-
+// error dialog (which freezes the whole main process until dismissed — the
+// local API and renderer server die with it). Log and keep serving instead;
+// the uncaughtExceptionMonitor below still reports to telemetry.
+process.on("uncaughtException", (error) => {
+  safeStreamWrite(
+    process.stderr,
+    `${formatProcessLog("[wemail-uncaught]", error.stack ?? String(error), "error")}\n`,
+  );
+});
+process.on("unhandledRejection", (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  safeStreamWrite(
+    process.stderr,
+    `${formatProcessLog("[wemail-unhandled-rejection]", error.stack ?? String(error), "error")}\n`,
+  );
+});
+
 // Leave enough headroom for the renderer's mail list, rich editor and AI UI.
 // A 96 MiB old-space limit can terminate the renderer on real mailboxes.
 // Utility processes with tighter budgets supply their own execArgv.
