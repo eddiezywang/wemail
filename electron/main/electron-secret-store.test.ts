@@ -95,6 +95,56 @@ test("ElectronSecretStore quarantines undecryptable entries without blocking sta
   ).toBe(true);
 });
 
+test("migrateElectronSecretsToFile carries envelope generations into the file store", async () => {
+  const { migrateElectronSecretsToFile } = await import("./electron-secret-store.js");
+  const { FileSecretStore } = await import("../../server/wemail/security/SecretStore.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-migrate-gen-"));
+  const encryption = {
+    isEncryptionAvailable: () => true,
+    encryptString: (value: string) => Buffer.from(`enc:${value}`),
+    decryptString: (value: Buffer) => value.toString().replace(/^enc:/, ""),
+  };
+  const safeStore = new ElectronSecretStore(dir, encryption);
+  safeStore.saveSecret("imap:key", "pw1");
+  safeStore.saveSecret("imap:key", "pw2"); // generation 2
+
+  migrateElectronSecretsToFile(dir, encryption);
+
+  const fileStore = new FileSecretStore({ baseDir: dir });
+  expect(fileStore.getSecret("imap:key")).toBe("pw2");
+  // A flattened generation (e.g. 1) makes Mail Core reject the account
+  // with stale-credential-generation; the envelope's generation must ride
+  // along with the value.
+  expect(fileStore.getSecretGeneration("imap:key")).toBe(2);
+});
+
+test("restoreMigratedSecretGenerations repairs flattened generations from the migrated backup", async () => {
+  const { restoreMigratedSecretGenerations } = await import("./electron-secret-store.js");
+  const { FileSecretStore } = await import("../../server/wemail/security/SecretStore.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-repair-gen-"));
+  fs.writeFileSync(
+    path.join(dir, "secret-generations.json"),
+    JSON.stringify({ "imap:key": 1 }),
+  );
+  fs.writeFileSync(
+    path.join(dir, "encrypted-secrets.json.migrated.1795536716566"),
+    JSON.stringify({
+      version: 1,
+      entries: { "imap:key": "enc:pw" },
+      generations: { "imap:key": 3, "smtp:key": 3 },
+    }),
+  );
+
+  restoreMigratedSecretGenerations(dir);
+
+  const fileStore = new FileSecretStore({ baseDir: dir });
+  expect(fileStore.getSecretGeneration("imap:key")).toBe(3);
+  expect(fileStore.getSecretGeneration("smtp:key")).toBe(3);
+  // Idempotent: re-running never lowers or grows the generation.
+  restoreMigratedSecretGenerations(dir);
+  expect(fileStore.getSecretGeneration("imap:key")).toBe(3);
+});
+
 test("migrateElectronSecretsToFile copies the envelope into the file store", async () => {
   const { migrateElectronSecretsToFile } = await import("./electron-secret-store.js");
   const { FileSecretStore } = await import("../../server/wemail/security/SecretStore.js");

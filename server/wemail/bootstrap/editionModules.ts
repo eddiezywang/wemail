@@ -74,6 +74,17 @@ export interface EditionRemoteImageModules {
   allowInsecureTLS?: boolean;
   /** Enterprise host suffixes exempt from the private-address blocklist. */
   trustedHostSuffixes?: string[];
+  /**
+   * Edition-supplied transport for proxied image fetches. Defaults to the
+   * open build's Node pinned-socket fetch (address-pinned after DNS
+   * validation). Editions may supply an alternative — e.g. Electron's
+   * `net.fetch`, whose socket I/O runs in the Chromium network-service
+   * utility process instead of the main process — where endpoint-security
+   * policies gate the main process's sockets. The transport still goes
+   * through `RemoteImageProxy`'s SSRF validation, size/format limits and
+   * caching; only the socket differs. Invoked with an absolute URL string.
+   */
+  fetcher?: typeof fetch;
 }
 
 /** Optional module bundle injected into the composition root. */
