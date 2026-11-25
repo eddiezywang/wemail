@@ -135,6 +135,7 @@ export function runWindowsSelfSignedBuild({
   root = process.cwd(),
   platform = process.platform,
   noCompress = false,
+  extraEnvironment = {},
   spawn = spawnSync,
   log = console.log,
 } = {}) {
@@ -152,6 +153,9 @@ export function runWindowsSelfSignedBuild({
     : process.env.PATH;
 
   log("[windows-self-signed] starting signed internal-test release build");
+  log(
+    `[windows-self-signed] target: ${process.env.WEMAIL_WINDOWS_TARGET ?? "nsis"}`,
+  );
   log(`[windows-self-signed] nsis compression: ${noCompress ? "store (fast, no LZMA)" : "normal"}`);
   log(`[windows-self-signed] update base: ${signingEnvironment.WEMAIL_UPDATE_BASE_URL}`);
   log(`[windows-self-signed] rcedit: ${rcedit ?? "(none — falling back)"}`);
@@ -165,6 +169,7 @@ export function runWindowsSelfSignedBuild({
     env: {
       ...process.env,
       ...signingEnvironment,
+      ...extraEnvironment,
       PATH,
       ...(noCompress ? { WEMAIL_NSIS_COMPRESSION: "store" } : {}),
       ...(rcedit ? { WEMAIL_RCEDIT_PATH: rcedit } : {}),
@@ -188,5 +193,11 @@ const entryPoint = process.argv[1]
   : null;
 if (entryPoint === import.meta.url) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  runWindowsSelfSignedBuild({ root, noCompress: process.argv.includes("--no-compress") });
+  runWindowsSelfSignedBuild({
+    root,
+    noCompress: process.argv.includes("--no-compress"),
+    ...(process.argv.includes("--portable")
+      ? { extraEnvironment: { WEMAIL_WINDOWS_TARGET: "portable" } }
+      : {}),
+  });
 }

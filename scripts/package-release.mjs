@@ -277,7 +277,9 @@ if (platform === "win32") {
     "--require",
     path.join(root, "scripts", "windows-executable-write-retry.cjs"),
   );
-  builderArguments.push("--win", "nsis", "--x64");
+  // WEMAIL_WINDOWS_TARGET=portable → single self-extracting exe (免安装，
+  // no update metadata/feed). Default stays nsis (auto-update channel).
+  builderArguments.push("--win", env.WEMAIL_WINDOWS_TARGET ?? "nsis", "--x64");
 } else {
   builderArguments.push("--mac", "dmg", "zip", arch === "arm64" ? "--arm64" : "--x64");
 }
@@ -286,10 +288,23 @@ const builderEnvironment =
     ? { ...env, CSC_LINK: "", CSC_KEY_PASSWORD: "" }
     : env;
 run(process.execPath, builderArguments, builderEnvironment);
-mark("electron-builder (nsis)");
+const windowsTarget = platform === "win32" ? (env.WEMAIL_WINDOWS_TARGET ?? "nsis") : "";
+mark(`electron-builder (${windowsTarget || "dmg/zip"})`);
 
 verifyPackagedRuntime(runtimeAudit.packages);
 mark("packaged runtime verify");
+
+if (platform === "win32" && windowsTarget === "portable") {
+  // Portable is a manual-run artifact: no update metadata, no feed copy —
+  // it must never appear in the auto-update channel.
+  const portableExe = fs
+    .readdirSync(outputDirectory)
+    .find((name) => name.includes("-portable.exe"));
+  if (!portableExe) throw new Error("Missing portable exe in output directory");
+  console.log(`[release] portable exe: ${path.join(outputDirectory, portableExe)}`);
+  console.log(`[release] total: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  process.exit(0);
+}
 
 const metadataName = platform === "win32" ? "latest.yml" : "latest-mac.yml";
 const metadataPath = path.join(outputDirectory, metadataName);
