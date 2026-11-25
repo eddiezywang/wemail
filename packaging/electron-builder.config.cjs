@@ -66,6 +66,11 @@ module.exports = {
     signAndEditExecutable: selfSignAfterPack ? false : undefined,
     verifyUpdateCodeSignature: true,
   },
+  portable: {
+    // WEMAIL_WINDOWS_TARGET=portable builds this instead of nsis. Distinct
+    // artifact name so it never collides with the auto-update installer.
+    artifactName: "${productName}-${version}-portable.${ext}",
+  },
   nsis: {
     include: "packaging/nsis/install-update-trust.nsh",
     oneClick: false,
