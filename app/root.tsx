@@ -23,6 +23,7 @@ import { AppTitlebar } from "~/components/shell/AppTitlebar";
 import { JobCenter } from "~/components/jobs/JobCenter";
 import ScrollbarActivity from "~/components/shell/ScrollbarActivity";
 import MailCredentialDialog from "~/components/MailCredentialDialog";
+import ShortcutSetupDialog from "~/components/ShortcutSetupDialog";
 import { DesktopUpdateCenter } from "~/components/updates/DesktopUpdateCenter";
 import { Button } from "~/components/ui/button";
 import { Toaster } from "~/components/ui/sonner";
@@ -149,6 +150,7 @@ export default function App() {
 				<TelemetryNavigationBridge />
 				<ScrollbarActivity />
 				<MailCredentialDialog />
+				<ShortcutSetupDialog />
 				<DesktopUpdateCenter />
 				<JobCenter />
 				<div className="flex h-[100dvh] w-full flex-col">

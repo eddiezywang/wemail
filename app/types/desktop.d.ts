@@ -44,6 +44,25 @@ declare global {
         clearAccount(accountId: string): Promise<{ ok: boolean }>;
       };
       setStartAtLogin?: (enabled: boolean) => Promise<unknown>;
+      shortcuts?: {
+        getStatus(): Promise<{
+          ok: boolean;
+          status?: {
+            entries: Array<{
+              location: "desktop" | "startMenu";
+              path: string;
+              exists: boolean;
+              target: string;
+              correct: boolean;
+            }>;
+            prompt: boolean;
+            dismissed: boolean;
+            currentExe: string;
+          };
+        }>;
+        fix(): Promise<{ ok: boolean }>;
+        dismiss(): Promise<{ ok: boolean }>;
+      };
       storage?: {
         getDataDirectory(): Promise<{
           currentPath: string;
