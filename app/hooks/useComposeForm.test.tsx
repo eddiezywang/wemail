@@ -5,6 +5,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useComposeForm } from "./useComposeForm";
+import { MAIL_AUTH_REQUIRED_EVENT } from "~/lib/mailCredentialEvents";
 import { useUIStore } from "~/hooks/useUIStore";
 import { useCurrentAccount } from "~/queries/currentAccount";
 import { useAccountSignaturePreference } from "~/hooks/useAccountSignaturePreferences";
@@ -414,5 +415,37 @@ describe("useComposeForm draft saving", () => {
 			}),
 		);
 		expect(onClose).toHaveBeenCalled();
+	});
+});
+
+describe("useComposeForm credential errors", () => {
+	beforeEach(() => {
+		sendDraftMock.mockReset();
+		vi.mocked(useCurrentAccount).mockReturnValue({ data: { account: { id: "acct-1" } } } as never);
+	});
+
+	it("opens the update-password dialog instead of a dead-end toast", async () => {
+		sendDraftMock.mockRejectedValue(
+			new Error("credential-required: IMAP LOGIN rejected — password expired"),
+		);
+		const events: Array<{ accountId: string; code: string; source: string }> = [];
+		const listener = (event: Event) => {
+			events.push((event as CustomEvent).detail);
+		};
+		window.addEventListener(MAIL_AUTH_REQUIRED_EVENT, listener);
+		const { result } = renderHook(() => useComposeForm("acct-1"));
+		act(() => {
+			result.current.setTo("recipient@example.test");
+			result.current.setSubject("Subject");
+			result.current.setBody("Body");
+		});
+		await act(async () => {
+			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
+		});
+		window.removeEventListener(MAIL_AUTH_REQUIRED_EVENT, listener);
+		expect(events).toEqual([
+			{ accountId: "acct-1", code: "MAIL_CREDENTIAL_INVALID", source: "send" },
+		]);
+		expect(result.current.error).toContain("密码已过期");
 	});
 });
