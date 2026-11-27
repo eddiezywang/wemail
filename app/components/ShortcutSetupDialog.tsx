@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "~/components/ui/sonner";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -50,7 +51,12 @@ export default function ShortcutSetupDialog() {
   ].join("");
 
   const fix = async () => {
-    await window.wemailDesktop?.shortcuts?.fix();
+    try {
+      await window.wemailDesktop?.shortcuts?.fix();
+    } catch {
+      toast.error("快捷方式更新失败，请稍后重试。");
+      return;
+    }
     await statusQuery.refetch();
   };
   const dismiss = async () => {
