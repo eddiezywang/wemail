@@ -176,6 +176,11 @@ contextBridge.exposeInMainWorld("wemailDesktop", {
   getAppInfo: () => ipcRenderer.invoke("desktop:get-app-info"),
   setStartAtLogin: (enabled: boolean) =>
     ipcRenderer.invoke("desktop:set-start-at-login", enabled),
+  shortcuts: {
+    getStatus: () => ipcRenderer.invoke("desktop:get-shortcut-status"),
+    fix: () => ipcRenderer.invoke("desktop:fix-shortcuts"),
+    dismiss: () => ipcRenderer.invoke("desktop:dismiss-shortcut-prompt"),
+  },
   storage: {
     getDataDirectory: () => ipcRenderer.invoke("desktop:get-data-directory"),
     chooseDataDirectory: () => ipcRenderer.invoke("desktop:choose-data-directory"),

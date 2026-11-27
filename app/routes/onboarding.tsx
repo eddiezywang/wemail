@@ -19,12 +19,20 @@ import {
 	findPresetByEmail,
 } from "../../shared/wemail/providers";
 import { Button } from "~/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { ModelPicker } from "~/components/llm/ModelPicker";
 import { handleExternalLinkClick } from "~/lib/external-links";
 import { getUserFacingError } from "~/lib/user-facing-error";
 import { durationBucket, normalizeTelemetryErrorClass, trackTelemetry } from "~/lib/telemetry";
-import api, {
+import api, { ApiError,
 	type DiscoveredLlmModel,
 	type MailAccountLoginInput,
 } from "~/services/api";
@@ -325,6 +333,7 @@ function CredentialsStep({
 		preset.smtp.secure ? "tls" : "starttls",
 	);
 	const [error, setError] = useState<string | null>(null);
+	const [expiredDialogOpen, setExpiredDialogOpen] = useState(false);
 	const primaryInputRef = useRef<HTMLInputElement | null>(null);
 	const loginStartedAtRef = useRef(0);
 	const isCustomProvider = effective.id === "imap";
@@ -360,8 +369,16 @@ function CredentialsStep({
 				provider_family: effective.id,
 				duration_bucket: durationBucket(performance.now() - loginStartedAtRef.current),
 				error_class: normalizeTelemetryErrorClass(e),
-				reason: "request_failed",
+				reason:
+					e instanceof ApiError && e.body?.code === "MAIL_PASSWORD_EXPIRED"
+						? "password_expired"
+						: "request_failed",
 			});
+			if (e instanceof ApiError && e.body?.code === "MAIL_PASSWORD_EXPIRED") {
+				setError("邮箱密码已过期，请更新密码。");
+				setExpiredDialogOpen(true);
+				return;
+			}
 			setError(formatLoginError(e));
 		},
 	});
@@ -627,6 +644,39 @@ function CredentialsStep({
 					</Button>
 				</div>
 			</form>
+			<Dialog open={expiredDialogOpen} onOpenChange={setExpiredDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>密码已过期</DialogTitle>
+						<DialogDescription>
+							密码过期，请更新密码后重新验证。
+						</DialogDescription>
+					</DialogHeader>
+					<Input
+						aria-label="新密码"
+						type="password"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						placeholder="输入新密码"
+						autoComplete="current-password"
+					/>
+					<DialogFooter>
+						<Button variant="ghost" onClick={() => setExpiredDialogOpen(false)}>
+							稍后再说
+						</Button>
+						<Button
+							loading={login.isPending}
+							disabled={!password}
+							onClick={() => {
+								setExpiredDialogOpen(false);
+								void submit();
+							}}
+						>
+							使用新密码重试
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</Card>
 	);
 }

@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import type { App, BrowserWindow } from "electron";
+import { createShortcutController } from "./shortcuts.js";
 import { clipboard, dialog, ipcMain, safeStorage, screen, shell } from "electron";
 import yazl from "yazl";
 import {
@@ -204,6 +205,39 @@ export function registerDesktopIpc(
       error: "data-directory-not-available",
     },
   );
+
+  const shortcutController = () =>
+    createShortcutController({
+      desktopPath: app.getPath("desktop"),
+      startMenuPath: path.join(
+        app.getPath("appData"),
+        "Microsoft",
+        "Windows",
+        "Start Menu",
+        "Programs",
+      ),
+      dataDir: process.env.WEMAIL_DATA_DIR ?? "",
+      currentExe: process.env.PORTABLE_EXECUTABLE_PATH ?? process.execPath,
+    });
+  ipcMain.handle("desktop:get-shortcut-status", async () => {
+    if (process.platform !== "win32" || process.env.WEMAIL_E2E_MODE === "1") {
+      return {
+        ok: true,
+        status: { entries: [], prompt: false, dismissed: false, currentExe: "" },
+      };
+    }
+    return { ok: true, status: await shortcutController().status() };
+  });
+  ipcMain.handle("desktop:fix-shortcuts", async () => {
+    if (process.platform !== "win32") return { ok: false };
+    await shortcutController().fix();
+    return { ok: true };
+  });
+  ipcMain.handle("desktop:dismiss-shortcut-prompt", () => {
+    if (process.platform !== "win32") return { ok: false };
+    shortcutController().dismiss();
+    return { ok: true };
+  });
 
   ipcMain.on("telemetry:track", (_event, event: unknown, args: unknown) => {
     if (!telemetry || !isTelemetryEventName(event) || !validateTelemetryArgs(args)) return;

@@ -188,6 +188,25 @@ declare global {
 				delete: (accountId: string, conversationId: string) => Promise<{ ok: boolean }>;
 				clearAccount: (accountId: string) => Promise<{ ok: boolean }>;
 			};
+			shortcuts?: {
+				getStatus(): Promise<{
+					ok: boolean;
+					status?: {
+						entries: Array<{
+							location: "desktop" | "startMenu";
+							path: string;
+							exists: boolean;
+							target: string;
+							correct: boolean;
+						}>;
+						prompt: boolean;
+						dismissed: boolean;
+						currentExe: string;
+					};
+				}>;
+				fix(): Promise<{ ok: boolean }>;
+				dismiss(): Promise<{ ok: boolean }>;
+			};
 			mailCore?: {
 				isConnected: () => boolean;
 				health: () => Promise<CoreHealthResult>;
