@@ -92,15 +92,8 @@ function assertOutputParentInsideWorkspace(target) {
   }
 }
 
-function refreshWindowsInstallerSignature(outputDirectory) {
+function signWindowsExecutable(executablePath) {
   const thumbprint = requireEnvironment("WEMAIL_SIGNING_THUMBPRINT");
-  const installerName = fs
-    .readdirSync(outputDirectory)
-    .find((name) => /\.exe$/i.test(name) && !/__uninstaller\.exe$/i.test(name));
-  if (!installerName) {
-    throw new Error(`Missing Windows installer in ${outputDirectory}`);
-  }
-  const installerPath = path.join(outputDirectory, installerName);
   run("signtool.exe", [
     "sign",
     "/sha1",
@@ -109,9 +102,19 @@ function refreshWindowsInstallerSignature(outputDirectory) {
     "My",
     "/fd",
     "SHA256",
-    installerPath,
+    executablePath,
   ]);
-  return installerPath;
+  return executablePath;
+}
+
+function refreshWindowsInstallerSignature(outputDirectory) {
+  const installerName = fs
+    .readdirSync(outputDirectory)
+    .find((name) => /\.exe$/i.test(name) && !/__uninstaller\.exe$/i.test(name));
+  if (!installerName) {
+    throw new Error(`Missing Windows installer in ${outputDirectory}`);
+  }
+  return signWindowsExecutable(path.join(outputDirectory, installerName));
 }
 
 function refreshWindowsMetadata(metadataPath, outputDirectory) {
@@ -301,6 +304,17 @@ if (platform === "win32" && windowsTarget === "portable") {
     .readdirSync(outputDirectory)
     .find((name) => name.includes("-portable.exe"));
   if (!portableExe) throw new Error("Missing portable exe in output directory");
+  // electron-builder's portable target claims to sign the final single-file
+  // exe but the signature never lands — sign it explicitly here.
+  mark("portable signature");
+  if (process.env.WEMAIL_SIGNING_THUMBPRINT) {
+    signWindowsExecutable(path.join(outputDirectory, portableExe));
+    console.log(`[release] portable exe signed: ${portableExe}`);
+  } else {
+    console.log(
+      "[release] WEMAIL_SIGNING_THUMBPRINT absent — portable exe left unsigned",
+    );
+  }
   console.log(`[release] portable exe: ${path.join(outputDirectory, portableExe)}`);
   console.log(`[release] total: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
   process.exit(0);
