@@ -35,6 +35,17 @@ const INTERNAL_PATTERNS = [
 	/浏览器预览|后端|数据库|数据表|调用栈/,
 ];
 
+/** True when the failure looks like a mailbox credential problem (expired
+ *  password, rejected login, stale authorization code). Callers use this to
+ *  open the update-password dialog instead of a dead-end toast. */
+export function isCredentialError(error: unknown): boolean {
+	const text = errorText(error);
+	if (!text) return false;
+	const code = (error as { body?: { code?: unknown } })?.body?.code;
+	if (code === "MAIL_CREDENTIAL_INVALID" || code === "MAIL_PASSWORD_EXPIRED") return true;
+	return AUTH_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 function errorText(error: unknown): string {
 	if (error instanceof Error) return error.message.trim();
 	if (typeof error === "string") return error.trim();

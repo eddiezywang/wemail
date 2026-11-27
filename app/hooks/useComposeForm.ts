@@ -18,7 +18,8 @@ import {
 	splitEmailList,
 } from "~/lib/utils";
 import { buildComposeSpellcheckExemptWords } from "~/lib/spellcheck";
-import { getUserFacingError } from "~/lib/user-facing-error";
+import { getUserFacingError, isCredentialError } from "~/lib/user-facing-error";
+import { MAIL_CREDENTIAL_INVALID, dispatchMailAuthRequired } from "~/lib/mailCredentialEvents";
 import { getComposeError, getComposeSubmitError } from "~/lib/compose-errors";
 import type {
 	WemailDraftInput,
@@ -595,6 +596,17 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 			toast.success("邮件已加入发件队列");
 			onClose();
 		} catch (err: unknown) {
+			if (activeAccountId && isCredentialError(err)) {
+				// Expired/rejected password mid-session: open the update-password
+				// dialog instead of a dead-end toast.
+				dispatchMailAuthRequired({
+					accountId: activeAccountId,
+					code: MAIL_CREDENTIAL_INVALID,
+					source: "send",
+				});
+				setError("邮箱密码已过期或已失效，请在弹窗中更新密码。");
+				return;
+			}
 			const message = getComposeSubmitError(
 				err,
 				"邮件发送失败，请检查收件人和网络后重试。",
