@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { startHeadlessMcp, type HeadlessMcpHandle } from "./mcp-main.js";
+import { isWemailDaemonServing } from "../mcp/daemonProbe.js";
 
 const FIXTURE_ACCOUNT = {
   id: "acct-headless-test",
@@ -58,6 +59,7 @@ describe("headless mcp-main", () => {
 
   after(async () => {
     await handle.close();
+    assert.equal(fs.existsSync(path.join(dataDir, "mcp-daemon.pid")), false, "pidfile should be removed on close");
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
@@ -65,6 +67,7 @@ describe("headless mcp-main", () => {
     assert.ok(handle.endpoint, "endpoint should be set when listening");
     assert.ok(fs.existsSync(path.join(dataDir, "wemail.sqlite")), "canonical db should be created");
     assert.ok(fs.existsSync(path.join(dataDir, "secrets")), "file secret store dir should be created");
+    assert.ok(fs.existsSync(path.join(dataDir, "mcp-daemon.pid")), "pidfile should exist while serving");
   });
 
   it("serves MCP initialize and tools/list without electron", async () => {
@@ -86,5 +89,55 @@ describe("headless mcp-main", () => {
   it("rejects unauthenticated calls with 401", async () => {
     const result = await rpc("tools/list", {}, false);
     assert.equal(result.status, 401);
+  });
+
+  it("daemon probe recognizes the live listener and rejects impostors", async () => {
+    const port = Number(new URL(handle.endpoint!).port);
+    assert.equal(
+      await isWemailDaemonServing({ port, fetchToken: () => bearer! }),
+      true,
+      "probe should recognize the live daemon",
+    );
+    assert.equal(
+      await isWemailDaemonServing({ port: port + 1, fetchToken: () => bearer! }),
+      false,
+      "probe should fail on a dead port",
+    );
+    assert.equal(
+      await isWemailDaemonServing({ port, fetchToken: () => null }),
+      false,
+      "probe without a token must not report alive",
+    );
+  });
+});
+
+describe("headless mcp-main daemon-mode port semantics", () => {
+  it("with no explicit port, follows the database settings instead of overwriting them", async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-headless-daemonport-"));
+    const configuredPort = 30000 + Math.floor(Math.random() * 20000);
+    const first = await startHeadlessMcp({ dataDir, port: configuredPort });
+    await first.close();
+
+    // Daemon mode: no port — must serve the port the desktop GUI saved.
+    const second = await startHeadlessMcp({ dataDir });
+    assert.ok(second.endpoint, "daemon should listen when settings say enabled");
+    assert.equal(
+      Number(new URL(second.endpoint!).port),
+      configuredPort,
+      `endpoint ${second.endpoint} should follow db port ${configuredPort}`,
+    );
+    await second.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("with no explicit port and MCP disabled in settings, does not listen", async () => {
+    const fresh = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-headless-disabled-"));
+    try {
+      const handle = await startHeadlessMcp({ dataDir: fresh });
+      assert.equal(handle.endpoint, undefined);
+      await handle.close();
+    } finally {
+      fs.rmSync(fresh, { recursive: true, force: true });
+    }
   });
 });

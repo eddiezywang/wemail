@@ -30,7 +30,11 @@ import {
 	WEMAIL_MCP_MAX_PENDING_OPERATIONS,
 	WEMAIL_MCP_MAX_RECIPIENTS,
 	WEMAIL_MCP_MAX_TOOL_TIMEOUT_SECONDS,
+	WEMAIL_MCP_CONFIGURATION_HINTS,
+	WEMAIL_MCP_CONFIGURATION_LABELS,
+	WEMAIL_MCP_CONFIGURATION_TARGETS,
 	WEMAIL_MCP_SERVER_NAME,
+	formatWemailMcpConfiguration,
 	type WemailMcpConfigurationTarget,
 	type WemailMcpSettingsInput,
 } from "../../../../shared/wemail/mcp";
@@ -39,18 +43,12 @@ function maskedConfiguration(
 	target: WemailMcpConfigurationTarget,
 	endpoint: string,
 ) {
-	const connection = {
-		type: target === "claude" ? "http" : "streamablehttp",
-		url: endpoint,
-		headers: { Authorization: "Bearer ••••••••••••••••" },
-	};
-	return JSON.stringify(
-		target === "claude"
-			? { mcpServers: { [WEMAIL_MCP_SERVER_NAME]: connection } }
-			: { [WEMAIL_MCP_SERVER_NAME]: connection },
-		null,
-		2,
-	);
+	// Same generator as the privileged copy path — only the token is masked.
+	return formatWemailMcpConfiguration({
+		target,
+		endpoint,
+		token: "••••••••••••••••",
+	});
 }
 
 const errorMessages = {
@@ -123,7 +121,7 @@ export function McpSection() {
 		: [];
 	const ready =
 		state?.enabled &&
-		state.listenerState === "listening" &&
+		(state.listenerState === "listening" || state.listenerState === "attached") &&
 		state.credentialState === "ready";
 	const operationLabels: Record<string, string> = {
 		prepared: "已准备",
@@ -224,10 +222,11 @@ export function McpSection() {
 			</div>
 
 			<div
-				className="flex items-center gap-2 text-xs text-ink-3"
+				className="flex items-center justify-between gap-2 text-xs text-ink-3"
 				role="status"
 				aria-live="polite"
 			>
+				<div className="flex items-center gap-2">
 				<span
 					aria-hidden="true"
 					className={`h-2 w-2 rounded-full ${
@@ -239,12 +238,38 @@ export function McpSection() {
 					}`}
 				/>
 				{ready
-					? "MCP 已就绪，可以复制配置"
+					? state.listenerState === "attached"
+						? "MCP 已就绪（由常驻服务提供），可以复制配置"
+						: "MCP 已就绪，可以复制配置"
 					: state.errorCode
 						? errorMessages[state.errorCode]
 						: state.enabled
 							? "正在准备本机 MCP…"
 							: "MCP 当前已关闭"}
+				</div>
+				<Button
+					size="sm"
+					variant="ghost"
+					loading={stateQuery.isFetching}
+					onClick={() => void stateQuery.refetch()}
+				>
+					重新检查
+				</Button>
+			</div>
+
+			<div className="flex items-center justify-between gap-4 rounded-lg border border-edge bg-paper-2 px-4 py-3.5 opacity-60">
+				<div>
+					<div className="text-sm font-medium text-ink">开机自动启动常驻服务</div>
+					<div className="text-xs text-ink-3">
+						登录后自动运行 MCP 常驻服务，无需打开 WeMail。该能力即将推出，当前可在 MCP 就绪后保持 WeMail 后台运行。
+					</div>
+				</div>
+				<Switch
+					aria-label="开机自动启动常驻服务"
+					checked={false}
+					disabled
+					onCheckedChange={() => {}}
+				/>
 			</div>
 
 			<div className="space-y-3 rounded-lg border border-edge p-4">
@@ -252,20 +277,30 @@ export function McpSection() {
 					<div>
 						<div className="text-sm font-medium text-ink">连接配置</div>
 						<div className="mt-0.5 text-xs text-ink-3">
-							复制完整 JSON 后直接粘贴到客户端，无需创建或保存 API Key。
+							复制后粘贴到对应客户端；常驻服务运行时配置长期有效。
 						</div>
 					</div>
-					<select
-						aria-label="MCP 客户端格式"
-						className="rounded-md border border-edge bg-paper px-2 py-1 text-xs text-ink outline-none"
-						value={target}
-						onChange={(event) =>
-							setTarget(event.target.value as WemailMcpConfigurationTarget)
-						}
-					>
-						<option value="codex">Codex / 通用</option>
-						<option value="claude">Claude</option>
-					</select>
+					<div className="flex flex-wrap gap-1.5" role="tablist" aria-label="MCP 客户端格式">
+						{WEMAIL_MCP_CONFIGURATION_TARGETS.map((candidate) => (
+							<button
+								key={candidate}
+								type="button"
+								role="tab"
+								aria-selected={target === candidate}
+								onClick={() => setTarget(candidate)}
+								className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+									target === candidate
+										? "border-coral bg-coral/10 font-medium text-coral"
+										: "border-edge bg-paper text-ink-3 hover:text-ink"
+								}`}
+							>
+								{WEMAIL_MCP_CONFIGURATION_LABELS[candidate]}
+							</button>
+						))}
+					</div>
+					<div className="text-xs leading-5 text-ink-3" role="note">
+						{WEMAIL_MCP_CONFIGURATION_HINTS[target]}
+					</div>
 				</div>
 				<pre className="max-h-48 overflow-auto rounded-md bg-paper-3 p-3 text-xs leading-relaxed text-ink-2">
 					{maskedConfiguration(target, state.endpoint)}

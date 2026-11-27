@@ -7,6 +7,7 @@ import {
   WEMAIL_MCP_MAX_PENDING_OPERATIONS,
   WEMAIL_MCP_MAX_RECIPIENTS,
   WEMAIL_MCP_MAX_TOOL_TIMEOUT_SECONDS,
+  type WemailMcpManagementState,
   type WemailMcpSettingsInput,
 } from "../../../shared/wemail/mcp.js";
 
@@ -22,7 +23,10 @@ const integerSettings = {
   toolTimeoutSeconds: [1, WEMAIL_MCP_MAX_TOOL_TIMEOUT_SECONDS],
 } as const;
 
-export function buildMcpRoutes(controller: McpListenerController): Hono {
+export function buildMcpRoutes(
+  controller: McpListenerController,
+  onSettingsChanged?: (state: WemailMcpManagementState) => Promise<void>,
+): Hono {
   const router = new Hono();
   router.get("/state", (c) => c.json({ ok: true, state: controller.view() }));
   router.put("/settings", async (c) => {
@@ -47,6 +51,7 @@ export function buildMcpRoutes(controller: McpListenerController): Hono {
       enabled: body.enabled,
       ...settings,
     } as WemailMcpSettingsInput);
+    if (onSettingsChanged) await onSettingsChanged(state);
     return c.json({ ok: true, state });
   });
   router.post("/tokens", (c) => {

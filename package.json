@@ -140,6 +140,7 @@
 		"package:release:windows": "node scripts/package-release.mjs win32 x64",
 		"certificate:windows:test": "node scripts/windows-test-certificate.mjs",
 		"package:windows:self-signed": "node scripts/package-windows-self-signed.mjs",
+		"package:windows:portable": "node scripts/package-windows-self-signed.mjs --portable",
 		"package:windows:self-signed:fast": "node scripts/package-windows-self-signed.mjs --no-compress",
 		"package:release:mac:x64": "node scripts/package-release.mjs darwin x64",
 		"package:release:mac:arm64": "node scripts/package-release.mjs darwin arm64",

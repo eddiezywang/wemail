@@ -22,6 +22,7 @@ import { buildActionCenterRoutes } from "./routes/actionCenterRoutes.js";
 import { createDiagnosticsApp } from "./routes/diagnosticsRoutes.js";
 import type { AccountRoutesDeps } from "./routes/accountRoutes.js";
 import type { McpListenerController } from "../wemail/mcp/McpListenerController.js";
+import type { WemailMcpManagementState } from "../../shared/wemail/mcp.js";
 import { buildMcpRoutes } from "./routes/mcpRoutes.js";
 import { buildChannelRoutes } from "./routes/channelRoutes.js";
 import { buildConfigurationRoutes } from "./routes/configurationRoutes.js";
@@ -65,6 +66,10 @@ export interface CreateLocalApiAppOptions {
   mailAttachmentGateway?: MailAttachmentGateway;
   quitApp?: () => void;
   onDebugModeChanged?: (diagnostics: AppLoggingDiagnostics) => void;
+  /** GUI-side daemon orchestration hook (electron only): after
+   *  PUT /mcp/settings, restart (enabled) or stop (disabled) the persistent
+   *  daemon so it picks up the new settings from the shared database. */
+  onMcpSettingsChanged?: (state: WemailMcpManagementState) => Promise<void>;
 }
 
 export function createLocalApiApp(options: CreateLocalApiAppOptions = {}) {
@@ -436,7 +441,8 @@ export function createLocalApiApp(options: CreateLocalApiAppOptions = {}) {
       "/api/insight-reports",
       buildInsightReportRoutes({ reports: composition.insightReports, getActiveAccountId: () => composition.accountService.getCurrentAccount()?.id }),
     );
-    if (options.mcpController) app.route("/api/mcp", buildMcpRoutes(options.mcpController));
+    if (options.mcpController)
+      app.route("/api/mcp", buildMcpRoutes(options.mcpController, options.onMcpSettingsChanged));
     return app;
   }
 
@@ -462,6 +468,7 @@ export async function startLocalApiServer(options: {
   mailAttachmentGateway?: MailAttachmentGateway;
   quitApp?: () => void;
   onDebugModeChanged?: (diagnostics: AppLoggingDiagnostics) => void;
+  onMcpSettingsChanged?: CreateLocalApiAppOptions["onMcpSettingsChanged"];
 }): Promise<LocalApiServer> {
   let rendererOrigin: string | undefined;
   let listenerAuthority: string | undefined;
@@ -474,6 +481,7 @@ export async function startLocalApiServer(options: {
     mailAttachmentGateway: options.mailAttachmentGateway,
     quitApp: options.quitApp,
     onDebugModeChanged: options.onDebugModeChanged,
+    onMcpSettingsChanged: options.onMcpSettingsChanged,
   });
   // Bind explicitly to loopback: without a hostname, Node listens on the
   // unspecified address (:: / 0.0.0.0), exposing the local mail API on every

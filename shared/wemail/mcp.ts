@@ -30,9 +30,49 @@ export const WEMAIL_MCP_DEFAULT_MAX_PENDING_OPERATIONS = 100 as const;
 export const WEMAIL_MCP_MAX_PENDING_OPERATIONS = 10_000 as const;
 export const WEMAIL_MCP_DEFAULT_TOOL_TIMEOUT_SECONDS = 30 as const;
 export const WEMAIL_MCP_MAX_TOOL_TIMEOUT_SECONDS = 600 as const;
-export const WEMAIL_MCP_CONFIGURATION_TARGETS = ["codex", "claude"] as const;
+export const WEMAIL_MCP_CONFIGURATION_TARGETS = [
+  "claude",
+  "cursor",
+  "trae",
+  "vscode",
+  "windsurf",
+  "codex",
+  "opencode",
+  "pi",
+  "cherrystudio",
+] as const;
 export type WemailMcpConfigurationTarget =
   (typeof WEMAIL_MCP_CONFIGURATION_TARGETS)[number];
+
+export const WEMAIL_MCP_CONFIGURATION_LABELS: Record<
+  WemailMcpConfigurationTarget,
+  string
+> = {
+  claude: "Claude Code",
+  cursor: "Cursor",
+  trae: "TRAE",
+  vscode: "VS Code",
+  windsurf: "Windsurf",
+  codex: "Codex",
+  opencode: "OpenCode",
+  pi: "Pi",
+  cherrystudio: "Cherry Studio",
+};
+
+export const WEMAIL_MCP_CONFIGURATION_HINTS: Record<
+  WemailMcpConfigurationTarget,
+  string
+> = {
+  claude: "保存到项目 .mcp.json 或 ~/.claude.json，重启 Claude Code 后生效。",
+  cursor: "保存到 ~/.cursor/mcp.json，重启 Cursor 后生效。",
+  trae: "在 TRAE 的 MCP 设置中导入此 JSON，保存后重新加载。",
+  vscode: "保存到工作区 .vscode/mcp.json，在 Copilot Chat 的 MCP 列表中确认已连接。",
+  windsurf: "保存到 ~/.codeium/windsurf/mcp_config.json，重启 Windsurf 后生效。",
+  codex: "按 Codex 的 MCP 配置格式粘贴；若使用 config.toml，请转换为 [mcp_servers.wemail] 下的 url 与 bearer_token_env_var 字段。",
+  opencode: "保存到 opencode.json 的 mcp 节点，重启 OpenCode 后生效。",
+  pi: "保存到 ~/.pi/agent/mcp.json（全局）或 .pi/mcp.json（项目），运行 /mcp 确认、/reload 生效。",
+  cherrystudio: "在 Cherry Studio 的 MCP 设置中新建远程服务器，粘贴 URL 与请求头。",
+};
 
 export const WEMAIL_MCP_PROTOCOL_VERSIONS = [
   "2025-11-25",
@@ -340,7 +380,7 @@ export interface WemailMcpError {
   retryable: boolean;
 }
 
-export type WemailMcpListenerState = "disabled" | "starting" | "listening" | "error";
+export type WemailMcpListenerState = "disabled" | "starting" | "listening" | "attached" | "error";
 
 export interface WemailMcpTokenView {
   id: string;
@@ -442,13 +482,63 @@ export function formatWemailMcpConfiguration(input: {
   endpoint: string;
   token: string;
 }): string {
-  const connection = {
-    type: input.target === "claude" ? "http" : "streamablehttp",
-    url: input.endpoint,
-    headers: { Authorization: `Bearer ${input.token}` },
-  };
-  const value = input.target === "claude"
-    ? { mcpServers: { [WEMAIL_MCP_SERVER_NAME]: connection } }
-    : { [WEMAIL_MCP_SERVER_NAME]: connection };
-  return JSON.stringify(value, null, 2);
+  const headers = { Authorization: `Bearer ${input.token}` };
+  const target = input.target;
+  if (target === "codex") {
+    // Legacy Codex/generic shape kept byte-for-byte for existing users.
+    return JSON.stringify(
+      {
+        [WEMAIL_MCP_SERVER_NAME]: {
+          type: "streamablehttp",
+          url: input.endpoint,
+          headers,
+        },
+      },
+      null,
+      2,
+    );
+  }
+  if (target === "opencode") {
+    return JSON.stringify(
+      {
+        mcp: {
+          [WEMAIL_MCP_SERVER_NAME]: { type: "remote", url: input.endpoint, headers },
+        },
+      },
+      null,
+      2,
+    );
+  }
+  if (target === "vscode") {
+    return JSON.stringify(
+      {
+        servers: {
+          [WEMAIL_MCP_SERVER_NAME]: { type: "http", url: input.endpoint, headers },
+        },
+      },
+      null,
+      2,
+    );
+  }
+  if (target === "windsurf") {
+    return JSON.stringify(
+      {
+        mcpServers: {
+          [WEMAIL_MCP_SERVER_NAME]: { serverUrl: input.endpoint, headers },
+        },
+      },
+      null,
+      2,
+    );
+  }
+  // claude/pi document "type: http"; cursor/trae/cherrystudio use bare url+headers.
+  const withType = target === "claude" || target === "pi";
+  const connection = withType
+    ? { type: "http", url: input.endpoint, headers }
+    : { url: input.endpoint, headers };
+  return JSON.stringify(
+    { mcpServers: { [WEMAIL_MCP_SERVER_NAME]: connection } },
+    null,
+    2,
+  );
 }

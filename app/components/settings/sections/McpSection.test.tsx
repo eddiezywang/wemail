@@ -158,9 +158,8 @@ describe("McpSection", () => {
 		window.wemailDesktop = { copyMcpConfiguration };
 		vi.spyOn(api, "getMcpState").mockResolvedValue({ ok: true, state });
 		renderSection();
-		await userEvent.selectOptions(
-			await screen.findByRole("combobox", { name: "MCP 客户端格式" }),
-			"claude",
+		await userEvent.click(
+			await screen.findByRole("tab", { name: "Claude Code" }),
 		);
 		expect(screen.getByText(/"mcpServers"/)).toBeInTheDocument();
 		await userEvent.click(screen.getByRole("button", { name: "复制 MCP 配置" }));

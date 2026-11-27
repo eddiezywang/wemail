@@ -177,7 +177,7 @@ export class McpListenerController {
   configuration(target: WemailMcpConfigurationTarget): string {
     if (
       !this.mcp.settings.get().enabled ||
-      this.state !== "listening" ||
+      (this.state !== "listening" && this.state !== "attached") ||
       this.credentialState !== "ready"
     ) {
       throw new Error("mcp-not-ready");
@@ -233,6 +233,20 @@ export class McpListenerController {
       const code = (error as NodeJS.ErrnoException).code;
       this.errorCode = code === "EADDRINUSE" ? "port_conflict" : "listener_failed";
     }
+  }
+
+  /** GUI attaches to an already-running daemon serving this same database's
+   *  endpoint (dbx-style): credentials are verified so "copy configuration"
+   *  keeps working, but this process never owns a listener socket. */
+  async bootAttached(): Promise<void> {
+    if (this.emergencyDisabled) {
+      this.state = "disabled";
+      this.errorCode = "emergency_disabled";
+      return;
+    }
+    if (this.requireManagedCredential) this.ensureManagedCredential();
+    this.state = "attached";
+    this.errorCode = undefined;
   }
 
   private async stop(): Promise<void> {
