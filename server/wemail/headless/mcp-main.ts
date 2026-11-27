@@ -217,11 +217,17 @@ export async function startHeadlessMcp(options: HeadlessMcpOptions): Promise<Hea
     ? controller.view().endpoint
     : undefined;
 
+  // pidfile lets the GUI orchestrate (stop/restart) a daemon it didn't spawn
+  // — dbx-style lifecycle control across sessions.
+  const pidFile = path.join(dataDir, "mcp-daemon.pid");
+  if (endpoint) fs.writeFileSync(pidFile, String(process.pid));
+
   const close = async () => {
     await controller.close();
     if (mailCore) await mailCore.stop();
     await composition.stop();
     db.close();
+    if (endpoint) fs.rmSync(pidFile, { force: true });
   };
   return { endpoint, composition, close };
 }

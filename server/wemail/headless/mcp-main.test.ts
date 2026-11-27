@@ -59,6 +59,7 @@ describe("headless mcp-main", () => {
 
   after(async () => {
     await handle.close();
+    assert.equal(fs.existsSync(path.join(dataDir, "mcp-daemon.pid")), false, "pidfile should be removed on close");
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
@@ -66,6 +67,7 @@ describe("headless mcp-main", () => {
     assert.ok(handle.endpoint, "endpoint should be set when listening");
     assert.ok(fs.existsSync(path.join(dataDir, "wemail.sqlite")), "canonical db should be created");
     assert.ok(fs.existsSync(path.join(dataDir, "secrets")), "file secret store dir should be created");
+    assert.ok(fs.existsSync(path.join(dataDir, "mcp-daemon.pid")), "pidfile should exist while serving");
   });
 
   it("serves MCP initialize and tools/list without electron", async () => {

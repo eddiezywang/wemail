@@ -19,6 +19,7 @@ import type { ManagedMcpCredentialVault } from "../../server/wemail/mcp/ManagedM
 import type { SecretStore } from "../../server/wemail/security/SecretStore.js";
 import type { MailDatabaseClient } from "../../server/wemail/database/MailDatabaseClient.js";
 import { registerManagedCredentialAccountCleanup } from "./mcp-credential-account-cleanup.js";
+import type { DaemonOrchestration } from "./mcp-daemon.js";
 import type { MailAttachmentGateway } from "../../server/api/routes/mailAttachmentRoutes.js";
 import type { MailRefreshResult } from "../../shared/wemail/mailCoreProtocol.js";
 import type { MailReceiptHealth } from "../../shared/wemail/mailSync.js";
@@ -51,6 +52,9 @@ function readE2eLlmConfig(): LlmProviderConfig | undefined {
 
 export async function startLocalApi(options: {
   managedMcpCredentials?: ManagedMcpCredentialVault;
+  /** Persistent-daemon orchestration (dbx-style). Absent in E2E/dev-api:
+   *  attach-or-boot then behaves exactly as before the daemon existed. */
+  daemon?: DaemonOrchestration;
   secretStore?: SecretStore;
   /** Edition overlay (loaded by app.ts); absent = open-source defaults. */
   edition?: EditionRuntimeConfig;
@@ -149,6 +153,15 @@ export async function startLocalApi(options: {
     }));
   if (daemonServing) {
     await mcpController.bootAttached();
+  } else if (options.daemon && process.env.WEMAIL_E2E_MODE !== "1") {
+    // Daemon missing — spawn it (detached, outlives the GUI) and attach so
+    // the endpoint outlives this process; fall back to self-hosting only
+    // if the daemon couldn't start.
+    if (await options.daemon.ensure()) {
+      await mcpController.bootAttached();
+    } else {
+      await mcpController.boot();
+    }
   } else {
     await mcpController.boot();
   }
@@ -163,6 +176,14 @@ export async function startLocalApi(options: {
     mailAttachmentGateway: options.mailAttachmentGateway,
     quitApp: options.quitApp,
     onDebugModeChanged: options.onDebugModeChanged,
+    onMcpSettingsChanged: options.daemon
+      ? async (state) => {
+          // Q4 semantics: settings changed → daemon reloads (covers port
+          // changes); MCP disabled → daemon dies with it.
+          if (state.enabled) await options.daemon!.restart();
+          else options.daemon!.stop();
+        }
+      : undefined,
   });
 
   // Curator periodic ticker (Route C / WP J.8). The 24h cooldown lives

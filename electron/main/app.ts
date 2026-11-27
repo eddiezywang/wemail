@@ -29,6 +29,8 @@ import {
 } from "./electron-secret-store.js";
 import { FileSecretStore, type SecretStore } from "../../server/wemail/security/SecretStore.js";
 import { isHeadlessDaemonArgv, runHeadlessDaemon } from "./headless-daemon.js";
+import { WEMAIL_MCP_DEFAULT_PORT } from "../../shared/wemail/mcp.js";
+import { createDaemonOrchestration } from "./mcp-daemon.js";
 import {
   imapPasswordKey,
   smtpPasswordKey,
@@ -290,6 +292,20 @@ bootLog("module-loaded", {
 
 let mainWindow: BrowserWindow | null = null;
 let localApi: LocalApi | null = null;
+// Persistent MCP daemon orchestration (dbx-style): the daemon shares this
+// data dir and database, so probes/configuration always agree with it.
+let daemonCredentialVault: ElectronMcpCredentialVault | null = null;
+const daemonOrchestration = createDaemonOrchestration({
+  dataDir: () => process.env.WEMAIL_DATA_DIR ?? "",
+  fetchToken: () => {
+    const accountId = localApi?.composition.accountService.getCurrentAccount()?.id;
+    const credential =
+      accountId && daemonCredentialVault ? daemonCredentialVault.read(accountId) : undefined;
+    return credential?.token ?? null;
+  },
+  getPort: () =>
+    localApi?.composition.mcp.settings.get().port ?? WEMAIL_MCP_DEFAULT_PORT,
+});
 let rendererServer: PackagedRendererServer | null = null;
 let stopping = false;
 let quitting = false;
@@ -721,6 +737,7 @@ async function createMainWindow() {
     path.join(process.env.WEMAIL_DATA_DIR, "secrets"),
     safeStorage,
   );
+  daemonCredentialVault = managedMcpCredentials;
   // One set of auth files serves every shell (desktop, headless MCP).
   // FileSecretStore is the default; safeStorage remains opt-in for
   // users who prefer DPAPI-encrypted envelopes. Existing safeStorage
@@ -817,6 +834,7 @@ async function createMainWindow() {
     bootLog("startLocalApi-begin");
     apiRuntime = await startLocalApi({
       managedMcpCredentials,
+      daemon: daemonOrchestration,
       secretStore: accountSecretStore,
       mailDatabase: intelligenceDatabaseProducer,
       // Dev only: probing build/edition from the cwd lets `dev:desktop` pick
@@ -1633,6 +1651,7 @@ if (isHeadlessDaemonArgv()) {
       () => localApi?.mcpController ?? null,
       (target) => mailCoreSupervisor?.getMcpConfiguration(target) ?? Promise.reject(new Error("mcp-not-ready")),
       new DataDirectoryController(app, () => mainWindow, () => {
+        daemonOrchestration.stop();
         setTimeout(() => {
           app.relaunch();
           app.quit();
