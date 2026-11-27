@@ -123,7 +123,7 @@ export function McpSection() {
 		: [];
 	const ready =
 		state?.enabled &&
-		state.listenerState === "listening" &&
+		(state.listenerState === "listening" || state.listenerState === "attached") &&
 		state.credentialState === "ready";
 	const operationLabels: Record<string, string> = {
 		prepared: "已准备",
@@ -239,7 +239,9 @@ export function McpSection() {
 					}`}
 				/>
 				{ready
-					? "MCP 已就绪，可以复制配置"
+					? state.listenerState === "attached"
+						? "MCP 已就绪（由常驻服务提供），可以复制配置"
+						: "MCP 已就绪，可以复制配置"
 					: state.errorCode
 						? errorMessages[state.errorCode]
 						: state.enabled

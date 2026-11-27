@@ -13,6 +13,7 @@ import {
 import type { LlmProviderConfig } from "../../server/wemail/bootstrap/composition/settings.js";
 import { enableSystemCertificateAuthorities } from "../../server/wemail/security/SystemCa.js";
 import { McpListenerController } from "../../server/wemail/mcp/McpListenerController.js";
+import { isWemailDaemonServing } from "../../server/wemail/mcp/daemonProbe.js";
 import { WEMAIL_MCP_DEFAULT_PORT } from "../../shared/wemail/mcp.js";
 import type { ManagedMcpCredentialVault } from "../../server/wemail/mcp/ManagedMcpCredentialVault.js";
 import type { SecretStore } from "../../server/wemail/security/SecretStore.js";
@@ -128,7 +129,29 @@ export async function startLocalApi(options: {
         : WEMAIL_MCP_DEFAULT_PORT,
     });
   }
-  await mcpController.boot();
+  // Attach-or-boot (dbx-style): when a persistent daemon already serves this
+  // database's endpoint, attach to it instead of owning a second listener —
+  // the endpoint (and the copied configuration) then outlives this process.
+  const mcpAccountId = composition.accountService.getCurrentAccount()?.id;
+  const mcpActiveToken = mcpAccountId
+    ? composition.mcp.tokens.getActiveManagedForAccount(mcpAccountId)
+    : null;
+  const mcpCredential = mcpAccountId
+    ? options.managedMcpCredentials?.read(mcpAccountId)
+    : undefined;
+  const daemonServing =
+    mcpActiveToken != null &&
+    mcpCredential != null &&
+    mcpCredential.tokenId === mcpActiveToken.id &&
+    (await isWemailDaemonServing({
+      port: composition.mcp.settings.get().port,
+      fetchToken: () => mcpCredential.token,
+    }));
+  if (daemonServing) {
+    await mcpController.bootAttached();
+  } else {
+    await mcpController.boot();
+  }
   const server = await startLocalApiServer({
     port: 0,
     composition,
@@ -156,7 +179,9 @@ export async function startLocalApi(options: {
     setRendererOrigin: server.setRendererOrigin,
     composition,
     mcpController,
-    ...(mcpController.view().listenerState === "listening" ? { mcpEndpoint: mcpController.view().endpoint } : {}),
+    ...(mcpController.view().listenerState === "listening" || mcpController.view().listenerState === "attached"
+      ? { mcpEndpoint: mcpController.view().endpoint }
+      : {}),
     stop: async () => {
       unsubscribeManagedCredentialCleanup();
       await mcpController.close();

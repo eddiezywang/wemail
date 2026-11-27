@@ -340,7 +340,7 @@ export interface WemailMcpError {
   retryable: boolean;
 }
 
-export type WemailMcpListenerState = "disabled" | "starting" | "listening" | "error";
+export type WemailMcpListenerState = "disabled" | "starting" | "listening" | "attached" | "error";
 
 export interface WemailMcpTokenView {
   id: string;

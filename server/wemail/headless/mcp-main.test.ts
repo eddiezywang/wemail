@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { startHeadlessMcp, type HeadlessMcpHandle } from "./mcp-main.js";
+import { isWemailDaemonServing } from "../mcp/daemonProbe.js";
 
 const FIXTURE_ACCOUNT = {
   id: "acct-headless-test",
@@ -87,11 +88,28 @@ describe("headless mcp-main", () => {
     const result = await rpc("tools/list", {}, false);
     assert.equal(result.status, 401);
   });
+
+  it("daemon probe recognizes the live listener and rejects impostors", async () => {
+    const port = Number(new URL(handle.endpoint!).port);
+    assert.equal(
+      await isWemailDaemonServing({ port, fetchToken: () => bearer! }),
+      true,
+      "probe should recognize the live daemon",
+    );
+    assert.equal(
+      await isWemailDaemonServing({ port: port + 1, fetchToken: () => bearer! }),
+      false,
+      "probe should fail on a dead port",
+    );
+    assert.equal(
+      await isWemailDaemonServing({ port, fetchToken: () => null }),
+      false,
+      "probe without a token must not report alive",
+    );
+  });
 });
 
 describe("headless mcp-main daemon-mode port semantics", () => {
-  after(() => {});
-
   it("with no explicit port, follows the database settings instead of overwriting them", async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-headless-daemonport-"));
     const configuredPort = 30000 + Math.floor(Math.random() * 20000);
