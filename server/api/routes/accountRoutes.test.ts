@@ -118,6 +118,34 @@ test("POST /api/account/login verifies IMAP before saving account credentials", 
   assert.equal(database.records().length, 0);
   assert.equal(secrets.getSecret(imapPasswordKey("acct-r1")), undefined);
   assert.equal(secrets.getSecret(smtpPasswordKey("acct-r1")), undefined);
+
+test("POST /api/account/login reports MAIL_PASSWORD_EXPIRED for expired-password rejections", async () => {
+  const { app, database, secrets } = makeApp({
+    imapVerifier: async () => {
+      const error = new Error(
+        "imap.login: Command failed status=NO response=LOGIN Login error: password expired",
+      );
+      error.name = "MailProviderCommandError";
+      throw error;
+    },
+  });
+
+  const res = await app.request("/api/account/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      config: sampleConfig(),
+      secrets: { imapPassword: "stale-imap", smtpPassword: "stale-smtp" },
+    }),
+  });
+
+  assert.equal(res.status, 401);
+  const body = JSON.parse(await res.text()) as { ok: boolean; code: string };
+  assert.equal(body.ok, false);
+  assert.equal(body.code, "MAIL_PASSWORD_EXPIRED");
+  assert.equal(database.records().length, 0);
+  assert.equal(secrets.getSecret(imapPasswordKey("acct-r1")), undefined);
+});
   assert.equal(logs[0]?.event, "account.imap.verify.failed");
   assert.equal(syncErrors[0]?.errorId, "err-login-1");
 });

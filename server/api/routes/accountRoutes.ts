@@ -253,11 +253,23 @@ export function buildAccountRoutes(deps: AccountRoutesDeps) {
           },
         });
         const connectionFailure = isMailboxConnectionFailure(detail);
+        // Coremail & friends announce expired passwords in the IMAP NO
+        // response ("password expired" / 密码已过期) — distinguish them so the
+        // client opens an update-password dialog instead of a generic
+        // auth-failure toast.
+        const passwordExpired = /expire|过期|到期/i.test(
+          `${detail.providerMessage ?? ""} ${detail.message ?? ""}`,
+        );
+        const code = connectionFailure
+          ? undefined
+          : passwordExpired
+            ? "MAIL_PASSWORD_EXPIRED"
+            : "MAIL_CREDENTIAL_INVALID";
         return c.json(
           {
             ok: false,
             error: formatImapLoginError(detail),
-            ...(!connectionFailure ? { code: "MAIL_CREDENTIAL_INVALID" } : {}),
+            ...(code ? { code } : {}),
             errorId,
             stage: "imap.login",
             detail: detail.message,
