@@ -88,3 +88,36 @@ describe("headless mcp-main", () => {
     assert.equal(result.status, 401);
   });
 });
+
+describe("headless mcp-main daemon-mode port semantics", () => {
+  after(() => {});
+
+  it("with no explicit port, follows the database settings instead of overwriting them", async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-headless-daemonport-"));
+    const configuredPort = 30000 + Math.floor(Math.random() * 20000);
+    const first = await startHeadlessMcp({ dataDir, port: configuredPort });
+    await first.close();
+
+    // Daemon mode: no port — must serve the port the desktop GUI saved.
+    const second = await startHeadlessMcp({ dataDir });
+    assert.ok(second.endpoint, "daemon should listen when settings say enabled");
+    assert.equal(
+      Number(new URL(second.endpoint!).port),
+      configuredPort,
+      `endpoint ${second.endpoint} should follow db port ${configuredPort}`,
+    );
+    await second.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("with no explicit port and MCP disabled in settings, does not listen", async () => {
+    const fresh = fs.mkdtempSync(path.join(os.tmpdir(), "wemail-headless-disabled-"));
+    try {
+      const handle = await startHeadlessMcp({ dataDir: fresh });
+      assert.equal(handle.endpoint, undefined);
+      await handle.close();
+    } finally {
+      fs.rmSync(fresh, { recursive: true, force: true });
+    }
+  });
+});
