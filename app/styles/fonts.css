@@ -11,9 +11,20 @@
  * OpenSI Serif & Mono — Copyright (c) The OpenSI Project Authors,
  * auraunii. Licensed under the SIL Open Font License 1.1 with
  * Reserved Font Name "OpenSI" — see public/fonts/opensi/OFL-*.txt.
+ *
+ * WeMail Serif SC — Noto Serif CJK SC subset (GB2312-1 3,755 hanzi + Latin
+ * + CJK punctuation), SIL Open Font License 1.1, Copyright 2014-2021
+ * Adobe Systems Incorporated / Google LLC. Rare hanzi outside the subset
+ * fall through to the system sans stack per glyph.
  */
 @font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Semibold.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
 @font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
 @font-face { font-family: "OpenSI Mono"; src: url("/fonts/opensi/OpenSIMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "OpenSI Mono"; src: url("/fonts/opensi/OpenSIMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* CJK serif companion to OpenSI Serif: gives the serif-display layer real
+ * CJK serif faces on every platform (Windows has none installed by default;
+ * SimSun renders bitmap-ish at UI sizes). */
+@font-face { font-family: "WeMail Serif SC"; src: url("/fonts/serifsc/WeMailSerifSC-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "WeMail Serif SC"; src: url("/fonts/serifsc/WeMailSerifSC-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
