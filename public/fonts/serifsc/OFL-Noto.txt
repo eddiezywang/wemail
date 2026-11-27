@@ -1,0 +1,10 @@
+WeMail Serif SC = Noto Serif CJK SC (subset)
+
+Copyright 2014-2021 Adobe Systems Incorporated (http://www.adobe.com/),
+with Reserved Font Name "Source Han".
+Copyright 2014-2021 Google LLC (http://www.google.com/), with Reserved
+Font Name "Noto".
+
+Subset to GB2312 level-1 hanzi + Latin + CJK punctuation for WeMail's
+serif-display layer. Licensed under the SIL Open Font License, Version 1.1:
+https://fonts.google.com/noto/specimen/Noto+Serif+SC/about
