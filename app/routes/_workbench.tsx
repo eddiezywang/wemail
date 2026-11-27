@@ -79,7 +79,7 @@ import { parseSearchQuery } from "~/lib/search-parser";
 import { useEditionFeatures } from "~/hooks/useEditionFeatures";
 import { mailCategoryLabel } from "~/lib/mail-categories";
 import { getSnippetText } from "~/lib/utils";
-import { getUserFacingError } from "~/lib/user-facing-error";
+import { getUserFacingError, isCredentialError } from "~/lib/user-facing-error";
 import { markAllMailRead } from "~/lib/markAllMailRead";
 import { folderRole } from "~/lib/folderRole";
 import { useCurrentAccount } from "~/queries/currentAccount";
@@ -1302,7 +1302,8 @@ export function MessageListView({
 		} catch (error) {
 			if (
 				((error instanceof ApiError && isMailCredentialInvalidBody(error.body)) ||
-					(error instanceof Error && error.name === "MAIL_CREDENTIAL_INVALID")) &&
+					(error instanceof Error &&
+						(error.name === "MAIL_CREDENTIAL_INVALID" || isCredentialError(error)))) &&
 				mailboxId
 			) {
 				dispatchMailAuthRequired({

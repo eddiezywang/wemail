@@ -71,8 +71,19 @@ function lnkPaths(options: ShortcutControllerOptions): Array<{
 	];
 }
 
+function normalizeExePath(value: string): string {
+	try {
+		// Resolve 8.3 short names (ADMINI~1) and symlinks to the long form —
+		// WScript.Shell reads back the long path while process.execPath may
+		// carry the short one, and a naive compare would never match.
+		return fs.realpathSync.native(value).toLowerCase();
+	} catch {
+		return value.trim().toLowerCase();
+	}
+}
+
 function sameExecutable(a: string, b: string): boolean {
-	return a.trim().toLowerCase() === b.trim().toLowerCase();
+	return normalizeExePath(a) === normalizeExePath(b);
 }
 
 /** Pure decision core: which entries are wrong and whether to prompt. */

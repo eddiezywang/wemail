@@ -217,7 +217,10 @@ export function registerDesktopIpc(
         "Programs",
       ),
       dataDir: process.env.WEMAIL_DATA_DIR ?? "",
-      currentExe: process.env.PORTABLE_EXECUTABLE_PATH ?? process.execPath,
+      currentExe:
+						process.env.PORTABLE_EXECUTABLE_FILE ??
+						process.env.PORTABLE_EXECUTABLE_PATH ??
+						process.execPath,
     });
   ipcMain.handle("desktop:get-shortcut-status", async () => {
     if (process.platform !== "win32" || process.env.WEMAIL_E2E_MODE === "1") {
