@@ -556,6 +556,12 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 		}
 	};
 
+	/** Undo-send hold before the draft is handed to the outbox.
+	 *  ponytail: client-side hold only — closing the app inside the window leaves
+	 *  the mail as a saved draft (content preserved); server-side deferred
+	 *  dequeue is the designed upgrade path. */
+	const UNDO_SEND_WINDOW_MS = 5000;
+
 	const handleSend = async (e: FormEvent, onClose: () => void) => {
 		e.preventDefault();
 		// IME safety: if the user is mid-composition (e.g. Pinyin), bail.
@@ -588,34 +594,79 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 		if (sendAttemptRef.current?.snapshot !== snapshot) {
 			sendAttemptRef.current = { snapshot, key: `send:${activeAccountId}:${crypto.randomUUID()}` };
 		}
+		const idempotencyKey = sendAttemptRef.current.key;
+
+		// Persist the draft first so 撤销 (and any later send failure) keeps content.
 		setIsSending(true);
-		toast("正在提交邮件...");
+		let savedDraftId: string | undefined = draftId;
 		try {
-			await sendDraftMutation.mutateAsync({ ...payload, idempotencyKey: sendAttemptRef.current.key });
-			sendAttemptRef.current = undefined;
-			toast.success("邮件已加入发件队列");
-			onClose();
-		} catch (err: unknown) {
-			if (activeAccountId && isCredentialError(err)) {
-				// Expired/rejected password mid-session: open the update-password
-				// dialog instead of a dead-end toast.
-				dispatchMailAuthRequired({
-					accountId: activeAccountId,
-					code: MAIL_CREDENTIAL_INVALID,
-					source: "send",
-				});
-				setError("邮箱密码已过期或已失效，请在弹窗中更新密码。");
+			const savePayload = buildDraftSaveInput();
+			if (!savePayload) {
+				setError("请至少添加一个收件人。");
+				setIsSending(false);
 				return;
 			}
-			const message = getComposeSubmitError(
-				err,
-				"邮件发送失败，请检查收件人和网络后重试。",
-			);
+			const saveRes = await saveDraftMutation.mutateAsync({ ...savePayload, accountId: activeAccountId });
+			savedDraftId = saveRes.draft.id;
+			rememberSavedDraft(savedDraftId);
+		} catch (err: unknown) {
+			const message = getComposeSubmitError(err, "草稿保存失败，请检查网络后重试。");
 			setError(message);
 			toast.error(message);
-		} finally {
 			setIsSending(false);
+			return;
 		}
+		setIsSending(false);
+		onClose();
+
+		const deliverNow = async () => {
+			try {
+				await sendDraftMutation.mutateAsync({
+					...payload,
+					draftId: savedDraftId,
+					idempotencyKey,
+				});
+				sendAttemptRef.current = undefined;
+				toast.success("邮件已加入发件队列");
+			} catch (err: unknown) {
+				if (activeAccountId && isCredentialError(err)) {
+					// Expired/rejected password mid-session: open the update-password
+					// dialog instead of a dead-end toast. The draft stays in 草稿箱.
+					dispatchMailAuthRequired({
+						accountId: activeAccountId,
+						code: MAIL_CREDENTIAL_INVALID,
+						source: "send",
+					});
+					setError("邮箱密码已过期或已失效，请在弹窗中更新密码。");
+					toast.error("邮箱密码已过期或已失效，请在弹窗中更新密码；邮件已保留为草稿。");
+					return;
+				}
+				const message = getComposeSubmitError(
+					err,
+					"邮件发送失败，邮件已保留为草稿，可从草稿箱重试。",
+				);
+				setError(message);
+				toast.error(message);
+			}
+		};
+
+		// Undo window: hold the actual enqueue for 5s; 撤销 keeps it as a draft.
+		let cancelled = false;
+		toast.loading("正在发送…", {
+			duration: UNDO_SEND_WINDOW_MS,
+			action: {
+				label: "撤销",
+				onClick: () => {
+					cancelled = true;
+					sendAttemptRef.current = undefined;
+					toast.success("已撤销发送，内容保留在草稿箱");
+				},
+			},
+		});
+		window.setTimeout(() => {
+			if (cancelled) return;
+			void deliverNow();
+		}, UNDO_SEND_WINDOW_MS);
 	};
 
 	return {
