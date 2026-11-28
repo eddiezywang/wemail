@@ -214,7 +214,7 @@ describe("Sidebar", () => {
 		expect(customFolderLink!.textContent).not.toContain("7");
 	});
 
-	it("groups categories, smart tags, and mailbox folders under All Mail", () => {
+	it("groups categories and smart tags under All Mail, folders in the mailbox group", () => {
 		editionFeatures.allowanceInvoice = true;
 		vi.mocked(useFolders).mockReturnValue({
 			data: [
@@ -249,19 +249,42 @@ describe("Sidebar", () => {
 		expect(screen.getByTestId("all-mail-children")).toBeInTheDocument();
 		expect(screen.getByText("发票")).toBeInTheDocument();
 		expect(screen.getByText("项目阿尔法")).toBeInTheDocument();
-		expect(screen.getByText("chatgpt")).toBeInTheDocument();
-		expect(screen.getByTestId("system-classification-heading")).toHaveTextContent("智能分类");
-		expect(screen.getByTestId("user-smart-tags-heading")).toHaveTextContent("我的智能标签");
-		expect(screen.getByTestId("user-smart-tags-heading")).not.toHaveTextContent("自定义");
-		expect(screen.getByTestId("mailbox-folders-heading")).toHaveTextContent("邮箱文件夹");
-		for (const testId of ["system-classification-heading", "user-smart-tags-heading", "mailbox-folders-heading"]) {
-			expect(screen.getByTestId(testId)).toHaveClass("text-control", "font-semibold");
-		}
+		// Custom folders render in the「邮箱」group, not under All Mail.
+		const children = screen.getByTestId("all-mail-children");
+		expect(children.textContent).not.toContain("chatgpt");
+		expect(container.querySelector('a[data-folder="chatgpt"]')).not.toBeNull();
+		// The old sub-group headings are gone.
+		expect(screen.queryByTestId("system-classification-heading")).toBeNull();
+		expect(screen.queryByTestId("user-smart-tags-heading")).toBeNull();
+		expect(screen.queryByTestId("mailbox-folders-heading")).toBeNull();
 		expect(container.querySelectorAll('a[data-folder="inbox"]')).toHaveLength(1);
 		const allMailLink = container.querySelector('a[data-folder="all-mail"]');
 		expect(allMailLink?.textContent).toBe("所有邮件");
 		expect(allMailLink).toHaveAttribute("href", "/folder/all-mail");
 		expect(allMailLink?.parentElement).toHaveClass("text-ui");
+	});
+
+	it("hides the provider-sent folder duplicate from the mailbox group", () => {
+		// The provider syncs its own「已发送」folder which mirrors the local
+		// system Sent entry. Phase-1 dedupe must not render it twice.
+		vi.mocked(useFolders).mockReturnValue({
+			data: [
+				{ id: "inbox", name: "Inbox", unreadCount: 14, totalCount: 20 },
+				{ id: "已发送", name: "已发送", unreadCount: 0, totalCount: 18 },
+				{ id: "Sent Messages", name: "Sent Messages", unreadCount: 0, totalCount: 9 },
+				{ id: "广告邮件", name: "广告邮件", unreadCount: 0, totalCount: 16 },
+			],
+		} as unknown as ReturnType<typeof useFolders>);
+
+		const { container } = renderAt("/");
+
+		// The local system Sent entry stays.
+		expect(container.querySelector('a[data-folder="sent"]')).not.toBeNull();
+		// Both provider duplicates are hidden.
+		expect(container.querySelectorAll('a[data-folder="已发送"]')).toHaveLength(0);
+		expect(container.querySelectorAll('a[data-folder="Sent Messages"]')).toHaveLength(0);
+		// Genuinely custom folders survive.
+		expect(container.querySelector('a[data-folder="广告邮件"]')).not.toBeNull();
 	});
 
 	it("renders a compact icon rail without nested mailbox navigation", () => {
@@ -278,7 +301,7 @@ describe("Sidebar", () => {
 		);
 	});
 
-	it("collapses each All Mail subgroup independently", () => {
+	it("collapses the flattened All Mail children as one group", () => {
 		vi.mocked(useFolders).mockReturnValue({
 			data: [
 				{ id: "inbox", name: "Inbox", unreadCount: 14, totalCount: 20 },
@@ -305,28 +328,21 @@ describe("Sidebar", () => {
 		} as unknown as ReturnType<typeof useUserTags>);
 
 		renderAt("/");
-		const systemHeading = screen.getByTestId("system-classification-heading");
-		const smartTagHeading = screen.getByTestId("user-smart-tags-heading");
-		const mailboxHeading = screen.getByTestId("mailbox-folders-heading");
 
-		expect(systemHeading).toHaveAttribute("aria-expanded", "true");
-		expect(smartTagHeading).toHaveAttribute("aria-expanded", "true");
-		expect(mailboxHeading).toHaveAttribute("aria-expanded", "true");
-
-		fireEvent.click(systemHeading);
+		expect(screen.getByTestId("all-mail-children")).toBeInTheDocument();
+		// Categories and tags live directly under All Mail, without sub-groups.
 		expect(screen.queryByTestId("system-classification-items")).toBeNull();
-		expect(screen.getByTestId("user-smart-tags-items")).toBeInTheDocument();
-		expect(screen.getByTestId("mailbox-folder-items")).toBeInTheDocument();
-
-		fireEvent.click(smartTagHeading);
 		expect(screen.queryByTestId("user-smart-tags-items")).toBeNull();
-		expect(screen.getByTestId("mailbox-folder-items")).toBeInTheDocument();
-
-		fireEvent.click(mailboxHeading);
 		expect(screen.queryByTestId("mailbox-folder-items")).toBeNull();
 
-		fireEvent.click(systemHeading);
-		expect(screen.getByTestId("system-classification-items")).toBeInTheDocument();
+		const toggle = screen.getByTestId("all-mail-toggle");
+		fireEvent.click(toggle);
+		expect(screen.queryByTestId("all-mail-children")).toBeNull();
+		// The provider folder stays visible in the mailbox group while All Mail
+		// children are collapsed.
+		expect(screen.getByText("chatgpt")).toBeInTheDocument();
+		fireEvent.click(toggle);
+		expect(screen.getByTestId("all-mail-children")).toBeInTheDocument();
 	});
 
 	it("toggles children without navigating the All Mail link", () => {

@@ -1,21 +1,23 @@
-import { CheckSquareIcon } from "@phosphor-icons/react/CheckSquare";
-import { FileIcon } from "@phosphor-icons/react/File";
-import { PaperPlaneTiltIcon } from "@phosphor-icons/react/PaperPlaneTilt";
-import { PencilSimpleIcon } from "@phosphor-icons/react/PencilSimple";
-import { StarIcon } from "@phosphor-icons/react/Star";
-import { TimerIcon } from "@phosphor-icons/react/Timer";
-import { TrashIcon } from "@phosphor-icons/react/Trash";
-import { TrayIcon } from "@phosphor-icons/react/Tray";
-import { UsersThreeIcon } from "@phosphor-icons/react/UsersThree";
-import { WarningIcon } from "@phosphor-icons/react/Warning";
-import { BellIcon } from "@phosphor-icons/react/Bell";
-import { EnvelopeIcon } from "@phosphor-icons/react/Envelope";
-import { GearSixIcon } from "@phosphor-icons/react/GearSix";
-import { LightningIcon } from "@phosphor-icons/react/Lightning";
-import { SidebarSimpleIcon } from "@phosphor-icons/react/SidebarSimple";
+import { Bolt } from "reicon/icons/Bolt";
+import { Bell } from "reicon/icons/Bell";
+import { CheckSquare } from "reicon/icons/CheckSquare";
+import { Envelope } from "reicon/icons/Envelope";
+import { File } from "reicon/icons/File";
+import { Folder } from "reicon/icons/Folder";
+import { Gear } from "reicon/icons/Gear";
+import { Inbox } from "reicon/icons/Inbox";
+import { PaperPlane } from "reicon/icons/PaperPlane";
+import { Pen } from "reicon/icons/Pen";
+import { Sidebar as SidebarGlyph } from "reicon/icons/Sidebar";
+import { Star } from "reicon/icons/Star";
+import { Timer } from "reicon/icons/Timer";
+import { Trash } from "reicon/icons/Trash";
+import { Users } from "reicon/icons/Users";
+import { AlertTriangle } from "reicon/icons/AlertTriangle";
+import { Reicon } from "~/components/ui/reicon";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Folders, SYSTEM_FOLDER_IDS, VirtualFolders } from "shared/folders";
+import { Folders, FOLDER_DISPLAY_NAMES, isSentFolder, SYSTEM_FOLDER_IDS, VirtualFolders } from "shared/folders";
 import { MailboxNavigationGroup } from "~/components/sidebar/MailboxNavigationGroup";
 import {
 	Tooltip,
@@ -41,19 +43,30 @@ import { useWorkbenchNavigation } from "~/components/layout/Workbench";
 import { useEditionFeatures } from "~/hooks/useEditionFeatures";
 
 const FOLDER_ICON_MAP: Record<string, React.ReactNode> = {
-	[Folders.INBOX]: <TrayIcon size={18} weight="regular" />,
-	[Folders.SENT]: <PaperPlaneTiltIcon size={18} weight="regular" />,
-	[Folders.DRAFT]: <FileIcon size={18} weight="regular" />,
-	[Folders.TRASH]: <TrashIcon size={18} weight="regular" />,
-	[Folders.SPAM]: <WarningIcon size={18} weight="regular" />,
+	[Folders.INBOX]: <Reicon icon={Inbox} size={16} />,
+	[Folders.SENT]: <Reicon icon={PaperPlane} size={16} />,
+	[Folders.DRAFT]: <Reicon icon={File} size={16} />,
+	[Folders.TRASH]: <Reicon icon={Trash} size={16} />,
+	[Folders.SPAM]: <Reicon icon={AlertTriangle} size={16} />,
 };
 
 const MAILBOX_FOLDERS = [
-	{ id: Folders.DRAFT, label: "草稿" },
-	{ id: Folders.SENT, label: "已发送" },
-	{ id: Folders.SPAM, label: "垃圾邮件" },
-	{ id: Folders.TRASH, label: "回收站" },
+	{ id: Folders.SENT, label: FOLDER_DISPLAY_NAMES[Folders.SENT] },
+	{ id: Folders.DRAFT, label: FOLDER_DISPLAY_NAMES[Folders.DRAFT] },
 ];
+
+/** Small section label for the Phase-1 sidebar groups (处理/智能视图/邮箱). */
+function NavGroupLabel({ label, compact }: { label: string; compact: boolean }) {
+	if (compact) return null;
+	return (
+		<div
+			className="px-2 pb-1 pt-3 text-caption font-semibold uppercase tracking-wider text-ink-4"
+			aria-hidden="true"
+		>
+			{label}
+		</div>
+	);
+}
 
 export default function Sidebar({ compact: compactOverride }: { compact?: boolean } = {}) {
 	const navigate = useNavigate();
@@ -86,9 +99,14 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 		() =>
 			folders.filter(
 				(folder) =>
+					// Phase-1 dedupe: provider folders that mirror a local system
+					// folder (the provider's own「已发送」is the common case) must
+					// not surface as a second sidebar entry.
 					!(SYSTEM_FOLDER_IDS as readonly string[]).includes(
 						folder.id.toLowerCase(),
-					),
+					) &&
+					!isSentFolder(folder.id) &&
+					!isSentFolder(folder.name),
 			),
 		[folders],
 	);
@@ -115,7 +133,7 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 	).length;
 	const applicationMessageUnread = applicationMessages?.unread ?? 0;
 	const connectedIntegrations =
-		integrationStatus?.entries.filter((entry) => entry.state === "connected") ?? [];
+		integrationStatus?.entries?.filter((entry) => entry.state === "connected") ?? [];
 	const handleNavClick = () => closeSidebar();
 	const handleSmartTagCreated = (tag: UserTag) => {
 		navigate(`/smart-tags/${encodeURIComponent(tag.id)}`);
@@ -136,11 +154,7 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 			aria-label="写邮件"
 			data-testid="compose-button"
 		>
-			<PencilSimpleIcon
-				size={16}
-				weight="regular"
-				className="shrink-0 text-ink-2 group-hover:text-ink"
-			/>
+			<Reicon icon={Pen} size={16} className="shrink-0 text-ink-2 group-hover:text-ink" />
 			<span className={compact ? "sr-only" : "truncate"}>写邮件</span>
 		</button>
 	);
@@ -163,21 +177,22 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 					) : composeButton}
 				</div>
 
-				<nav className="space-y-0.5 px-2">
+				<nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+				<NavGroupLabel label="处理" compact={compact} />
 					<NavLink
 						to="/"
 						end
 						icon={FOLDER_ICON_MAP[Folders.INBOX]}
-						label="收件箱"
+						label={FOLDER_DISPLAY_NAMES[Folders.INBOX]}
 						count={getFolderUnreadCount(Folders.INBOX)}
-						title={getFolderTitle(Folders.INBOX, "收件箱")}
+						title={getFolderTitle(Folders.INBOX, FOLDER_DISPLAY_NAMES[Folders.INBOX])}
 						onClick={handleNavClick}
 						data-folder={Folders.INBOX}
 						compact={compact}
 					/>
 					<NavLink
 						to="/todos"
-						icon={<CheckSquareIcon size={18} weight="regular" />}
+						icon={<Reicon icon={CheckSquare} size={16} />}
 						label="待办"
 						onClick={handleNavClick}
 						data-folder={VirtualFolders.TODOS}
@@ -185,7 +200,7 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 					/>
 					<NavLink
 						to="/notifications"
-						icon={<BellIcon size={18} weight="regular" />}
+						icon={<Reicon icon={Bell} size={16} />}
 						label="应用消息"
 						count={applicationMessageUnread}
 						onClick={handleNavClick}
@@ -194,7 +209,7 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 					/>
 					<NavLink
 						to="/automation"
-						icon={<LightningIcon size={18} weight="regular" />}
+						icon={<Reicon icon={Bolt} size={16} />}
 						label="自动化"
 						onClick={handleNavClick}
 						data-folder="automation"
@@ -203,20 +218,19 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 					{features.enterpriseDirectory && (
 						<NavLink
 							to="/directory"
-							icon={<UsersThreeIcon size={18} weight="regular" />}
+							icon={<Reicon icon={Users} size={16} />}
 							label="通讯录"
 							onClick={handleNavClick}
 							data-folder="directory"
 							compact={compact}
 						/>
 					)}
-				</nav>
 
-				<nav className={`${compact ? "mt-2" : "mt-3"} min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2`}>
+				<NavGroupLabel label="智能视图" compact={compact} />
 					{compact ? (
 						<NavLink
 							to={`/folder/${VirtualFolders.ALL_MAIL}`}
-							icon={<EnvelopeIcon size={18} weight="regular" />}
+							icon={<Reicon icon={Envelope} size={16} />}
 							label="所有邮件"
 							onClick={handleNavClick}
 							data-folder={VirtualFolders.ALL_MAIL}
@@ -228,51 +242,83 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 							onExpandedChange={setExpanded}
 							categories={categories}
 							smartTags={smartTags}
-							customFolders={customFolders}
 							onNavigate={handleNavClick}
 							onCreateSmartTag={openCreateTagDialog}
 							onManageSmartTag={setEditingSmartTag}
 						/>
 					)}
-					<div className="pt-1.5">
+					<NavLink
+						to={`/folder/${VirtualFolders.STARRED}`}
+						icon={<Reicon icon={Star} size={16} />}
+						label="已加星标"
+						onClick={handleNavClick}
+						data-folder={VirtualFolders.STARRED}
+						compact={compact}
+					/>
+
+				<NavGroupLabel label="邮箱" compact={compact} />
+					<NavLink
+						to="/scheduled"
+						icon={<Reicon icon={Timer} size={16} />}
+						label={uncertainSendCount > 0 ? "发送待确认" : "发件队列"}
+						count={uncertainSendCount || scheduledCount}
+						onClick={handleNavClick}
+						data-folder={VirtualFolders.SCHEDULED}
+						compact={compact}
+					/>
+					<NavLink
+						to="/local-drafts"
+						icon={<Reicon icon={File} size={16} />}
+						label="本地草稿"
+						onClick={handleNavClick}
+						compact={compact}
+					/>
+					{MAILBOX_FOLDERS.map((folder) => (
 						<NavLink
-							to={`/folder/${VirtualFolders.STARRED}`}
-							icon={<StarIcon size={18} weight="regular" />}
-							label="已加星标"
+							key={folder.id}
+							to={`/folder/${encodeURIComponent(folder.id)}`}
+							icon={FOLDER_ICON_MAP[folder.id]}
+							label={folder.label}
+							count={getFolderUnreadCount(folder.id)}
+							title={getFolderTitle(folder.id, folder.label)}
 							onClick={handleNavClick}
-							data-folder={VirtualFolders.STARRED}
+							data-folder={folder.id}
 							compact={compact}
 						/>
+					))}
+					{customFolders.map((folder) => (
 						<NavLink
-							to="/local-drafts"
-							icon={<FileIcon size={18} weight="regular" />}
-							label="本地草稿"
+							key={folder.id}
+							to={`/folder/${encodeURIComponent(folder.id)}`}
+							icon={<Reicon icon={Folder} size={16} />}
+							label={folder.name}
+							count={getFolderUnreadCount(folder.id)}
+							title={getFolderTitle(folder.name, folder.name)}
 							onClick={handleNavClick}
+							data-folder={folder.id}
 							compact={compact}
 						/>
-						<NavLink
-							to="/scheduled"
-							icon={<TimerIcon size={18} weight="regular" />}
-							label={uncertainSendCount > 0 ? "发送待确认" : "发件队列"}
-							count={uncertainSendCount || scheduledCount}
-							onClick={handleNavClick}
-							data-folder={VirtualFolders.SCHEDULED}
-							compact={compact}
-						/>
-						{MAILBOX_FOLDERS.map((folder) => (
-							<NavLink
-								key={folder.id}
-								to={`/folder/${encodeURIComponent(folder.id)}`}
-								icon={FOLDER_ICON_MAP[folder.id]}
-								label={folder.label}
-								count={getFolderUnreadCount(folder.id)}
-								title={getFolderTitle(folder.id, folder.label)}
-								onClick={handleNavClick}
-								data-folder={folder.id}
-								compact={compact}
-							/>
-						))}
-					</div>
+					))}
+					<NavLink
+						to={`/folder/${encodeURIComponent(Folders.SPAM)}`}
+						icon={FOLDER_ICON_MAP[Folders.SPAM]}
+						label={FOLDER_DISPLAY_NAMES[Folders.SPAM]}
+						count={getFolderUnreadCount(Folders.SPAM)}
+						title={getFolderTitle(Folders.SPAM, FOLDER_DISPLAY_NAMES[Folders.SPAM])}
+						onClick={handleNavClick}
+						data-folder={Folders.SPAM}
+						compact={compact}
+					/>
+					<NavLink
+						to={`/folder/${encodeURIComponent(Folders.TRASH)}`}
+						icon={FOLDER_ICON_MAP[Folders.TRASH]}
+						label={FOLDER_DISPLAY_NAMES[Folders.TRASH]}
+						count={getFolderUnreadCount(Folders.TRASH)}
+						title={getFolderTitle(Folders.TRASH, FOLDER_DISPLAY_NAMES[Folders.TRASH])}
+						onClick={handleNavClick}
+						data-folder={Folders.TRASH}
+						compact={compact}
+					/>
 				</nav>
 
 				{!compact && connectedIntegrations.length > 0 && (
@@ -318,7 +364,7 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 								data-testid="sidebar-identity"
 							>
 								<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-ink-3">
-									<GearSixIcon size={19} weight="regular" />
+									<Reicon icon={Gear} size={16} />
 								</span>
 								<span className={compact ? "sr-only" : "min-w-0 flex-1 text-left"}>
 									<span className="block truncate text-xs font-semibold text-ink">
@@ -341,11 +387,7 @@ export default function Sidebar({ compact: compactOverride }: { compact?: boolea
 								aria-expanded={!compact}
 								data-testid="sidebar-collapse-toggle"
 							>
-								<SidebarSimpleIcon
-									size={17}
-									weight="regular"
-									className={`transition-transform duration-150 ${compact ? "rotate-180" : ""}`}
-								/>
+								<Reicon icon={SidebarGlyph} size={16} className={`transition-transform duration-150 ${compact ? "rotate-180" : ""}`} />
 							</button>
 						</TooltipTrigger>
 						<TooltipPortal>

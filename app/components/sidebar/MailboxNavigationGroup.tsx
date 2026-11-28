@@ -1,16 +1,15 @@
-import { CaretRightIcon } from "@phosphor-icons/react/CaretRight";
-import { EnvelopeIcon } from "@phosphor-icons/react/Envelope";
-import { FolderIcon } from "@phosphor-icons/react/Folder";
-import { PlusIcon } from "@phosphor-icons/react/Plus";
-import { StarIcon } from "@phosphor-icons/react/Star";
-import { CheckSquareIcon } from "@phosphor-icons/react/CheckSquare";
-import { FileTextIcon } from "@phosphor-icons/react/FileText";
-import { TagIcon } from "@phosphor-icons/react/Tag";
+import { CaretRight } from "reicon/icons/CaretRight";
+import { CheckSquare } from "reicon/icons/CheckSquare";
+import { Envelope } from "reicon/icons/Envelope";
+import { FileText } from "reicon/icons/FileText";
+import { Plus } from "reicon/icons/Plus";
+import { Star } from "reicon/icons/Star";
+import { Tag } from "reicon/icons/Tag";
+import { Reicon } from "~/components/ui/reicon";
 import { useState } from "react";
 import { useEditionFeatures } from "~/hooks/useEditionFeatures";
 import { NavLink as RouterNavLink, useLocation } from "react-router";
 import { VirtualFolders } from "shared/folders";
-import type { Folder } from "~/types";
 import type { ListCategory } from "~/queries/listCategories";
 import type { UserTag } from "~/queries/userTags";
 import { mailCategoryLabel } from "~/lib/mail-categories";
@@ -84,58 +83,17 @@ function SecondaryLink({
 	);
 }
 
-function GroupHeading({
-	label,
-	expanded,
-	onToggle,
-	controls,
-	testId,
-	icon,
-	tone = "default",
-}: {
-	label: string;
-	expanded: boolean;
-	onToggle: () => void;
-	controls: string;
-	testId: string;
-	icon: React.ReactNode;
-	tone?: "default" | "system" | "user";
-}) {
-	const iconTone = tone === "system"
-		? "text-coral"
-		: tone === "user"
-			? "text-blue"
-			: "text-ink-3";
-	return (
-		<button
-			type="button"
-			onClick={onToggle}
-			className="grid h-10 w-full grid-cols-[20px_20px_minmax(0,1fr)_16px] items-center rounded-md px-1.5 text-control font-semibold text-ink-3 transition-colors hover:bg-sidebar-hover hover:text-ink-2"
-			aria-expanded={expanded}
-			aria-controls={controls}
-			aria-label={`${expanded ? "收起" : "展开"}${label}`}
-			data-testid={testId}
-		>
-			<span aria-hidden />
-			<span className={`flex items-center justify-center ${iconTone}`}>{icon}</span>
-			<span className="truncate px-1.5 text-left">{label}</span>
-			<span className="flex items-center justify-center text-ink-3">
-				<CaretRightIcon
-					size={10}
-					weight="bold"
-					className={`transition-transform duration-150 motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
-				/>
-			</span>
-		</button>
-	);
-}
-
+/**
+ * Phase-1 flattened "智能视图" group: the All Mail row plus its system
+ * categories and user smart tags as direct children. The former
+ * 智能分类 / 我的智能标签 / 邮箱文件夹 sub-group headings are gone —
+ * mailbox folders live in the Sidebar's「邮箱」group instead.
+ */
 export function MailboxNavigationGroup({
 	expanded,
 	onExpandedChange,
 	categories,
 	smartTags,
-	customFolders,
 	onNavigate,
 	onCreateSmartTag,
 	onManageSmartTag,
@@ -144,15 +102,11 @@ export function MailboxNavigationGroup({
 	onExpandedChange: (expanded: boolean) => void;
 	categories: ListCategory[];
 	smartTags: UserTag[];
-	customFolders: Folder[];
 	onNavigate: () => void;
 	onCreateSmartTag: () => void;
 	onManageSmartTag: (tag: UserTag) => void;
 }) {
 	const location = useLocation();
-	const [systemExpanded, setSystemExpanded] = useState(true);
-	const [smartTagsExpanded, setSmartTagsExpanded] = useState(true);
-	const [mailboxFoldersExpanded, setMailboxFoldersExpanded] = useState(true);
 	const searchParams = new URLSearchParams(location.search);
 	const allMailPath = `/folder/${VirtualFolders.ALL_MAIL}`;
 	const isAllMailPath = location.pathname === allMailPath;
@@ -166,10 +120,10 @@ export function MailboxNavigationGroup({
 		.map((id) => categories.find((category) => category.system && category.id === id))
 		.filter((category): category is ListCategory => Boolean(category));
 	const systemIcon = (id: string) => id === "important"
-		? <StarIcon size={14} weight="regular" />
+		? <Reicon icon={Star} size={14} />
 		: id === "action_required"
-			? <CheckSquareIcon size={14} weight="regular" />
-			: <FileTextIcon size={14} weight="regular" />;
+			? <Reicon icon={CheckSquare} size={14} />
+			: <Reicon icon={FileText} size={14} />;
 
 	return (
 		<div className="space-y-0.5" data-testid="all-mail-navigation-group">
@@ -192,20 +146,21 @@ export function MailboxNavigationGroup({
 					data-folder={VirtualFolders.ALL_MAIL}
 					className="relative flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3.5 pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 				>
-					<EnvelopeIcon size={17} weight="regular" />
+					<Reicon icon={Envelope} size={16} />
 					<span className="truncate px-1.5">所有邮件</span>
 				</RouterNavLink>
 				<button
 					type="button"
 					onClick={() => onExpandedChange(!expanded)}
-					className="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-transparent hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+					className="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-transparent hover:text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 					aria-label={`${expanded ? "收起" : "展开"}所有邮件分类`}
 					aria-expanded={expanded}
 					data-testid="all-mail-toggle"
 				>
-					<CaretRightIcon
+					<Reicon
+						icon={CaretRight}
 						size={11}
-						weight="bold"
+						strokeWidth={2.5}
 						className={`transition-transform duration-150 motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
 					/>
 				</button>
@@ -213,106 +168,55 @@ export function MailboxNavigationGroup({
 
 			{expanded ? (
 				<div className="space-y-0.5" data-testid="all-mail-children">
-					<GroupHeading
-						label="智能分类"
-						expanded={systemExpanded}
-						onToggle={() => setSystemExpanded((value) => !value)}
-						controls="system-classification-items"
-						testId="system-classification-heading"
-						icon={<StarIcon size={12} weight="fill" />}
-						tone="system"
-					/>
-					{systemExpanded ? (
-						<div id="system-classification-items" className="space-y-0.5" data-testid="system-classification-items">
-							{visibleCategories.map((category) => (
-								<SecondaryLink
-									key={`category-${category.id}`}
-									to={`/folder/${VirtualFolders.ALL_MAIL}?category=${encodeURIComponent(category.id)}`}
-									icon={systemIcon(category.id)}
-									label={mailCategoryLabel(category.id, category.label)}
-									count={category.unreadCount}
-									dataFolder={`category:${category.id}`}
-									onNavigate={onNavigate}
-									active={activeCategory === category.id}
-									tone="system"
-								/>
-							))}
-						</div>
-					) : null}
+					{visibleCategories.map((category) => (
+						<SecondaryLink
+							key={`category-${category.id}`}
+							to={`/folder/${VirtualFolders.ALL_MAIL}?category=${encodeURIComponent(category.id)}`}
+							icon={systemIcon(category.id)}
+							label={mailCategoryLabel(category.id, category.label)}
+							count={category.unreadCount}
+							dataFolder={`category:${category.id}`}
+							onNavigate={onNavigate}
+							active={activeCategory === category.id}
+							tone="system"
+						/>
+					))}
 
-					<GroupHeading
-						label="我的智能标签"
-						expanded={smartTagsExpanded}
-						onToggle={() => setSmartTagsExpanded((value) => !value)}
-						controls="user-smart-tags-items"
-						testId="user-smart-tags-heading"
-						icon={<TagIcon size={12} weight="fill" />}
-						tone="user"
-					/>
-					{smartTagsExpanded ? (
-						<div id="user-smart-tags-items" className="space-y-0.5" data-testid="user-smart-tags-items">
-							{smartTags.map((tag) => (
-								<div key={tag.id} className="group relative">
-									<SecondaryLink
-										to={`/smart-tags/${encodeURIComponent(tag.id)}`}
-										icon={<TagIcon size={14} weight="regular" />}
-										label={tag.name}
-										count={tag.count}
-										dataFolder={`smart-tag:${tag.id}`}
-										onNavigate={onNavigate}
-										active={location.pathname === `/smart-tags/${encodeURIComponent(tag.id)}`}
-										tone="user"
-									/>
-									<button
-										type="button"
-										onClick={() => onManageSmartTag(tag)}
-										className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity hover:bg-sidebar-hover hover:text-ink group-hover:opacity-100 focus:opacity-100 motion-reduce:transition-none"
-										aria-label={`管理智能标签 ${tag.name}`}
-									>
-										<span aria-hidden className="text-base leading-none">···</span>
-									</button>
-								</div>
-							))}
-
+					{smartTags.map((tag) => (
+						<div key={tag.id} className="group relative">
+							<SecondaryLink
+								to={`/smart-tags/${encodeURIComponent(tag.id)}`}
+								icon={<Reicon icon={Tag} size={14} />}
+								label={tag.name}
+								count={tag.count}
+								dataFolder={`smart-tag:${tag.id}`}
+								onNavigate={onNavigate}
+								active={location.pathname === `/smart-tags/${encodeURIComponent(tag.id)}`}
+								tone="user"
+							/>
 							<button
 								type="button"
-								onClick={onCreateSmartTag}
-								className="grid h-10 w-full grid-cols-[20px_20px_minmax(0,1fr)] items-center rounded-md px-1.5 text-control text-ink-3 transition-colors hover:bg-sidebar-hover hover:text-ink-2"
-								data-testid="sidebar-create-smart-label-row"
+								onClick={() => onManageSmartTag(tag)}
+								className="absolute right-0 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity hover:bg-sidebar-hover hover:text-ink group-hover:opacity-100 focus:opacity-100 motion-reduce:transition-none"
+								aria-label={`管理智能标签 ${tag.name}`}
 							>
-								<span aria-hidden className="flex h-full items-center justify-center">
-									<span className="h-3.5 w-px rounded-full bg-edge-3" />
-								</span>
-								<PlusIcon size={14} />
-								<span className="truncate px-1.5 text-left">创建智能标签</span>
+								<span aria-hidden className="text-base leading-none">···</span>
 							</button>
 						</div>
-					) : null}
+					))}
 
-					<GroupHeading
-						label="邮箱文件夹"
-						expanded={mailboxFoldersExpanded}
-						onToggle={() => setMailboxFoldersExpanded((value) => !value)}
-						controls="mailbox-folder-items"
-						testId="mailbox-folders-heading"
-						icon={<FolderIcon size={12} weight="fill" />}
-					/>
-					{mailboxFoldersExpanded ? (
-						<div id="mailbox-folder-items" className="space-y-0.5" data-testid="mailbox-folder-items">
-							{customFolders.map((folder) => (
-								<SecondaryLink
-									key={folder.id}
-									to={`/folder/${encodeURIComponent(folder.id)}`}
-									icon={<FolderIcon size={14} weight="regular" />}
-									label={folder.name}
-									count={folder.unreadCount}
-									dataFolder={folder.id}
-									onNavigate={onNavigate}
-									active={location.pathname === `/folder/${encodeURIComponent(folder.id)}`}
-								/>
-							))}
-						</div>
-					) : null}
+					<button
+						type="button"
+						onClick={onCreateSmartTag}
+						className="grid h-10 w-full grid-cols-[20px_20px_minmax(0,1fr)] items-center rounded-md px-1.5 text-control text-ink-3 transition-colors hover:bg-sidebar-hover hover:text-ink-2"
+						data-testid="sidebar-create-smart-label-row"
+					>
+						<span aria-hidden className="flex h-full items-center justify-center">
+							<span className="h-3.5 w-px rounded-full bg-edge-3" />
+						</span>
+						<Reicon icon={Plus} size={14} />
+						<span className="truncate px-1.5 text-left">创建智能标签</span>
+					</button>
 				</div>
 			) : null}
 		</div>
