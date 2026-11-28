@@ -90,6 +90,7 @@ import { useFolders } from "~/queries/folders";
 import { useListCategories, type ListCategory } from "~/queries/listCategories";
 import api from "~/services/api";
 import { ApiError } from "~/services/api";
+import { SendStatusCapsule } from "~/components/compose/SendStatusCapsule";
 import {
 	dispatchMailAuthRequired,
 	isMailCredentialInvalidBody,
@@ -249,6 +250,7 @@ function WorkspaceOverlays() {
 			<Suspense fallback={null}>
 				{isComposing ? <ComposePanel /> : null}
 				{isComposeModalOpen ? <ComposeEmail /> : null}
+				<SendStatusCapsule />
 				{styleManagerOpen ? <ComposeStyleManagerDialog /> : null}
 			</Suspense>
 			<Suspense fallback={isSettingsOpen ? (

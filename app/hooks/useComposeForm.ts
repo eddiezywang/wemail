@@ -32,6 +32,7 @@ import { useMailbox } from "~/queries/mailboxes";
 import { useCurrentAccount } from "~/queries/currentAccount";
 import { useUIStore } from "~/hooks/useUIStore";
 import { useImeComposition } from "~/hooks/useImeComposition";
+import { useSendStatusStore } from "~/hooks/useSendStatusStore";
 import { useAccountSignaturePreference } from "~/hooks/useAccountSignaturePreferences";
 import { useAccountDirectoryName } from "~/hooks/useAccountDirectoryName";
 
@@ -619,7 +620,7 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 		setIsSending(false);
 		onClose();
 
-		const deliverNow = async () => {
+		const deliverNow = async (): Promise<boolean> => {
 			try {
 				await sendDraftMutation.mutateAsync({
 					...payload,
@@ -628,6 +629,7 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 				});
 				sendAttemptRef.current = undefined;
 				toast.success("邮件已加入发件队列");
+				return true;
 			} catch (err: unknown) {
 				if (activeAccountId && isCredentialError(err)) {
 					// Expired/rejected password mid-session: open the update-password
@@ -639,7 +641,7 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 					});
 					setError("邮箱密码已过期或已失效，请在弹窗中更新密码。");
 					toast.error("邮箱密码已过期或已失效，请在弹窗中更新密码；邮件已保留为草稿。");
-					return;
+					return false;
 				}
 				const message = getComposeSubmitError(
 					err,
@@ -647,25 +649,31 @@ export function useComposeForm(mailboxId?: string, _folder?: string) {
 				);
 				setError(message);
 				toast.error(message);
+				return false;
 			}
 		};
 
 		// Undo window: hold the actual enqueue for 5s; 撤销 keeps it as a draft.
+		// Progress renders in the top-center capsule (SendStatusCapsule), not a toast.
 		let cancelled = false;
-		toast.loading("正在发送…", {
-			duration: UNDO_SEND_WINDOW_MS,
-			action: {
-				label: "撤销",
-				onClick: () => {
-					cancelled = true;
-					sendAttemptRef.current = undefined;
-					toast.success("已撤销发送，内容保留在草稿箱");
-				},
-			},
-		});
+		const cancelHold = () => {
+			cancelled = true;
+			sendAttemptRef.current = undefined;
+			useSendStatusStore.getState().close();
+			toast.success("已撤销发送，内容保留在草稿箱");
+		};
+		useSendStatusStore.getState().beginHold(Date.now() + UNDO_SEND_WINDOW_MS, cancelHold);
 		window.setTimeout(() => {
 			if (cancelled) return;
-			void deliverNow();
+			useSendStatusStore.getState().beginDeliver();
+			void deliverNow().then((ok) => {
+				if (ok) {
+					useSendStatusStore.getState().finishDone();
+					window.setTimeout(() => useSendStatusStore.getState().close(), 1600);
+				} else {
+					useSendStatusStore.getState().close();
+				}
+			});
 		}, UNDO_SEND_WINDOW_MS);
 	};
 
