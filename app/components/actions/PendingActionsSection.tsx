@@ -16,6 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { getUserFacingError } from "~/lib/user-facing-error";
 import { useResolvePendingAction } from "~/queries/pendingActions";
+import { queryKeys } from "~/queries/keys";
+import type { Mailbox } from "~/types";
 import { PendingActionCard } from "~/components/wemail/PendingActionCard";
 import type { AgentPendingAction } from "~/services/api";
 
@@ -75,6 +77,8 @@ export function PendingActionsSection({
 					<PendingActionCard
 						key={action.id}
 						action={action}
+						mailbox={typeof action.parameters?.accountId === "string"
+							? qc.getQueryData<Mailbox>(queryKeys.mailboxes.detail(action.parameters.accountId)) : undefined}
 						onConfirm={(id) => handleResolve(id, "confirmed")}
 						onReject={(id) => handleResolve(id, "rejected")}
 						isResolving={resolve.isPending && resolve.variables?.id === action.id}

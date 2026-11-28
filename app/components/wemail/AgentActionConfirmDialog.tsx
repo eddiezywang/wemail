@@ -5,7 +5,7 @@
 import { CheckCircleIcon } from "@phosphor-icons/react/CheckCircle";
 import { SpinnerGapIcon } from "@phosphor-icons/react/SpinnerGap";
 import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -49,15 +49,8 @@ export default function AgentActionConfirmDialog({
 	cancelLabel,
 	feedback,
 }: AgentActionConfirmDialogProps) {
-	const confirmRef = useRef<HTMLButtonElement | null>(null);
+	const cancelRef = useRef<HTMLButtonElement>(null);
 	const blocking = feedback?.status === "running";
-
-	useEffect(() => {
-		if (!open || feedback) return;
-		// Focus the confirm button after the dialog animates in
-		const timer = setTimeout(() => confirmRef.current?.focus(), 50);
-		return () => clearTimeout(timer);
-	}, [feedback, open]);
 
 	return (
 		<Dialog
@@ -70,7 +63,12 @@ export default function AgentActionConfirmDialog({
 				data-testid="wemail-confirm-dialog"
 				data-dangerous={dangerous ? "true" : "false"}
 				data-phase={feedback?.status ?? "confirm"}
-				className={`max-w-md ${dangerous ? "border-red" : ""}`}
+				className={`max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-md overflow-y-auto ${dangerous ? "border-red" : ""}`}
+				onOpenAutoFocus={(event) => {
+					if (!cancelRef.current) return;
+					event.preventDefault();
+					cancelRef.current.focus();
+				}}
 				showClose={!blocking}
 				onEscapeKeyDown={(event) => {
 					if (blocking) event.preventDefault();
@@ -90,7 +88,7 @@ export default function AgentActionConfirmDialog({
 				>
 					{title}
 				</DialogTitle>
-				<DialogDescription className="whitespace-pre-wrap text-sm text-ink">
+				<DialogDescription className="whitespace-pre-wrap text-sm text-ink [overflow-wrap:anywhere]">
 					{description}
 				</DialogDescription>
 				{feedback ? (
@@ -161,19 +159,19 @@ export default function AgentActionConfirmDialog({
 						安装完成或失败后才能关闭此窗口
 					</p>
 				) : (
-					<div className="mt-4 flex justify-end gap-2">
+					<div className="mt-4 flex flex-wrap justify-end gap-2">
 						{feedback ? null : (
 							<button
+								ref={cancelRef}
 								type="button"
 								data-testid="wemail-confirm-cancel"
 								onClick={onCancel}
-								className="rounded border border-edge px-3 py-1 text-xs hover:bg-paper-3"
+								className="min-h-11 rounded border border-edge px-3 text-xs hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{cancelLabel ?? "取消 / Cancel"}
 							</button>
 						)}
 						<button
-							ref={feedback ? undefined : confirmRef}
 							type="button"
 							data-testid={
 								feedback
@@ -181,7 +179,7 @@ export default function AgentActionConfirmDialog({
 									: "wemail-confirm-confirm"
 							}
 							onClick={feedback ? onCancel : onConfirm}
-							className={`rounded px-3 py-1 text-xs font-medium text-white ${
+							className={`min-h-11 rounded px-3 text-xs font-medium text-white focus-visible:ring-2 focus-visible:ring-ring ${
 								feedback?.status === "success"
 									? "bg-green hover:opacity-90"
 									: feedback?.status === "error" || dangerous

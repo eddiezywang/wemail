@@ -62,6 +62,7 @@ function MailChip({
 	}, []);
 	const remove = () => {
 		if (exiting) return;
+		if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) { onRemove(); return; }
 		setExiting(true);
 		timerRef.current = window.setTimeout(onRemove, 240);
 	};
@@ -72,14 +73,14 @@ function MailChip({
 			style={!exiting && delayMs > 0 ? { animationDelay: `${delayMs}ms` } : undefined}
 		>
 			<EnvelopeSimpleIcon size={12} weight="bold" className="shrink-0 text-coral-2" />
-			<span className="max-w-[180px] truncate" title={mail.subject}>
+			<span className="min-w-0 max-w-[180px] truncate" title={mail.subject}>
 				{mail.subject}
 			</span>
 			<button
 				type="button"
 				aria-label={`取消关联：${mail.subject}`}
 				onClick={remove}
-				className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				className="inline-flex h-5 w-5 shrink-0 items-center justify-center [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 rounded-full text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<XIcon size={10} weight="bold" />
 			</button>
@@ -130,6 +131,15 @@ export function AgentComposer({
 }: AgentComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
+  const composingRef = useRef(false);
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.style.height = "auto";
+    const height = input.scrollHeight;
+    input.style.height = `${Math.min(height, 180)}px`;
+    input.style.overflowY = height > 180 ? "auto" : "hidden";
+  }, [value]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
@@ -161,6 +171,7 @@ export function AgentComposer({
   // message carries the whole chip list plus the focused mail by default.
   const [atActiveIndex, setAtActiveIndex] = useState(0);
   const [atDismissed, setAtDismissed] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const atMatch = /(?:^|\s)@([^\s@]*)$/.exec(value);
   const atQuery = atMatch ? atMatch[1] : null;
   // Default candidates come from the global search endpoint (no folder
@@ -294,7 +305,7 @@ export function AgentComposer({
           </div>
           <ol className="divide-y divide-edge">
             {followups.map((item, index) => (
-              <li key={item.id} className="flex items-center gap-2 px-3 py-2" data-followup-id={item.id}>
+              <li key={item.id} className="flex flex-wrap items-center gap-2 px-3 py-2" data-followup-id={item.id}>
                 <span className="text-meta tabular-nums text-ink-2">{index + 1}</span>
                 {editingId === item.id ? (
                   <input
@@ -346,10 +357,11 @@ export function AgentComposer({
       <div className="relative rounded-xl border border-edge-2 bg-paper-2 px-3.5 pb-2 pt-2.5 transition-colors focus-within:border-coral focus-within:ring-1 focus-within:ring-ring">
         {slashOpen ? (
           <div
+            ref={suggestionsRef}
             role="listbox"
             aria-label="斜杠命令"
             data-testid="agent-slash-commands"
-            className="absolute bottom-full left-0 z-20 mb-2 w-[300px] overflow-hidden rounded-xl border border-edge bg-paper-2 p-1.5 shadow-[var(--shadow-3)]"
+            className="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-[300px] overflow-y-auto overscroll-contain rounded-xl border border-edge bg-paper-2 p-1.5 shadow-[var(--shadow-3)]"
           >
             <div className="px-2 pb-1 pt-1 text-caption font-semibold tracking-wide text-ink-4">
               命令
@@ -366,7 +378,7 @@ export function AgentComposer({
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => pickSlashCommand(index)}
                   onMouseEnter={() => setSlashActiveIndex(index)}
-                  className={`flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                  className={`flex min-h-11 w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
                     selected ? "bg-paper-3" : "hover:bg-paper-3"
                   }`}
                 >
@@ -388,10 +400,11 @@ export function AgentComposer({
         ) : null}
         {atOpen ? (
           <div
+            ref={suggestionsRef}
             role="listbox"
             aria-label="关联邮件"
             data-testid="agent-at-candidates"
-            className="absolute bottom-full left-0 z-20 mb-2 w-[340px] overflow-hidden rounded-xl border border-edge bg-paper-2 p-1.5 shadow-[var(--shadow-3)]"
+            className="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-[340px] overflow-y-auto overscroll-contain rounded-xl border border-edge bg-paper-2 p-1.5 shadow-[var(--shadow-3)]"
           >
             <div className="px-2 pb-1 pt-1 text-caption font-semibold tracking-wide text-ink-4">
               关联邮件
@@ -408,7 +421,7 @@ export function AgentComposer({
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => pickAtEmail(index)}
                   onMouseEnter={() => setAtActiveIndex(index)}
-                  className={`flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                  className={`flex min-h-11 w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
                     selected ? "bg-paper-3" : "hover:bg-paper-3"
                   }`}
                 >
@@ -463,19 +476,21 @@ export function AgentComposer({
             if (/(?:^|\s)@[^\s@]*$/.test(event.target.value)) setAtDismissed(false);
             if (event.target.value.length > 0) onInteraction?.();
           }}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionEnd={() => { composingRef.current = false; }}
           onKeyDown={(event) => {
+            if (composingRef.current || event.nativeEvent.isComposing || event.keyCode === 229) return;
+            if ((slashOpen || atOpen) && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+              const count = slashOpen ? slashMatches.length : atCandidates.length;
+              const index = slashOpen ? clampedSlashIndex : clampedAtIndex;
+              const next = (index + (event.key === "ArrowDown" ? 1 : count - 1)) % count;
+              event.preventDefault();
+              (slashOpen ? setSlashActiveIndex : setAtActiveIndex)(next);
+              suggestionsRef.current?.querySelectorAll("[role=option]")[next]?.scrollIntoView?.({ block: "nearest" });
+              return;
+            }
             if (slashOpen) {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setSlashActiveIndex((current) => (current + 1) % slashMatches.length);
-                return;
-              }
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setSlashActiveIndex((current) => (current - 1 + slashMatches.length) % slashMatches.length);
-                return;
-              }
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 pickSlashCommand(clampedSlashIndex);
                 return;
@@ -487,17 +502,7 @@ export function AgentComposer({
               }
             }
             if (atOpen) {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setAtActiveIndex((current) => (current + 1) % atCandidates.length);
-                return;
-              }
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setAtActiveIndex((current) => (current - 1 + atCandidates.length) % atCandidates.length);
-                return;
-              }
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 pickAtEmail(clampedAtIndex);
                 return;
@@ -516,24 +521,18 @@ export function AgentComposer({
           placeholder={isStreaming ? "输入后续要求，将在本轮完成后执行" : "搜索、写作或询问任何内容… / 命令 · @ 邮件"}
           rows={1}
           aria-label="向 WeMail AI 发送消息"
-          className="min-h-[64px] max-h-[180px] w-full resize-none bg-transparent px-1 pb-2 pt-2 text-ui leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none"
-          style={{ height: "auto", overflow: "hidden" }}
-          onInput={(event) => {
-            const target = event.target as HTMLTextAreaElement;
-            target.style.height = "auto";
-            target.style.height = `${Math.min(target.scrollHeight, 180)}px`;
-            target.style.overflow = target.scrollHeight > 180 ? "auto" : "hidden";
-          }}
+          enterKeyHint="send"
+          className="min-h-[64px] max-h-[180px] w-full resize-none bg-transparent px-1 pb-2 pt-2 text-ui leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none [@media(pointer:coarse)]:text-base"
         />
         <div className="flex items-center justify-end px-0.5">
           <div className="flex items-center gap-2.5">
             {isStreaming ? <span className="text-caption text-ink-3">发送将加入队列</span> : null}
             {isStreaming ? (
-              <button type="button" onClick={onStop} className="inline-flex h-10 w-10 shrink-0 aspect-square items-center justify-center rounded-full bg-coral-2 text-paper-2 hover:bg-coral-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="停止生成" data-testid="agent-stop">
+              <button type="button" onClick={onStop} className="inline-flex h-11 w-11 shrink-0 aspect-square items-center justify-center rounded-full bg-coral-2 text-paper-2 hover:bg-coral-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="停止生成" data-testid="agent-stop">
                 <StopIcon size={14} weight="fill" />
               </button>
             ) : null}
-            <button type="button" onClick={submit} disabled={!value.trim()} className="inline-flex h-10 w-10 shrink-0 aspect-square items-center justify-center rounded-full bg-coral-2 text-paper-2 hover:bg-coral-strong disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={isStreaming ? "加入后续消息队列" : "发送消息"} data-testid="agent-send">
+            <button type="button" onClick={submit} disabled={!value.trim()} className="inline-flex h-11 w-11 shrink-0 aspect-square items-center justify-center rounded-full bg-coral-2 text-paper-2 hover:bg-coral-strong disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={isStreaming ? "加入后续消息队列" : "发送消息"} data-testid="agent-send">
               <ArrowUpIcon size={14} weight="bold" />
             </button>
           </div>

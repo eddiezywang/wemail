@@ -70,7 +70,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import EmptyState from "~/components/wemail/EmptyState";
 import { MailItem, type MailItemTag } from "~/components/wemail/MailItem";
-import MailContextMenu from "~/components/wemail/MailContextMenu";
+import MailContextMenu, { type MailMenuAnchor } from "~/components/wemail/MailContextMenu";
 import MailFilterPopover, { MailFilterChips } from "~/components/wemail/MailFilterPopover";
 import { useUIStore } from "~/hooks/useUIStore";
 import { usePerformanceWatchdog } from "~/hooks/usePerformanceWatchdog";
@@ -648,8 +648,8 @@ export function MessageListView({
 	// Unified search: keyword runs through the URL `?q=` path
 	// (useEmails / useSearchEmails upstream); we always fire the semantic
 	// endpoint in parallel for non-empty queries and merge any
-	// semantic-only matches into the rendered list. Either side failing
-	// silently degrades to the other so search never appears broken.
+	// semantic-only matches into the rendered list. An unavailable semantic
+	// service must not break keyword search.
 	const semanticEnabled = urlQuery.length > 0;
 	const semanticQuery = useQuery({
 		queryKey: ["semantic-search", mailboxId, urlQuery],
@@ -796,8 +796,9 @@ export function MessageListView({
 	useEffect(() => { setRefreshQueued(false); }, [mailboxId]);
 	const [contextMenu, setContextMenu] = useState<{
 		email: Email;
-		position: { x: number; y: number };
+		anchor: MailMenuAnchor;
 	} | null>(null);
+	useEffect(() => { setContextMenu(null); }, [mailboxId, folder, location.pathname, location.search]);
 	const toggleStar = useCallback((id: string, next: boolean) => {
 		if (!mailboxId) return;
 		const mutationVersion = (starMutationVersionRef.current.get(id) ?? 0) + 1;
@@ -885,16 +886,15 @@ export function MessageListView({
 	const emails = useMemo(() => {
 		return mergedEmails;
 	}, [mergedEmails]);
+	const searchPending = semanticEnabled && semanticQuery.isLoading;
 	const emailsRef = useRef(emails);
 	emailsRef.current = emails;
 	const handleContextMenu = useCallback(
-		(id: string, event: React.MouseEvent<HTMLDivElement>) => {
+		(id: string, anchor: MailMenuAnchor) => {
 			const target = emailsRef.current.find((email) => email.id === id);
 			if (!target) return;
-			setContextMenu({
-				email: target,
-				position: { x: event.clientX, y: event.clientY },
-			});
+			setContextMenu((current) => current?.anchor.element === anchor.element && !anchor.point && !current.anchor.point
+				? null : { email: target, anchor });
 		},
 		[],
 	);
@@ -977,6 +977,7 @@ export function MessageListView({
 	}, [query.isFetchingNextPage, query.data?.emails.length]);
 	const handleListScroll = useCallback(
 		(event: UIEvent<HTMLDivElement>) => {
+			setContextMenu(null);
 			setListViewport({
 				scrollTop: event.currentTarget.scrollTop,
 				height: Math.max(1, event.currentTarget.clientHeight),
@@ -1188,7 +1189,9 @@ export function MessageListView({
 	}, [closePanel, deleteEmail, mailboxId]);
 	const quickToggleRead = useCallback((id: string, next: boolean) => {
 		if (!mailboxId) return;
-		updateEmail.mutate({ mailboxId, id, data: { read: next } });
+		updateEmail.mutate({ mailboxId, id, data: { read: next } }, {
+			onError: (error) => toast.error(getUserFacingError(error, "已读状态未能保存，请重试。")),
+		});
 	}, [mailboxId, updateEmail]);
 	const quickMarkSpam = useCallback((id: string) => {
 		if (!mailboxId) return;
@@ -1715,17 +1718,19 @@ export function MessageListView({
 				ref={listScrollRef}
 				className="flex-1 min-h-0 overflow-y-auto"
 				data-testid="mail-list-scroll"
+				tabIndex={-1}
 				onScroll={handleListScroll}
 				onWheel={handleListWheel}
 				onPointerDown={handleListPointerDown}
 				onPointerUp={handleListPointerUp}
 			>
-				{query.isLoading && emails.length === 0 ? (
+				{(query.isLoading || searchPending) && emails.length === 0 ? (
 					<MessageListSkeleton />
 				) : query.isError && emails.length === 0 ? (
 					<EmptyState
 						icon={<TrayIcon size={28} />}
-						title="邮件暂时无法加载"
+						title={semanticEnabled ? "邮件搜索暂时无法完成" : "邮件暂时无法加载"}
+						kind="error"
 						description={getUserFacingError(query.error, "请检查网络或邮箱连接后重试。")}
 						actions={[{ label: "重新加载", onClick: () => void query.refetch(), variant: "primary" }]}
 					/>
@@ -1780,6 +1785,7 @@ export function MessageListView({
 								onDelete={quickDelete}
 								onToggleRead={quickToggleRead}
 								onContextMenu={handleContextMenu}
+								menuOpen={contextMenu?.email.id === row.email.id}
 								starred={isEmailStarred(row.email)}
 								onToggleStar={toggleStar}
 								onClick={handleSelectEmail}
@@ -1804,7 +1810,7 @@ export function MessageListView({
 								style={{ top: virtualMailLayout.totalHeight }}
 								onClick={() => void query.fetchNextPage?.()}
 							>
-								加载失败，点击重试
+								加载更多失败，点击重试
 							</button>
 						) : !query.hasNextPage ? (
 							<div
@@ -1844,27 +1850,21 @@ export function MessageListView({
 						/>
 				)}
 			</div>
-			<MailContextMenu
-				email={contextMenu?.email ?? null}
-				position={contextMenu?.position ?? null}
+			{contextMenu ? <MailContextMenu
+				key={`${contextMenu.email.id}:${contextMenu.anchor.point?.x ?? "anchor"}:${contextMenu.anchor.point?.y ?? "anchor"}`}
+				email={contextMenu.email}
+				anchor={contextMenu.anchor}
+				fallbackFocus={() => listScrollRef.current?.focus({ preventScroll: true })}
 				accountId={mailboxId}
 				onClose={() => setContextMenu(null)}
 				onReply={() => void openContextCompose("reply")}
 				onReplyAll={() => void openContextCompose("reply-all")}
 				onForward={() => void openContextCompose("forward")}
-				onToggleRead={() => {
-					if (contextMenu) quickToggleRead(contextMenu.email.id, !contextMenu.email.read);
-				}}
-				onArchive={canArchive ? () => {
-					if (contextMenu) quickArchive(contextMenu.email.id);
-				} : undefined}
-				onMarkSpam={() => {
-					if (contextMenu) quickMarkSpam(contextMenu.email.id);
-				}}
-				onDelete={() => {
-					if (contextMenu) quickDelete(contextMenu.email.id);
-				}}
-			/>
+				onToggleRead={() => quickToggleRead(contextMenu.email.id, !contextMenu.email.read)}
+				onArchive={canArchive ? () => quickArchive(contextMenu.email.id) : undefined}
+				onMarkSpam={() => quickMarkSpam(contextMenu.email.id)}
+				onDelete={() => quickDelete(contextMenu.email.id)}
+			/> : null}
 		</div>
 	);
 }

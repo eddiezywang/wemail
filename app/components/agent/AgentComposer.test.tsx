@@ -85,6 +85,25 @@ describe("AgentComposer", () => {
     expect(screen.getByTestId("agent-slash-commands")).toBeInTheDocument();
   });
 
+  it("does not pick a command or submit on IME confirmation keys", () => {
+    const { props } = renderComposer();
+    const input = screen.getByLabelText("向 WeMail AI 发送消息");
+    fireEvent.change(input, { target: { value: "/" } });
+    const first = screen.getByRole("option", { name: /总结当前邮件/ });
+    fireEvent.compositionStart(input);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(first).toHaveAttribute("aria-selected", "true");
+    expect(input).toHaveValue("/");
+    expect(props.onSubmit).not.toHaveBeenCalled();
+    fireEvent.compositionEnd(input);
+    fireEvent.change(input, { target: { value: "总结邮件" } });
+    fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+    expect(props.onSubmit).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(props.onSubmit).toHaveBeenCalledWith("总结邮件");
+  });
+
   it("keeps the composer active during streaming and queues submitted text", () => {
     const { props } = renderComposer({ isStreaming: true, followups: queue });
     const input = screen.getByLabelText("向 WeMail AI 发送消息");

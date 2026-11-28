@@ -8,7 +8,10 @@ export const RUNTIME_AUDIT_VERSION = 2;
 export const MAX_RUNTIME_MODULES_BYTES = 300 * 1024 * 1024;
 export const MAX_PACKAGED_APP_BYTES = 450 * 1024 * 1024;
 export const MAX_NSIS_ARCHIVE_BYTES = 150 * 1024 * 1024;
-export const MAX_NSIS_INSTALLER_BYTES = 155 * 1024 * 1024;
+// The internal edition carries the private module tree and exceeds the open
+// budget; override via env (MB) without weakening the open-edition default.
+export const MAX_NSIS_INSTALLER_BYTES =
+	Number(process.env.WEMAIL_MAX_NSIS_INSTALLER_MB ?? 155) * 1024 * 1024;
 
 export const FORBIDDEN_RUNTIME_PACKAGES = [
   "@phosphor-icons/react",

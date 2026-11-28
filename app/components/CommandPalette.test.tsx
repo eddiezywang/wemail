@@ -49,6 +49,18 @@ describe("CommandPalette", () => {
 		expect(first).not.toHaveBeenCalled();
 	});
 
+	it("does not run a command while Enter commits IME input", async () => {
+		const handler = vi.fn();
+		registerCommand({ id: "test.search", title: "搜索邮件", handler });
+		render(<CommandPalette />);
+		const input = screen.getByRole("combobox", { name: "搜索命令" });
+		fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+		expect(handler).not.toHaveBeenCalled();
+		expect(input).toBeInTheDocument();
+		fireEvent.keyDown(input, { key: "Enter" });
+		await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+	});
+
 	it("highlights direct substring matches in coral", () => {
 		registerCommand({
 			id: "test.search",

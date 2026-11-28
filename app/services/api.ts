@@ -714,6 +714,7 @@ export interface AgentActionExecutionResult {
 export interface ResolvePendingActionResult {
 	ok: boolean;
 	execution?: AgentActionExecutionResult;
+	approval?: { operationId: string; state: string; executed: false };
   accepted?: boolean;
   task?: import("../../shared/wemail/actionExecution").ActionExecutionSnapshot;
 }

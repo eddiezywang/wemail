@@ -36,6 +36,7 @@ describe("AgentActionConfirmDialog", () => {
 			"Proceed?",
 		);
 		expect(screen.getByText("This cannot be undone.")).toBeInTheDocument();
+		expect(screen.getByTestId("wemail-confirm-cancel")).toHaveFocus();
 	});
 
 	it("fires onConfirm when the confirm button is clicked", async () => {

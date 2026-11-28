@@ -425,7 +425,8 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 	const pendingActionsQuery = usePendingActions(effectiveSessionId, isAgentPanelOpen);
 	const pendingActions = pendingActionsQuery.data ?? [];
 	const resolvePendingAction = useResolvePendingAction();
-	const [resolvingActionId, setResolvingActionId] = useState<string | null>(null);
+	const inFlightActions = useRef(new Set<string>());
+	const [resolvingActionIds, setResolvingActionIds] = useState<ReadonlySet<string>>(new Set());
 	const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
 	const [dismissedRecoveryActionId, setDismissedRecoveryActionId] = useState<
 		string | null
@@ -618,9 +619,11 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 			action: AgentPendingAction,
 			status: "confirmed" | "rejected",
 		): Promise<PendingActionResolutionOutcome> => {
+			if (inFlightActions.current.has(action.id)) return { ok: false, error: "该操作正在提交确认。" };
+			inFlightActions.current.add(action.id);
+			setResolvingActionIds(new Set(inFlightActions.current));
 			followLatestRef.current = true;
 			setPromotedActionIds((current) => [...current.filter((id) => id !== action.id), action.id]);
-			setResolvingActionId(action.id);
 			setActionErrors((current) => ({ ...current, [action.id]: "" }));
 			try {
 				const result = await resolvePendingAction.mutateAsync({
@@ -667,6 +670,12 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 						(current) => current?.map((item) => item.id === action.id ? applyActionExecution(item, task) : item));
 					return { ok: true };
 				}
+				queryClient.setQueryData<AgentPendingAction[]>(pendingActionsQueryKey(effectiveSessionId),
+					(current) => current?.map((item) => item.id === action.id ? {
+						...item, status,
+						...(result.approval ? { executionState: "succeeded" as const, executionResult: { ...result.approval } }
+							: result.execution ? { executionState: "succeeded" as const, executionResult: { ...result.execution } } : {}),
+					} : item));
 				const resolved = resolveConversationConfirmation(
 					conversationStateRef.current,
 					action.id,
@@ -705,7 +714,7 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 					`操作没有完成：${action.description}`,
 				);
 				if (action.actionType !== "upload_allowance_invoices") setActionErrors((current) => ({ ...current, [action.id]: error }));
-				if (execution) {
+				if (execution || outcomeUnknown) {
 					queryClient.setQueryData<AgentPendingAction[]>(
 						pendingActionsQueryKey(effectiveSessionId),
 						(current) => current?.map((item) => item.id === action.id
@@ -734,7 +743,8 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 					error,
 				};
 			} finally {
-				setResolvingActionId(null);
+				inFlightActions.current.delete(action.id);
+				setResolvingActionIds(new Set(inFlightActions.current));
 			}
 		},
 		[
@@ -1105,21 +1115,23 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 		(confirmationId: string) => {
 			const action = pendingActions.find((item) => item.id === confirmationId);
 			if (!action || action.actionType === "install_wecli") return null;
-			if (promotedActionIds.includes(action.id) || action.executionState === "executing") {
+			const hasResult = action.status === "expired" || !!action.executionResult
+				|| ["failed", "outcome_unknown"].includes(action.executionState ?? "");
+			if ((promotedActionIds.includes(action.id) && (!action.status || action.status === "pending" || hasResult)) || action.executionState === "executing") {
 				return <div className="text-meta text-ink-3">操作进度已移至最新对话下方。</div>;
 			}
 			const status = action.status ?? "pending";
 			const executionState = action.executionState ?? "not_started";
-			// Only live cards render inline in the thread; settled confirmations
-			// fall back to the compact timeline chip.
-			const retainedUpload = action.actionType === "upload_allowance_invoices" && (executionState === "failed" || executionState === "outcome_unknown");
-			if (!retainedUpload && !action.executionResult?.task && (status !== "pending" || executionState !== "not_started")) {
+			const needsReceipt = status === "expired" || executionState === "failed" || executionState === "outcome_unknown"
+				|| (status === "confirmed" && (action.origin === "mcp" || (action.actionType === "send" && !!action.executionResult)));
+			if (!needsReceipt && !action.executionResult?.task && (status !== "pending" || executionState !== "not_started")) {
 				return null;
 			}
 			return (
 				<PendingActionCard
 					action={action}
-					isResolving={resolvingActionId === action.id}
+					mailbox={mailbox}
+					isResolving={resolvingActionIds.has(action.id)}
 					error={action.executionResult?.task ? undefined : actionErrors[action.id]}
 					onRefresh={() => void pendingActionsQuery.refetch()}
 					onConfirm={() => void handleResolvePendingAction(action, "confirmed")}
@@ -1127,18 +1139,20 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 				/>
 			);
 		},
-		[pendingActions, resolvingActionId, handleResolvePendingAction, actionErrors, pendingActionsQuery.refetch, promotedActionIds],
+		[pendingActions, mailbox, resolvingActionIds, handleResolvePendingAction, actionErrors, pendingActionsQuery.refetch, promotedActionIds],
 	);
-	// The bottom stack is only for live actions with no conversation anchor
-	// (e.g. MCP-origin requests); anchored cards render inside the thread.
-	const inlinePendingActions = pendingActions.filter(
-		(action) =>
-			action.actionType !== "install_wecli" &&
-			(!!action.executionResult?.task || ((action.status ?? "pending") === "pending" &&
-			((action.executionState ?? "not_started") === "not_started" ||
-				action.executionState === "executing"))) &&
-			(!conversationState.confirmations[action.id] || promotedActionIds.includes(action.id) || action.executionState === "executing"),
-	).sort((a, b) => promotedActionIds.indexOf(a.id) - promotedActionIds.indexOf(b.id));
+	// The query is scoped to this conversation. External approvals may have no transcript anchor.
+	const inlinePendingActions = pendingActions.filter((action) => {
+		if (action.actionType === "install_wecli") return false;
+		const promoted = promotedActionIds.includes(action.id);
+		const executing = action.executionState === "executing";
+		const pending = (action.status ?? "pending") === "pending";
+		const expired = action.status === "expired";
+		const authorized = action.origin === "mcp" && action.status === "confirmed";
+		const hasResult = !!action.executionResult || ["failed", "outcome_unknown"].includes(action.executionState ?? "");
+		return (pending || executing || expired || authorized || !!action.executionResult?.task || (promoted && hasResult))
+			&& (!conversationState.confirmations[action.id] || promoted || executing);
+	}).sort((a, b) => promotedActionIds.indexOf(a.id) - promotedActionIds.indexOf(b.id));
 	const wecliInstallDialogFeedback = wecliInstallFlow
 		? wecliInstallFlow.phase === "installing"
 			? {
@@ -1176,7 +1190,8 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 					<PendingActionCard
 						key={action.id}
 						action={action}
-						isResolving={resolvingActionId === action.id}
+						mailbox={mailbox}
+						isResolving={resolvingActionIds.has(action.id)}
 						error={action.executionResult?.task ? undefined : actionErrors[action.id]}
 						onRefresh={() => void pendingActionsQuery.refetch()}
 						onConfirm={() =>
@@ -1197,7 +1212,7 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 					"Jump to latest" pill can anchor to the bottom of the scroll
 					region without escaping the panel. */}
 				<div className="relative flex-1 min-h-0">
-				<div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-5 py-4"
+				<div ref={scrollRef} className="absolute inset-0 overflow-y-auto px-3 py-4 sm:px-5"
 					onWheelCapture={(event) => { if (event.deltaY < 0) followLatestRef.current = false; }}
 					onPointerDownCapture={(event) => { if (event.target === event.currentTarget) followLatestRef.current = false; }}
 					onTouchStartCapture={(event) => { lastTouchYRef.current = event.touches[0]?.clientY ?? 0; }}
@@ -1273,7 +1288,7 @@ function AgentChatConnected({ mailboxId }: { mailboxId: string }) {
 				</div>
 
 				{/* Bottom: suggestions + input. Turn context is rendered with the sent message. */}
-				<div className="shrink-0 space-y-3 px-5 pb-4 pt-2">
+				<div className="shrink-0 space-y-3 px-3 pb-4 pt-2 sm:px-5">
 					{showSuggestions ? (
 						<div className="flex flex-col items-start gap-2" aria-live="polite">
 							{suggestionsQuery.isPending ? (
