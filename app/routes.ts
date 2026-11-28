@@ -33,7 +33,8 @@ export default [
 	// production manifest (the conditional is dead-code-eliminated when
 	// NODE_ENV is "production" at build time).
 	...(process.env.NODE_ENV === "development"
-		? [route("__dev/components", "routes/__dev/components.tsx")]
+		? [route("__dev/components", "routes/__dev/components.tsx"),
+			route("__dev/demo-v1", "routes/__dev/demo_v1.tsx")]
 		: []),
 	route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

@@ -1,12 +1,13 @@
 /*
  * Local font assets for the renderer. Fonts are bundled with the app
- * (public/fonts/opensi/), so the desktop renderer makes no runtime
- * network font requests; `font-display: swap` keeps first paint text
- * visible while the local faces finish loading.
+ * (public/fonts/opensi/, @fontsource packages), so the desktop renderer
+ * makes no runtime network font requests; `font-display: swap` keeps
+ * first paint text visible while the local faces finish loading.
  *
- * OpenSI Serif / OpenSI Mono are Latin-only faces that lead the
- * serif-display and mono-meta layers (see tokens.css). CJK characters
- * fall through to the installed/system stacks declared there.
+ * Geist Sans / Geist Mono lead the sans-body and mono-meta layers
+ * (self-hosted via @fontsource, hashed Vite assets). OpenSI Serif /
+ * OpenSI Mono are Latin-only faces that lead the serif-display layer;
+ * CJK characters fall through to the installed/system stacks in tokens.css.
  *
  * OpenSI Serif & Mono — Copyright (c) The OpenSI Project Authors,
  * auraunii. Licensed under the SIL Open Font License 1.1 with
@@ -17,6 +18,16 @@
  * Adobe Systems Incorporated / Google LLC. Rare hanzi outside the subset
  * fall through to the system sans stack per glyph.
  */
+
+/* Geist Sans — UI/正文（几何 grotesque，正文 400 / 标题 600） */
+@import "@fontsource/geist-sans/400.css";
+@import "@fontsource/geist-sans/500.css";
+@import "@fontsource/geist-sans/600.css";
+
+/* Geist Mono — 代码/路径/终端（mono/sans 承担层级） */
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
+
 @font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Semibold.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
 @font-face { font-family: "OpenSI Serif"; src: url("/fonts/opensi/OpenSISerif-Italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }

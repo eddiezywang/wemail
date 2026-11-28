@@ -74,7 +74,7 @@ export function useIntegrationStatus() {
 function needsStartupSync(
 	snapshot: IntegrationConnectionSnapshot | undefined,
 ): boolean {
-	return snapshot?.entries.some(
+	return snapshot?.entries?.some(
 		(entry) => entry.state === "unknown" || entry.state === "checking",
 	) ?? true;
 }

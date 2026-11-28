@@ -82,14 +82,15 @@
   --shadow-3: 0 8px 24px rgba(28, 25, 23, 0.08), 0 1px 2px rgba(28, 25, 23, 0.04);
 
   /* ── Offline-safe type families ───────────
-     Latin faces are bundled locally (see styles/fonts.css); the desktop
-     app makes no runtime network font requests. CJK characters fall
-     through to installed/system families. */
+     Geist (self-hosted via @fontsource, see fonts.css) leads the sans/mono
+     stacks; OpenSI + WeMail Serif SC lead the serif stack. All bundled
+     locally — no runtime network requests. CJK falls through to installed
+     system families. */
   --font-serif-display: "OpenSI Serif", "WeMail Serif SC", "Songti SC", "Microsoft YaHei", "PingFang SC", "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
-  --font-sans-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji",
+  --font-sans-body: "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji",
     "Segoe UI Symbol";
-  --font-mono-meta: "OpenSI Mono", "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
+  --font-mono-meta: "Geist Mono", "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
 
   /* ── Type scale ───────────────────────────
      Semantic roles keep dense mail surfaces consistent across CJK and Latin.
@@ -218,10 +219,10 @@
   --shadow-3: 0 8px 24px rgba(28, 25, 23, 0.08), 0 1px 2px rgba(28, 25, 23, 0.04);
 
   --font-serif-display: "OpenSI Serif", "WeMail Serif SC", "Songti SC", "Microsoft YaHei", "PingFang SC", "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
-  --font-sans-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji",
+  --font-sans-body: "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji",
     "Segoe UI Symbol";
-  --font-mono-meta: "OpenSI Mono", "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
+  --font-mono-meta: "Geist Mono", "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
 
   --text-caption: 0.6875rem;
   --text-caption--line-height: 1rem;
