@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useComposeForm } from "./useComposeForm";
 import { MAIL_AUTH_REQUIRED_EVENT } from "~/lib/mailCredentialEvents";
 import { useUIStore } from "~/hooks/useUIStore";
-import { toast } from "~/components/ui/sonner";
+import { useSendStatusStore } from "~/hooks/useSendStatusStore";
 import { useCurrentAccount } from "~/queries/currentAccount";
 import { useAccountSignaturePreference } from "~/hooks/useAccountSignaturePreferences";
 
@@ -91,6 +91,7 @@ describe("useComposeForm draft saving", () => {
 		saveDraftMock.mockReset();
 		sendDraftMock.mockReset();
 		deleteEmailMock.mockReset();
+		useSendStatusStore.setState({ phase: null, endsAt: 0, onUndo: null });
 		useUIStore.setState({
 			selectedEmailId: null,
 			isComposing: false,
@@ -268,6 +269,7 @@ describe("useComposeForm draft saving", () => {
 			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
 		});
 		expect(sendDraftMock).not.toHaveBeenCalled(); // held in the undo window
+		expect(useSendStatusStore.getState().phase).toBe("hold");
 		await flushUndoWindow();
 		vi.useRealTimers();
 		expect(sendDraftMock).toHaveBeenCalledWith(expect.objectContaining({ draftId: "draft-new" }));
@@ -285,15 +287,15 @@ describe("useComposeForm draft saving", () => {
 		await act(async () => {
 			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
 		});
-		const loadingOptions = (toast.loading as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1] as
-			| { action: { onClick: () => void } }
-			| undefined;
-		expect(loadingOptions?.action?.onClick).toBeTypeOf("function");
-		loadingOptions?.action.onClick();
+		const undoState = useSendStatusStore.getState();
+		expect(undoState.phase).toBe("hold");
+		expect(undoState.onUndo).toBeTypeOf("function");
+		undoState.onUndo?.();
 		await act(async () => { await vi.advanceTimersByTimeAsync(UNDO_SEND_WINDOW_MS); });
 		vi.useRealTimers();
 		expect(sendDraftMock).not.toHaveBeenCalled();
 		expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({ subject: "Undo me" }));
+		expect(useSendStatusStore.getState().phase).toBeNull();
 	});
 
 	it("reuses the same idempotency key after an uncertain submission", async () => {
@@ -469,6 +471,7 @@ describe("useComposeForm draft saving", () => {
 describe("useComposeForm credential errors", () => {
 	beforeEach(() => {
 		sendDraftMock.mockReset();
+		useSendStatusStore.setState({ phase: null, endsAt: 0, onUndo: null });
 		vi.mocked(useCurrentAccount).mockReturnValue({ data: { account: { id: "acct-1" } } } as never);
 	});
 
