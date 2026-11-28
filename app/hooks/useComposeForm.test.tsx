@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useComposeForm } from "./useComposeForm";
 import { MAIL_AUTH_REQUIRED_EVENT } from "~/lib/mailCredentialEvents";
 import { useUIStore } from "~/hooks/useUIStore";
+import { toast } from "~/components/ui/sonner";
 import { useCurrentAccount } from "~/queries/currentAccount";
 import { useAccountSignaturePreference } from "~/hooks/useAccountSignaturePreferences";
 
@@ -18,10 +19,18 @@ const saveDraftMock = vi.fn();
 const sendDraftMock = vi.fn();
 const deleteEmailMock = vi.fn();
 
+const UNDO_SEND_WINDOW_MS = 5000;
+/** Advance past the undo-send hold so the deferred enqueue runs. */
+const flushUndoWindow = () =>
+	act(async () => {
+		await vi.advanceTimersByTimeAsync(UNDO_SEND_WINDOW_MS);
+	});
+
 vi.mock("~/components/ui/sonner", () => ({
 	toast: Object.assign(vi.fn(), {
 		success: vi.fn(),
 		error: vi.fn(),
+		loading: vi.fn(),
 	}),
 }));
 
@@ -254,21 +263,53 @@ describe("useComposeForm draft saving", () => {
 		await act(async () => { await result.current.handleSaveDraft(); });
 		await act(async () => { await result.current.handleSaveDraft(); });
 		expect(saveDraftMock).toHaveBeenLastCalledWith(expect.objectContaining({ id: "draft-new" }));
+		vi.useFakeTimers();
 		await act(async () => {
 			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
 		});
+		expect(sendDraftMock).not.toHaveBeenCalled(); // held in the undo window
+		await flushUndoWindow();
+		vi.useRealTimers();
 		expect(sendDraftMock).toHaveBeenCalledWith(expect.objectContaining({ draftId: "draft-new" }));
+	});
+
+	it("keeps the draft and never enqueues when the user undoes within the window", async () => {
+		saveDraftMock.mockResolvedValue({ ok: true, draft: { id: "draft-undo" } });
+		sendDraftMock.mockResolvedValue({ ok: true, outboxId: "outbox-1" });
+		const { result } = renderHook(() => useComposeForm("acct-1"));
+		act(() => {
+			result.current.setTo("recipient@example.test");
+			result.current.setSubject("Undo me");
+		});
+		vi.useFakeTimers();
+		await act(async () => {
+			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
+		});
+		const loadingOptions = (toast.loading as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1] as
+			| { action: { onClick: () => void } }
+			| undefined;
+		expect(loadingOptions?.action?.onClick).toBeTypeOf("function");
+		loadingOptions?.action.onClick();
+		await act(async () => { await vi.advanceTimersByTimeAsync(UNDO_SEND_WINDOW_MS); });
+		vi.useRealTimers();
+		expect(sendDraftMock).not.toHaveBeenCalled();
+		expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({ subject: "Undo me" }));
 	});
 
 	it("reuses the same idempotency key after an uncertain submission", async () => {
 		vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
+		saveDraftMock.mockResolvedValue({ ok: true, draft: { id: "draft-idem" } });
 		sendDraftMock.mockRejectedValueOnce(new Error("request timed out"))
 			.mockResolvedValueOnce({ ok: true, outboxId: "outbox-1" });
 		const { result } = renderHook(() => useComposeForm("acct-1"));
 		act(() => result.current.setTo("recipient@example.test"));
+		vi.useFakeTimers();
 		await act(async () => { await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn()); });
+		await flushUndoWindow();
 		expect(result.current.error).toContain("提交结果不确定");
 		await act(async () => { await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn()); });
+		await flushUndoWindow();
+		vi.useRealTimers();
 		expect(sendDraftMock.mock.calls[0][0].idempotencyKey).toBe(sendDraftMock.mock.calls[1][0].idempotencyKey);
 		vi.restoreAllMocks();
 	});
@@ -310,9 +351,12 @@ describe("useComposeForm draft saving", () => {
 		);
 		sendDraftMock.mockResolvedValue({ ok: true, outboxId: "outbox-1" });
 		act(() => result.current.setTo("recipient@example.test"));
+		vi.useFakeTimers();
 		await act(async () => {
 			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
 		});
+		await flushUndoWindow();
+		vi.useRealTimers();
 		expect(sendDraftMock).toHaveBeenCalledWith(expect.objectContaining({ draftId: "draft-existing" }));
 		expect(deleteEmailMock).not.toHaveBeenCalled();
 	});
@@ -390,6 +434,7 @@ describe("useComposeForm draft saving", () => {
 	});
 
 	it("sends with the current account when no mailbox route param is present", async () => {
+		saveDraftMock.mockResolvedValue({ ok: true, draft: { id: "draft-route" } });
 		sendDraftMock.mockResolvedValue({ ok: true, messageId: "sent-1" });
 		const onClose = vi.fn();
 		const { result } = renderHook(() => useComposeForm(undefined));
@@ -400,12 +445,15 @@ describe("useComposeForm draft saving", () => {
 			result.current.setBody("<p>World</p>");
 		});
 
+		vi.useFakeTimers();
 		await act(async () => {
 			await result.current.handleSend(
 				{ preventDefault: vi.fn() } as unknown as React.FormEvent,
 				onClose,
 			);
 		});
+		await flushUndoWindow();
+		vi.useRealTimers();
 
 		expect(result.current.error).toBeNull();
 		expect(sendDraftMock).toHaveBeenCalledWith(
@@ -425,6 +473,7 @@ describe("useComposeForm credential errors", () => {
 	});
 
 	it("opens the update-password dialog instead of a dead-end toast", async () => {
+		saveDraftMock.mockResolvedValue({ ok: true, draft: { id: "draft-pw" } });
 		sendDraftMock.mockRejectedValue(
 			new Error("credential-required: IMAP LOGIN rejected — password expired"),
 		);
@@ -439,9 +488,12 @@ describe("useComposeForm credential errors", () => {
 			result.current.setSubject("Subject");
 			result.current.setBody("Body");
 		});
+		vi.useFakeTimers();
 		await act(async () => {
 			await result.current.handleSend({ preventDefault: vi.fn() } as unknown as React.FormEvent, vi.fn());
 		});
+		await flushUndoWindow();
+		vi.useRealTimers();
 		window.removeEventListener(MAIL_AUTH_REQUIRED_EVENT, listener);
 		expect(events).toEqual([
 			{ accountId: "acct-1", code: "MAIL_CREDENTIAL_INVALID", source: "send" },
